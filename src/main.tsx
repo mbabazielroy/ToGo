@@ -1,0 +1,22 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import './index.css';
+import App from './App';
+import { StoreProvider } from './state/store';
+import { SearchProvider } from './state/search';
+import { ToastProvider } from './components/ToastProvider';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <BrowserRouter>
+      <StoreProvider>
+        <SearchProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </SearchProvider>
+      </StoreProvider>
+    </BrowserRouter>
+  </StrictMode>,
+);

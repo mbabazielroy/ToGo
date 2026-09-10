@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f5f2e9;
+  color: #173a26;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Respect safe areas on notched phones */
+.safe-bottom {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-forest-700 px-5 py-3.5 text-base font-semibold text-white shadow-card transition active:scale-[0.98] hover:bg-forest-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-lime-400 px-5 py-3.5 text-base font-semibold text-forest-900 shadow-card transition active:scale-[0.98] hover:bg-lime-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-700 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-forest-200 bg-white px-4 py-3 text-sm font-semibold text-forest-700 transition active:scale-[0.98] hover:bg-forest-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-400;
+  }
+  .card {
+    @apply rounded-2xl bg-white shadow-card;
+  }
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-forest-600;
+  }
+  .input {
+    @apply w-full rounded-xl border border-forest-200 bg-white px-4 py-3 text-base text-forest-900 placeholder:text-forest-300 focus:border-forest-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-300;
+  }
+}
