@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Loading, ErrorRow, EmptyState, Separator } from '../../src/components/ui';
+import { Loading, ErrorRow, EmptyState, Separator, SectionHeading, Segmented, Group } from '../../src/components/ui';
 import { ModeTag } from '../../src/components/Screen';
 import { DepartureRow } from '../../src/components/DepartureRow';
 import { SelectSheet } from '../../src/components/SelectSheet';
@@ -17,7 +17,7 @@ import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { tripJourney } from '@shared/data/journey';
 import type { DirectionCode } from '@shared/data/adapter';
 
-const DAY_LABELS = (d: string, i: number) => (i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : formatDate(d));
+const DAY_LABEL = (d: string, i: number) => (i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : formatDate(d));
 
 export default function Home() {
   const adapter = useAdapter();
@@ -46,7 +46,7 @@ export default function Home() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* Top bar */}
+      {/* Identity + notifications */}
       <View style={styles.topBar}>
         <View style={styles.brand}>
           <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
@@ -60,84 +60,68 @@ export default function Home() {
           hitSlop={8}
           style={styles.bell}
         >
-          <Ionicons name="notifications-outline" size={22} color={colors.ink} />
+          <Ionicons name="notifications-outline" size={24} color={colors.forest700} />
           {unread > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text></View>}
         </Pressable>
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: insets.bottom + space.xxl, gap: space.md }}
+        contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: insets.bottom + space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Active trip — slim resume row */}
+        <Text style={styles.title}>Find a departure</Text>
+
+        {/* Active trip */}
         {upcoming.length > 0 && (
-          <Pressable
-            onPress={() => router.push(`/trip/${upcoming[0].id}`)}
-            accessibilityRole="button"
-            accessibilityLabel={`Active trip ${upcoming[0].reference}, pickup ${formatTime(upcoming[0].pickupTimeSnapshot)}`}
-            style={({ pressed }) => [styles.resume, pressed && { opacity: 0.9 }]}
-          >
-            <Ionicons name="ticket-outline" size={18} color={colors.forest700} />
-            <Text style={styles.resumeText} numberOfLines={1}>
-              Active trip {upcoming[0].reference} · pickup {formatTime(upcoming[0].pickupTimeSnapshot)}
-            </Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.forest700} />
-          </Pressable>
+          <Group style={{ marginBottom: space.lg }}>
+            <FormRow
+              onPress={() => router.push(`/trip/${upcoming[0].id}`)}
+              accessibilityLabel={`Active trip ${upcoming[0].reference}, pickup ${formatTime(upcoming[0].pickupTimeSnapshot)}`}
+              icon="ticket-outline"
+              label="Active trip"
+              value={`${upcoming[0].reference} · ${formatTime(upcoming[0].pickupTimeSnapshot)}`}
+              chevron
+            />
+          </Group>
         )}
 
-        {/* Search panel: journey + pickup */}
-        <View style={styles.panel}>
-          <Pressable onPress={() => setSheet('journey')} accessibilityRole="button" accessibilityLabel={`Journey ${cities.origin} to ${cities.destination}, ${dateLabel}. Change.`} style={({ pressed }) => [styles.panelRow, pressed && styles.pressed]}>
-            <Ionicons name="git-branch-outline" size={20} color={colors.forest700} style={styles.rowIcon} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowValue}>{cities.origin} → {cities.destination}</Text>
-              <Text style={styles.rowSub}>{dateLabel}</Text>
+        {/* Search form */}
+        <Group>
+          <FormRow onPress={() => setSheet('journey')} label="Route" value={`${cities.origin} → ${cities.destination}`} chevron accessibilityLabel={`Route ${cities.origin} to ${cities.destination}. Change.`} />
+          <Separator inset={SCREEN} />
+          <FormRow onPress={() => setSheet('journey')} label="Date" value={dateLabel} chevron accessibilityLabel={`Date ${dateLabel}. Change.`} />
+          <Separator inset={SCREEN} />
+          <FormRow onPress={() => setSheet('hub')} label="Pickup" value={selectedHub ? selectedHub.name : `Any hub in ${cities.origin}`} valueStrong chevron accessibilityLabel={`Pickup hub ${selectedHub ? selectedHub.name : `any hub in ${cities.origin}`}. Change.`} />
+          <Separator inset={SCREEN} />
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Passengers</Text>
+            <View style={styles.stepper}>
+              <Pressable onPress={() => set({ passengers: Math.max(1, criteria.passengers - 1) })} accessibilityRole="button" accessibilityLabel="Fewer passengers" style={styles.stepBtn}>
+                <Ionicons name="remove" size={20} color={criteria.passengers <= 1 ? colors.faint : colors.forest700} />
+              </Pressable>
+              <Text style={styles.stepVal} accessibilityLabel={`${criteria.passengers} passengers`}>{criteria.passengers}</Text>
+              <Pressable onPress={() => set({ passengers: Math.min(5, criteria.passengers + 1) })} accessibilityRole="button" accessibilityLabel="More passengers" style={styles.stepBtn}>
+                <Ionicons name="add" size={20} color={criteria.passengers >= 5 ? colors.faint : colors.forest700} />
+              </Pressable>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-          </Pressable>
-          <Separator inset={48} />
-          <Pressable onPress={() => setSheet('hub')} accessibilityRole="button" accessibilityLabel={`Pickup hub ${selectedHub ? selectedHub.name : `any hub in ${cities.origin}`}. Change.`} style={({ pressed }) => [styles.panelRow, pressed && styles.pressed]}>
-            <Ionicons name="location-outline" size={20} color={colors.forest700} style={styles.rowIcon} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabel}>Pickup</Text>
-              <Text style={styles.rowValue} numberOfLines={1}>{selectedHub ? selectedHub.name : `Any hub in ${cities.origin}`}</Text>
-            </View>
-            <Text style={styles.change}>Change</Text>
-          </Pressable>
-        </View>
-
-        {/* Filter row: date + passengers */}
-        <View style={styles.filterRow}>
-          <Pressable onPress={() => setSheet('journey')} accessibilityRole="button" accessibilityLabel={`Date ${dateLabel}. Change.`} style={({ pressed }) => [styles.datePill, pressed && styles.pressed]}>
-            <Ionicons name="calendar-outline" size={16} color={colors.inkSoft} />
-            <Text style={styles.datePillText}>{dateLabel}</Text>
-          </Pressable>
-          <View style={styles.stepper}>
-            <Pressable onPress={() => set({ passengers: Math.max(1, criteria.passengers - 1) })} accessibilityRole="button" accessibilityLabel="Fewer passengers" style={styles.stepBtn}>
-              <Ionicons name="remove" size={18} color={colors.forest700} />
-            </Pressable>
-            <Text style={styles.stepVal} accessibilityLabel={`${criteria.passengers} passengers`}>{criteria.passengers} pax</Text>
-            <Pressable onPress={() => set({ passengers: Math.min(5, criteria.passengers + 1) })} accessibilityRole="button" accessibilityLabel="More passengers" style={styles.stepBtn}>
-              <Ionicons name="add" size={18} color={colors.forest700} />
-            </Pressable>
           </View>
-        </View>
+        </Group>
 
         {/* Departures */}
-        <Text style={styles.heading}>Departures{trips.data ? ` · ${trips.data.length}` : ''}</Text>
+        <SectionHeading title="Departures" />
         {trips.loading && <Loading />}
         {trips.error && <ErrorRow message={trips.error} onRetry={trips.reload} />}
         {trips.data && trips.data.length === 0 && (
-          <EmptyState title="No departures match">Try another day, switch direction, or choose “Any hub”.</EmptyState>
+          <EmptyState title="No departures">Try another day, switch route, or choose “Any hub”.</EmptyState>
         )}
         {trips.data && trips.data.length > 0 && (
-          <View style={styles.list}>
+          <Group style={{ paddingHorizontal: SCREEN }}>
             {trips.data.map((t, i) => {
               const j = tripJourney(t, criteria.hubId);
               return (
                 <View key={t.id}>
-                  {i > 0 && <Separator />}
+                  {i > 0 && <Separator inset={76} />}
                   <DepartureRow
                     trip={t}
                     pickup={j.pickup}
@@ -147,65 +131,56 @@ export default function Home() {
                 </View>
               );
             })}
-          </View>
+          </Group>
         )}
         <Text style={styles.footNote}>
-          Times are Africa/Kampala. The pickup time is when your bus reaches your hub — the origin departure is earlier.
+          Times are Africa/Kampala. The pickup time is when your bus reaches your hub; the origin departure is earlier.
         </Text>
       </ScrollView>
 
-      {/* Focused selection sheets */}
-      <SelectSheet visible={sheet === 'journey'} title="Journey" onClose={() => setSheet(null)}>
+      {/* Route + date */}
+      <SelectSheet visible={sheet === 'journey'} title="Route" onClose={() => setSheet(null)}>
         <Text style={styles.sheetLabel}>Direction</Text>
-        {(['KLA_MBR', 'MBR_KLA'] as DirectionCode[]).map((d) => {
-          const c = DIRECTION_CITIES[d];
-          const active = criteria.direction === d;
-          return (
-            <Pressable key={d} onPress={() => setDirection(d)} accessibilityRole="button" accessibilityState={{ selected: active }} style={[styles.option, active && styles.optionActive]}>
-              <Text style={[styles.optionText, active && styles.optionTextActive]}>{c.origin} → {c.destination}</Text>
-              {active && <Ionicons name="checkmark" size={20} color={colors.forest700} />}
-            </Pressable>
-          );
-        })}
-        <Text style={[styles.sheetLabel, { marginTop: space.md }]}>Date</Text>
-        {days.map((d, i) => {
-          const active = criteria.date === d;
-          return (
-            <Pressable key={d} onPress={() => { set({ date: d }); }} accessibilityRole="button" accessibilityState={{ selected: active }} style={[styles.option, active && styles.optionActive]}>
-              <Text style={[styles.optionText, active && styles.optionTextActive]}>{DAY_LABELS(d, i)}</Text>
-              {active && <Ionicons name="checkmark" size={20} color={colors.forest700} />}
-            </Pressable>
-          );
-        })}
+        <Segmented
+          segments={(['KLA_MBR', 'MBR_KLA'] as DirectionCode[]).map((d) => ({ value: d, label: `${DIRECTION_CITIES[d].origin} → ${DIRECTION_CITIES[d].destination}` }))}
+          value={criteria.direction}
+          onChange={setDirection}
+          accessibilityLabel="Travel direction"
+        />
+        <Text style={[styles.sheetLabel, { marginTop: space.lg }]}>Date</Text>
+        <Group>
+          {days.map((d, i) => {
+            const active = criteria.date === d;
+            return (
+              <View key={d}>
+                {i > 0 && <Separator inset={SCREEN} />}
+                <CheckRow label={DAY_LABEL(d, i)} selected={active} onPress={() => set({ date: d })} />
+              </View>
+            );
+          })}
+        </Group>
       </SelectSheet>
 
-      <SelectSheet visible={sheet === 'hub'} title={`Pickup hub in ${cities.origin}`} onClose={() => setSheet(null)}>
+      {/* Hub picker */}
+      <SelectSheet visible={sheet === 'hub'} title={`Pickup in ${cities.origin}`} onClose={() => setSheet(null)}>
         {hubs.loading ? <Loading /> : hubs.error ? <ErrorRow message={hubs.error} onRetry={hubs.reload} /> : (
           <>
-            <Pressable onPress={() => chooseHub(null)} accessibilityRole="button" accessibilityState={{ selected: !criteria.hubId }} style={[styles.option, !criteria.hubId && styles.optionActive]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.optionText, !criteria.hubId && styles.optionTextActive]}>Any hub</Text>
-                <Text style={styles.optionSub}>Show every departure in {cities.origin}</Text>
-              </View>
-              {!criteria.hubId && <Ionicons name="checkmark" size={20} color={colors.forest700} />}
-            </Pressable>
-            {originHubs.map((h) => {
-              const active = criteria.hubId === h.id;
-              return (
-                <Pressable key={h.id} onPress={() => chooseHub(h.id)} accessibilityRole="button" accessibilityState={{ selected: active }} style={[styles.option, active && styles.optionActive]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.optionText, active && styles.optionTextActive]} numberOfLines={1}>{h.name}</Text>
-                    <Text style={styles.optionSub} numberOfLines={1}>{h.area}</Text>
-                  </View>
-                  {active ? <Ionicons name="checkmark" size={20} color={colors.forest700} /> : <Ionicons name="chevron-forward" size={18} color={colors.muted} />}
-                </Pressable>
-              );
-            })}
-            {originHubs.length === 0 && <Text style={styles.optionSub}>No approved hubs in this city yet.</Text>}
-            <Pressable onPress={() => { if (selectedHub) { setSheet(null); router.push(`/hub/${selectedHub.id}`); } }} disabled={!selectedHub} accessibilityRole="button" style={[styles.detailsLink, !selectedHub && { opacity: 0.4 }]}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.forest700} />
-              <Text style={styles.detailsLinkText}>{selectedHub ? `View ${selectedHub.name} details` : 'Select a hub to view its details'}</Text>
-            </Pressable>
+            <Group>
+              <CheckRow label="Any hub" sub={`Every departure in ${cities.origin}`} selected={!criteria.hubId} onPress={() => chooseHub(null)} />
+              {originHubs.map((h) => (
+                <View key={h.id}>
+                  <Separator inset={SCREEN} />
+                  <CheckRow label={h.name} sub={h.area} selected={criteria.hubId === h.id} onPress={() => chooseHub(h.id)} />
+                </View>
+              ))}
+            </Group>
+            {originHubs.length === 0 && <Text style={styles.sheetLabel}>No approved hubs in this city yet.</Text>}
+            {selectedHub && (
+              <Pressable onPress={() => { setSheet(null); router.push(`/hub/${selectedHub.id}`); }} accessibilityRole="button" style={styles.detailsLink}>
+                <Text style={styles.detailsLinkText}>View {selectedHub.name} details</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.forest700} />
+              </Pressable>
+            )}
           </>
         )}
       </SelectSheet>
@@ -213,46 +188,57 @@ export default function Home() {
   );
 }
 
+function FormRow({ label, value, valueStrong, chevron, onPress, icon, accessibilityLabel }: {
+  label: string; value: string; valueStrong?: boolean; chevron?: boolean; onPress: () => void; icon?: keyof typeof Ionicons.glyphMap; accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? `${label}, ${value}`} style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.forest50 }]}>
+      {icon && <Ionicons name={icon} size={20} color={colors.forest700} style={{ marginRight: space.sm }} />}
+      <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.rowValue, valueStrong && { color: colors.ink, fontWeight: '600' }]} numberOfLines={1}>{value}</Text>
+      {chevron && <Ionicons name="chevron-forward" size={18} color={colors.faint} style={{ marginLeft: 6 }} />}
+    </Pressable>
+  );
+}
+
+function CheckRow({ label, sub, selected, onPress }: { label: string; sub?: string; selected?: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} style={({ pressed }) => [styles.checkRow, pressed && { backgroundColor: colors.forest50 }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.checkLabel} numberOfLines={1}>{label}</Text>
+        {sub ? <Text style={styles.checkSub} numberOfLines={1}>{sub}</Text> : null}
+      </View>
+      {selected && <Ionicons name="checkmark" size={22} color={colors.forest700} />}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.sm },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.xs },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logo: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: colors.white, fontWeight: '900', fontSize: 15 },
-  wordmark: { color: colors.ink, fontWeight: '900', fontSize: font.h2, letterSpacing: -0.3 },
+  logo: { width: 26, height: 26, borderRadius: 7, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+  wordmark: { color: colors.ink, fontWeight: '700', fontSize: font.h2, letterSpacing: -0.2 },
   bell: { width: control.small, height: control.small, borderRadius: control.small / 2, alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.red600, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  badgeText: { color: colors.white, fontSize: 10, fontWeight: '800' },
+  badgeText: { color: colors.white, fontSize: 10, fontWeight: '700' },
 
-  resume: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.forest50, borderRadius: radius.md, paddingHorizontal: space.md, minHeight: control.small, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.forest200 },
-  resumeText: { flex: 1, color: colors.forest800, fontWeight: '700', fontSize: font.small },
+  title: { fontSize: font.h1, fontWeight: '700', color: colors.ink, marginTop: space.xs, marginBottom: space.md },
 
-  panel: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, overflow: 'hidden' },
-  panelRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.md, minHeight: 60 },
-  pressed: { backgroundColor: colors.forest50 },
-  rowIcon: { width: 32 },
-  rowLabel: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted },
-  rowValue: { fontSize: font.body, fontWeight: '700', color: colors.ink },
-  rowSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
-  change: { color: colors.forest700, fontWeight: '700', fontSize: font.small },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: control.row + 6, paddingHorizontal: SCREEN, paddingVertical: 8 },
+  rowLabel: { fontSize: font.body, color: colors.ink, flexShrink: 0 },
+  rowValue: { flex: 1, textAlign: 'right', fontSize: font.body, color: colors.muted, marginLeft: space.md },
+  stepper: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
+  stepBtn: { width: 40, height: 36, alignItems: 'center', justifyContent: 'center' },
+  stepVal: { minWidth: 24, textAlign: 'center', fontSize: font.body, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
 
-  filterRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  datePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, height: control.small },
-  datePillText: { color: colors.ink, fontWeight: '700', fontSize: font.small },
-  stepper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, height: control.small },
-  stepBtn: { width: 42, height: control.small, alignItems: 'center', justifyContent: 'center' },
-  stepVal: { minWidth: 48, textAlign: 'center', fontSize: font.small, fontWeight: '800', color: colors.ink },
+  footNote: { color: colors.muted, fontSize: font.tiny, marginTop: space.md, paddingHorizontal: space.xs, lineHeight: 17 },
 
-  heading: { fontSize: font.small, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted, marginTop: space.xs },
-  list: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: space.md },
-  footNote: { color: colors.muted, fontSize: font.tiny, marginTop: space.xs, lineHeight: 16 },
-
-  sheetLabel: { fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted, marginBottom: 2 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.md, minHeight: control.height },
-  optionActive: { borderColor: colors.forest600, backgroundColor: colors.forest50 },
-  optionText: { fontSize: font.body, fontWeight: '700', color: colors.ink },
-  optionTextActive: { color: colors.forest800 },
-  optionSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
-  detailsLink: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingVertical: space.md, marginTop: space.xs },
-  detailsLinkText: { color: colors.forest700, fontWeight: '700', fontSize: font.small },
+  sheetLabel: { fontSize: font.tiny, fontWeight: '400', textTransform: 'uppercase', letterSpacing: 0.4, color: colors.muted, marginBottom: space.xs, paddingHorizontal: space.xs },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: SCREEN, minHeight: control.height, paddingVertical: 8 },
+  checkLabel: { fontSize: font.body, color: colors.ink },
+  checkSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
+  detailsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: space.md, marginTop: space.sm },
+  detailsLinkText: { color: colors.forest700, fontWeight: '500', fontSize: font.body },
 });

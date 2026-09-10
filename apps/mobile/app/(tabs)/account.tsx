@@ -82,6 +82,6 @@ export default function Account() {
 
 const styles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: radius.lg, backgroundColor: colors.forest100, alignItems: 'center', justifyContent: 'center' },
-  name: { fontWeight: '800', color: colors.forest900, fontSize: font.title },
+  name: { fontWeight: '600', color: colors.ink, fontSize: font.title },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
 });

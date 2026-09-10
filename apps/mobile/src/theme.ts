@@ -1,93 +1,87 @@
-// ToGo mobile design tokens — a quiet, neutral system.
+// ToGo mobile design tokens — a restrained, Apple-inspired system.
 //
-// Principles: a neutral off-white background, white surfaces, near-black primary
-// text, forest-green for actions, and lime used sparingly (selected state only).
-// No widespread mint tint; separators and hairlines carry structure instead of
-// stacked cards and heavy shadows. Values are logical RN units, not screenshot pixels.
+// White and very light neutral surfaces, near-black primary text and readable grey
+// secondary text, native system typography, thin separators, and forest green used
+// only as an accent on primary actions and selected states. No lime fills, no tinted
+// backgrounds, no gradients, minimal elevation. Values are logical RN units.
 
 export const colors = {
-  // Brand / action greens
-  forest900: '#12241a',
-  forest800: '#1a3324',
-  forest700: '#1f4d31', // primary action
-  forest600: '#2a6640',
-  forest500: '#3c7a52',
-  forest200: '#c3d4c8',
-  forest100: '#e4ebe6', // quiet neutral-green tint (use sparingly)
-  forest50: '#f1f4f1',  // barely-there tint for pressed/selected backgrounds
-  // Lime accent — selection / primary emphasis only
-  lime600: '#6aa30c',
-  lime500: '#7cc00d',
-  lime400: '#a3e635',
-  lime300: '#bef264',
-  lime200: '#d9f99d',
-  lime100: '#eaf2d8',
-  lime50: '#f4f8ea',
-  // Neutral surfaces (off-white ground, white cards)
-  bg: '#f4f4f2',
-  surface: '#ffffff',
-  surfaceAlt: '#efefec',
+  // Grouped-list system backgrounds
+  bg: '#f2f2f7',        // grouped background (screens)
+  surface: '#ffffff',   // cells / cards
+  surfaceAlt: '#e7e7ec', // segmented tracks, subtle fills
   white: '#ffffff',
-  // Neutral text ramp (near-black → muted)
-  ink: '#18191b',      // primary text
-  inkSoft: '#40444a',  // secondary text
-  muted: '#6c7075',    // tertiary / meta (>= 4.5:1 on white)
+
+  // Text ramp (near-black → readable greys; kept above ~4.5:1 on white)
+  ink: '#111114',       // primary label
+  inkSoft: '#3c3c43',   // secondary label
+  muted: '#6c6c72',     // tertiary label (still readable)
+  faint: '#b3b3ba',     // chevrons / decorative only
+
   // Structure
-  separator: '#e6e7e3',
-  border: '#d7d9d4',
-  // Status (restrained)
-  amber600: '#b6790f',
-  amber100: '#f6ecd4',
-  amber800: '#7a4d05',
-  red600: '#c53b3b',
-  red100: '#f7e2e2',
-  red700: '#9c2b2b',
-  blue100: '#dbe7f5',
-  blue800: '#20487e',
-  // Schematic map surface (neutral, faintly green)
-  mapBase: '#eceeea',
-  mapLine: '#cdd6cf',
-  // Legacy warm-name aliases kept pointing at neutral values (back-compat)
-  sand50: '#fbfbfa',
-  sand100: '#f4f4f2',
-  sand200: '#e9e9e6',
+  separator: '#c9c9ce',
+  border: '#c9c9ce',
+
+  // Forest accent (primary actions, tint, selected)
+  forest900: '#12351f',
+  forest800: '#173f26',
+  forest700: '#1f5c39', // primary / tint
+  forest600: '#256b43',
+  forest500: '#2f855a',
+  forest200: '#bcd9c6',
+  forest100: '#e3efe8', // subtle green tint (status only)
+  forest50: '#eeeef1',  // neutral pressed highlight
+
+  // Legacy lime tokens retained for back-compat but no longer used as fills
+  lime600: '#5f8f10', lime500: '#6f9f14', lime400: '#89b93a', lime300: '#a9cf6a',
+  lime200: '#cfe4a6', lime100: '#e6efd4', lime50: '#f2f6e8',
+
+  // Status (muted, iOS-like)
+  amber600: '#a86a00', amber100: '#f6ecd6', amber800: '#7a4d05',
+  red600: '#c0392b', red100: '#f7e0dd', red700: '#b3261e',
+  blue100: '#e0e9f6', blue800: '#20487e',
+
+  // Unused map tokens (kept for back-compat)
+  mapBase: '#eceeea', mapLine: '#cdd6cf',
+  // Warm-name aliases → neutral values (back-compat)
+  sand50: '#fbfbfc', sand100: '#f2f2f7', sand200: '#e7e7ec',
 };
 
-// Spacing scale: 4, 8, 12, 16, 24, 32. Screen padding is 20 (SCREEN).
+// Spacing scale: 4, 8, 12, 16, 24, 32. Screen gutter is 16 (iOS margin).
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
-export const SCREEN = 20;
+export const SCREEN = 16;
 
-// Corners: 12–16 for ordinary surfaces; larger only for the main sheet.
-export const radius = { sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, pill: 999 };
+// Corners: 10 grouped cells, 12–14 cards/buttons; larger only for sheets.
+export const radius = { sm: 8, md: 10, lg: 12, xl: 14, xxl: 20, pill: 999 };
 
 export const font = {
-  time: 34,   // prominent times (30–36)
-  h1: 26,     // screen titles (24–28)
-  h2: 20,
-  title: 17,
-  body: 16,   // body text (16–17)
-  small: 14,  // secondary (13–14)
-  tiny: 12,   // labels / meta
+  time: 34,   // prominent times
+  h1: 28,     // screen title (restrained large title)
+  h2: 22,
+  title: 17,  // nav title / row title
+  body: 17,
+  small: 15,  // secondary
+  tiny: 13,   // footnote / caption
 };
 
-// Comfortable control + touch-target heights (48–52).
-export const control = { height: 50, small: 44 };
-export const HIT = { minHeight: 48, minWidth: 48 };
+// Comfortable control + touch-target heights.
+export const control = { height: 50, small: 44, row: 44 };
+export const HIT = { minHeight: 44, minWidth: 44 };
 
-// Restrained elevation — a single soft shadow, used only where a surface must lift.
+// Minimal elevation — used only for floating footers / nav where layering matters.
 export const shadow = {
   card: {
-    shadowColor: '#0b1a10',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
   sheet: {
-    shadowColor: '#0b1a10',
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -1 },
+    elevation: 8,
   },
 };

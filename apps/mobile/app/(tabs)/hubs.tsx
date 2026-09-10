@@ -33,7 +33,7 @@ export default function Hubs() {
                 const facilities = Object.entries(h.facilities ?? {}).filter(([, v]) => v).length;
                 return (
                   <View key={h.id}>
-                    {i > 0 && <Separator inset={56} />}
+                    {i > 0 && <Separator inset={42} />}
                     <Pressable
                       onPress={() => router.push(`/hub/${h.id}`)}
                       accessibilityRole="button"
@@ -46,7 +46,7 @@ export default function Hubs() {
                         <Text style={styles.area} numberOfLines={1}>{h.area}</Text>
                         {h.openingHours ? <Text style={styles.meta}>{facilities} facilities · {h.openingHours}</Text> : null}
                       </View>
-                      <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                      <Ionicons name="chevron-forward" size={18} color={colors.faint} />
                     </Pressable>
                   </View>
                 );
@@ -61,10 +61,10 @@ export default function Hubs() {
 }
 
 const styles = StyleSheet.create({
-  list: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: space.md },
+  list: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space.md, overflow: 'hidden' },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: space.md },
-  pin: { width: 32, alignItems: 'center' },
-  name: { fontWeight: '800', color: colors.ink, fontSize: font.body },
+  pin: { width: 30, alignItems: 'center' },
+  name: { fontWeight: '600', color: colors.ink, fontSize: font.body },
   area: { color: colors.muted, fontSize: font.small, marginTop: 1 },
   meta: { color: colors.muted, fontSize: font.tiny, marginTop: 2 },
 });

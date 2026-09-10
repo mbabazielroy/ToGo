@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Muted, PrimaryButton, Loading, ErrorRow, EmptyState, Separator } from '../../src/components/ui';
+import { NavBar, Group, Muted, PrimaryButton, Loading, ErrorRow, EmptyState, Separator, SectionHeading } from '../../src/components/ui';
 import { DepartureRow } from '../../src/components/DepartureRow';
 import { useAdapter, useAppMode, useDataEpoch } from '../../src/data/AdapterProvider';
 import { useSearch } from '../../src/state/search';
 import { useAsync } from '../../src/hooks/useAsync';
 import { haptics } from '../../src/lib/feedback';
-import { colors, radius, space, font, SCREEN, control } from '../../src/theme';
+import { colors, radius, space, font, SCREEN } from '../../src/theme';
 import { kampalaToday } from '@shared/lib/time';
 import { tripJourney } from '@shared/data/journey';
 import type { DirectionCode } from '@shared/data/adapter';
@@ -56,41 +56,37 @@ export default function HubDetail() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8} style={styles.back}>
-          <Ionicons name="chevron-back" size={22} color={colors.ink} />
-        </Pressable>
-        <Text style={styles.topTitle}>Pickup hub</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <NavBar title="Pickup hub" onBack={() => router.back()} />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.xxl * 2, gap: space.lg }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: space.xxl * 2 }}>
         {hubs.loading && <Loading />}
         {hubs.error && <ErrorRow message={hubs.error} onRetry={hubs.reload} />}
         {!hubs.loading && !hub && <EmptyState title="Hub not found">It may have been removed. Go back and pick another hub.</EmptyState>}
 
         {hub && (
           <>
-            <View>
-              <View style={styles.nameRow}>
-                <Text style={styles.name}>{hub.name}</Text>
-                {mode === 'demo' && <View style={styles.demoChip}><Text style={styles.demoChipText}>Demo location</Text></View>}
-              </View>
+            <View style={styles.hero}>
+              <Text style={styles.name}>{hub.name}</Text>
               <Text style={styles.addr}>{hub.area}</Text>
-              {hub.openingHours ? <Text style={styles.hours}>{hub.openingHours}</Text> : null}
+              <View style={styles.metaRow}>
+                {hub.openingHours ? <Text style={styles.hours}>{hub.openingHours}</Text> : null}
+                {mode === 'demo' && <Text style={styles.demoTag}>Demo location</Text>}
+              </View>
             </View>
 
             {hub.arrivalInstructions ? (
-              <View style={{ gap: space.xs }}>
-                <Text style={styles.section}>Where to wait</Text>
-                <Text style={styles.instr}>{hub.arrivalInstructions}</Text>
-                {mode === 'demo' && <Text style={styles.illus}>Illustrative boarding instructions for the demo.</Text>}
-              </View>
+              <>
+                <SectionHeading title="Where to wait" />
+                <Group style={{ padding: space.lg }}>
+                  <Text style={styles.instr}>{hub.arrivalInstructions}</Text>
+                  {mode === 'demo' && <Text style={styles.illus}>Illustrative for the demo.</Text>}
+                </Group>
+              </>
             ) : null}
 
             {facilities.length > 0 && (
-              <View style={{ gap: space.sm }}>
-                <Text style={styles.section}>Facilities</Text>
+              <>
+                <SectionHeading title="Facilities" />
                 <View style={styles.facGrid}>
                   {facilities.map((k) => {
                     const f = FACILITIES[k] ?? { label: k, icon: 'checkmark-circle-outline' as const };
@@ -102,30 +98,28 @@ export default function HubDetail() {
                     );
                   })}
                 </View>
-              </View>
+              </>
             )}
 
-            <View style={{ gap: space.sm }}>
-              <Text style={styles.section}>Upcoming departures today</Text>
-              {trips.loading && <Loading />}
-              {trips.error && <ErrorRow message={trips.error} onRetry={trips.reload} />}
-              {trips.data && trips.data.length === 0 && (
-                <Muted style={{ fontSize: font.small }}>No more departures from this hub today.</Muted>
-              )}
-              {trips.data && trips.data.length > 0 && (
-                <View style={styles.list}>
-                  {trips.data.map((t, i) => {
-                    const j = tripJourney(t, hub.id);
-                    return (
-                      <View key={t.id}>
-                        {i > 0 && <Separator />}
-                        <DepartureRow trip={t} pickup={j.pickup} showDestination onPress={() => router.push(`/book/${t.id}?hub=${hub.id}&pax=1`)} />
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+            <SectionHeading title="Departures today" />
+            {trips.loading && <Loading />}
+            {trips.error && <ErrorRow message={trips.error} onRetry={trips.reload} />}
+            {trips.data && trips.data.length === 0 && (
+              <Group style={{ padding: space.lg }}><Muted style={{ fontSize: font.small }}>No more departures from this hub today.</Muted></Group>
+            )}
+            {trips.data && trips.data.length > 0 && (
+              <Group style={{ paddingHorizontal: SCREEN }}>
+                {trips.data.map((t, i) => {
+                  const j = tripJourney(t, hub.id);
+                  return (
+                    <View key={t.id}>
+                      {i > 0 && <Separator inset={76} />}
+                      <DepartureRow trip={t} pickup={j.pickup} showDestination onPress={() => router.push(`/book/${t.id}?hub=${hub.id}&pax=1`)} />
+                    </View>
+                  );
+                })}
+              </Group>
+            )}
           </>
         )}
       </ScrollView>
@@ -141,21 +135,16 @@ export default function HubDetail() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md, paddingVertical: space.sm },
-  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontSize: font.title, fontWeight: '800', color: colors.ink },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
-  name: { fontSize: font.h1, fontWeight: '900', color: colors.ink, flexShrink: 1 },
-  demoChip: { backgroundColor: colors.surfaceAlt, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-  demoChipText: { color: colors.inkSoft, fontSize: font.tiny, fontWeight: '700' },
+  hero: { paddingHorizontal: space.xs, paddingTop: space.sm },
+  name: { fontSize: font.h1, fontWeight: '700', color: colors.ink },
   addr: { color: colors.inkSoft, fontSize: font.body, marginTop: 4 },
-  hours: { color: colors.muted, fontSize: font.small, marginTop: 2 },
-  section: { fontSize: font.small, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 4, flexWrap: 'wrap' },
+  hours: { color: colors.muted, fontSize: font.small },
+  demoTag: { color: colors.muted, fontSize: font.small },
   instr: { color: colors.ink, fontSize: font.body, lineHeight: 22 },
-  illus: { color: colors.muted, fontSize: font.tiny },
+  illus: { color: colors.muted, fontSize: font.tiny, marginTop: 6 },
   facGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  fac: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: 12, height: control.small },
-  facText: { color: colors.inkSoft, fontSize: font.small, fontWeight: '600' },
-  list: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: space.md },
+  fac: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: 12, height: 40 },
+  facText: { color: colors.inkSoft, fontSize: font.small },
   footer: { backgroundColor: colors.surface, paddingHorizontal: SCREEN, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
 });

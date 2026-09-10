@@ -45,7 +45,7 @@ export default function ResetScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: font.h1, fontWeight: '800', color: colors.forest900 },
+  title: { fontSize: font.h1, fontWeight: '700', color: colors.ink },
   label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
   warn: { backgroundColor: colors.amber100, borderRadius: radius.md, padding: space.md },

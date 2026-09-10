@@ -47,45 +47,56 @@ app runs the **exact same booking rules** with **AsyncStorage** instead of
 
 ## Passenger UI — composition & visual system
 
-The passenger app is **list-first**: choosing a pickup hub and seeing departures is
-the whole first screen. There is no large map on Home — hubs have no published
-coordinates in this pilot, so an empty illustration would waste half the screen.
-Direction, full date selection, and the hub list live in **focused selection
-sheets**, not all at once on Home.
+The passenger app uses a restrained, **Apple-inspired grouped-list** system: white
+cells on a light neutral background (`#f2f2f7`), thin hairline separators, native
+system typography, and forest green reserved for primary actions and selected
+states. There are no lime fills, tinted backgrounds, gradients, or heavy shadows.
+It stays **list-first** — choosing a pickup hub and seeing departures is the whole
+first screen; there is no decorative map (hubs have no published coordinates).
 
 **Visual system** (`src/theme.ts`, logical RN units — not screenshot pixels):
-neutral off-white background (`bg`), white surfaces, near-black text (`ink`),
-forest-green actions, and lime used only for the selected state. Spacing scale
-4/8/12/16/24/32 with a 20 screen gutter; body 16, secondary 13–14, titles 26,
-prominent times 30–34; controls ~50 high; corners 12–16 (sheet 24). Structure is
-carried by hairline separators, not stacked cards or heavy shadows.
+`bg`/`surface`/`surfaceAlt` neutrals; text ramp `ink` (near-black) → `inkSoft` →
+`muted`, all kept ≳4.5:1 on white (`faint` is for chevrons only). Spacing scale
+4/8/12/16/24/32 with a 16 screen gutter; body 17, secondary 15, footnote 13, titles
+28, prominent times 34; controls 44–50 high; corners 10–14 (sheet 20). Structure is
+carried by separators and section headers, never stacked cards or shadows.
 
-Key pieces (`src/components/`):
+Key pieces (`src/components/ui.tsx` unless noted):
 
-- **`DepartureRow`** — two lines: **pickup time** (left) · **fare** (right), then
-  operator (or `To <city> · operator`), then `hub · schedule/status · seats`. Names
-  wrap; fares never truncate; sold-out (`Full`) and delayed are called out. The
-  corridor is established by the screen, so it isn't repeated on every row.
-- **`SelectSheet`** — a focused `Modal` bottom sheet (backdrop tap / close / Android
-  Back all dismiss) used for the Journey (direction + date) and Pickup-hub pickers.
-- **`Screen` + `ModeTag`** — compact brand header; the **Demo** indicator is a small
-  tappable chip that explains itself (no full-width banner). A concise *“Demo
-  reservation — no real seat booked.”* appears at confirmation instead.
-- Shared primitives: `Card`, `Separator`, `Chip`, `IconButton`, buttons, states.
+- **`Group` + `SectionHeading`** — the grouped-list primitives: a white rounded
+  block of rows, a small grey caps header above it. Used everywhere instead of
+  bordered cards.
+- **`NavBar`** — standard header with a leading back chevron and centred title
+  (booking, hub, boarding pass).
+- **`Segmented`** — iOS-style segmented control (grey track, white selected thumb),
+  used for direction in the Route sheet.
+- **`DepartureRow`** — prominent pickup time (left), operator/destination, secondary
+  `hub` line with exceptions (delayed / cancelled / low seats) only when they apply,
+  fare right-aligned. Everything is single-line with graceful truncation of long
+  operator names; times and fares never truncate.
+- **`SelectSheet`** (`SelectSheet.tsx`) — focused `Modal` sheet (backdrop / close /
+  Android Back all dismiss) for the Route (direction + date) and Pickup-hub pickers,
+  rendered as grouped rows with a forest checkmark on the selected item.
+- **`Screen` + `ModeTag`** — compact identity header; the **Demo** indicator is a
+  small tappable chip that explains itself (no banner). A concise *“Demo reservation
+  — no real seat booked.”* appears at confirmation.
+- Buttons carry clear emphasis: filled-forest **primary**, tinted **secondary**
+  (`accent`), and red **destructive** text.
 
-Screen highlights: **Home** = compact top bar (wordmark · Demo · notifications), one
-search panel (journey + pickup with **Change**), a compact filter row (date +
-passengers), then departures with ≥2 rows visible at 390×844. **Booking** = one
-journey summary (pickup hub + city, **destination city**, operator, date, times) +
-a simple passenger form + a fare list, with a **sticky Confirm above the safe area**
-(total above the button) and scroll padding so the footer never covers content.
-**Boarding pass** = destination, pickup time, hub, status, a large QR on a plain
-light surface, a readable code with *“Show this code to the conductor.”*, a compact
-passenger/fare summary, the **current step + next instruction** prominent with one
-`Check in` action, and the full timeline behind **Show journey steps**. **Hub
-details** = a compact `Pickup hub` title, the name shown once, address/hours, a small
-`Demo location` chip, `Where to wait`, a facilities grid, redesigned departure rows,
-and a fixed `Use this pickup hub`.
+Screen highlights: **Home** = identity bar + `Find a departure` title, one grouped
+search form (Route / Date / Pickup / Passengers), then a grouped departures list.
+**Booking** = `NavBar` + grouped Journey summary (correct pickup hub + city →
+**destination city**, operator, date, times), grouped passenger fields, a grouped
+fare breakdown, and a fixed footer (Total above a filled **Confirm reservation**)
+above the safe area with keyboard handling. **Boarding pass** = an understated white
+ticket (destination + pickup time as anchors, neutral status pill, high-contrast QR
+on white with a readable code and *“Show this code to the conductor.”*, compact
+passenger/fare line), the **current step + next instruction** in its own card with a
+single `Check in` action, and the full timeline behind **Show journey steps**; demo
+controls are a separate group. **Hub details** = `NavBar` “Pickup hub”, the name once
+as the title, address/hours + a discreet `Demo location`, `Where to wait`, a
+facilities grid, grouped departures, and a fixed `Use this pickup hub`. **Hubs / My
+Trips / Notifications / Account** all use the same grouped rows and separators.
 
 ### Destination / arrival correctness (`@shared/data/journey`)
 A trip's `stops` are **pickup hubs in the origin city only**; the journey's
@@ -277,14 +288,17 @@ from this network-restricted environment — update Expo Go before testing.)
   iOS and Android.
 - **Visual check via a web preview only.** `expo export --platform web`
   (react-native-web) was served locally and rendered in headless Chromium to review
-  Home, the Journey sheet, booking, boarding pass, and hub details at **390×844**, a
-  **narrow 340×760**, and an **enlarged-UI proxy (1.3× page zoom)**. Checked: no
-  clipped destination/fare/action, no overlapping controls, no empty map area, no
-  developer language in passenger flows, no repeated page titles, and the correct
-  destination across search → review → boarding pass. These are a **web preview of
-  the React Native screens — not native iOS/Android renders.** True OS text scaling,
-  `Modal`/gesture behaviour, and `expo-haptics` are **not exercised on web and remain
-  unverified**; the 1.3× zoom is a layout proxy, not RN font scaling.
+  Home, booking, boarding pass, hub details and My Trips at **390×844**, a **narrow
+  340×760**, and an **enlarged-UI proxy (1.35× page zoom)**. Checked: no clipped
+  time/fare/action, no overlapping controls (the grouped form keeps a gap between
+  label and value at large text), correct destination across search → review →
+  boarding pass, and consistent grouped typography/spacing. Long operator names
+  truncate to a single line with an ellipsis by design. These are a **web preview of
+  the React Native screens — not native iOS/Android renders.** True OS Dynamic Type,
+  `Modal`/gesture behaviour, translucency, and `expo-haptics` are **not exercised on
+  web and remain unverified**; the 1.35× zoom is a layout proxy, not RN font scaling.
+  Translucent nav/tab surfaces are implemented as their **opaque fallback** (no
+  `expo-blur` dependency added); real blur is an optional dev-build enhancement.
 - Tunnel reachability **re-confirmed impossible here**: `exp.host` / `api.expo.dev` /
   ngrok endpoints all return `403 CONNECT` through the egress proxy; no tunnelling
   binary is installed; no inbound public URL exists.

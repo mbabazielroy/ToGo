@@ -1,17 +1,17 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, space, font } from '../theme';
+import { colors, space, font } from '../theme';
 import { formatTime, formatUGX } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import type { TripView, TripStopView } from '@shared/data/adapter';
 
 /**
- * Two-line departure row.
- *   Line 1: prominent pickup time (left) · fare (right)
- *   Line 2: destination/operator (wraps)
- *   Line 3: pickup hub · schedule/status · seats
- * The corridor is established by the screen, so it is not repeated on every row
- * unless `showDestination` is set (e.g. a mixed list).
+ * Carefully typeset departure row:
+ *   pickup time (prominent, left)              fare (right)
+ *   operator / destination (readable)
+ *   pickup hub · service status · seats (secondary)
+ * The corridor is established by the screen, so the destination is repeated only
+ * when `showDestination` is set (e.g. a mixed list on a hub page).
  */
 export function DepartureRow({
   trip, pickup, onPress, seatsNeeded = 1, showDestination = false,
@@ -32,46 +32,39 @@ export function DepartureRow({
   const seatsText = soldOut ? 'Full' : tight ? `Only ${trip.seatsAvailable} left` : `${trip.seatsAvailable} seats`;
   const seatsTone = soldOut ? colors.red700 : tight ? colors.amber800 : colors.muted;
 
-  const primary = showDestination ? `To ${destinationCity} · ${trip.operatorName}` : trip.operatorName;
+  const primary = showDestination ? `To ${destinationCity}` : trip.operatorName;
+  // Exceptions only on the secondary line, so the common case stays short.
+  const exception = cancelled ? 'Cancelled' : delayed ? `Delayed +${trip.delayMinutes}m` : (soldOut || tight) ? seatsText : null;
+  const exTone = cancelled ? colors.red700 : delayed ? colors.amber800 : soldOut ? colors.red700 : colors.amber800;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${primary}, pickup ${pickupTime} at ${pickup?.hubName ?? 'hub'}, ${formatUGX(trip.fareUgx)}, ${seatsText}`}
+      accessibilityLabel={`${primary}, pickup ${pickupTime} at ${pickup?.hubName ?? 'hub'}, ${formatUGX(trip.fareUgx)}, ${cancelled ? 'cancelled' : delayed ? `delayed ${trip.delayMinutes} minutes` : 'scheduled'}, ${seatsText}`}
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.forest50 }]}
     >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <View style={styles.line1}>
-          <Text style={styles.time} allowFontScaling>{pickupTime}</Text>
-          <Text style={styles.fare} allowFontScaling>{formatUGX(trip.fareUgx)}</Text>
-        </View>
-        <Text style={styles.primary} numberOfLines={2}>{primary}</Text>
-        <View style={styles.meta}>
-          <Text style={styles.hub} numberOfLines={1}>{pickup?.hubName ?? 'Pickup hub'}</Text>
-          {cancelled ? (
-            <Text style={[styles.status, { color: colors.red700 }]}>· Cancelled</Text>
-          ) : delayed ? (
-            <Text style={[styles.status, { color: colors.amber800 }]}>· Delayed +{trip.delayMinutes}m</Text>
-          ) : (
-            <Text style={[styles.status, { color: colors.muted }]}>· Scheduled</Text>
-          )}
-          <Text style={[styles.seats, { color: seatsTone }]} numberOfLines={1}>· {seatsText}</Text>
-        </View>
+      <Text style={styles.time} numberOfLines={1} allowFontScaling>{pickupTime}</Text>
+      <View style={styles.mid}>
+        <Text style={styles.primary} numberOfLines={1}>{primary}</Text>
+        <Text style={styles.meta} numberOfLines={1}>
+          {pickup?.hubName ?? 'Pickup hub'}{exception ? <Text style={{ color: exTone }}>{`  ·  ${exception}`}</Text> : null}
+        </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.muted} style={{ marginLeft: space.sm }} />
+      <View style={styles.right}>
+        <Text style={styles.fare} numberOfLines={1} allowFontScaling>{formatUGX(trip.fareUgx)}</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.md, paddingHorizontal: space.xs },
-  line1: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: space.sm },
-  time: { fontSize: 30, fontWeight: '800', color: colors.ink, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
-  fare: { fontSize: font.body, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
-  primary: { fontSize: font.body, fontWeight: '600', color: colors.inkSoft, marginTop: 2 },
-  meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 3, gap: 4 },
-  hub: { fontSize: font.small, color: colors.muted, flexShrink: 1 },
-  status: { fontSize: font.small, fontWeight: '600' },
-  seats: { fontSize: font.small },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, minHeight: 60 },
+  time: { width: 66, fontSize: 22, fontWeight: '600', color: colors.ink, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  mid: { flex: 1, minWidth: 0 },
+  primary: { fontSize: font.body, fontWeight: '600', color: colors.ink },
+  meta: { fontSize: font.small, color: colors.muted, marginTop: 2 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  fare: { fontSize: font.small, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
 });

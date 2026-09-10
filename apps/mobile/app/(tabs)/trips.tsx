@@ -75,7 +75,7 @@ function Group({ title, list, onOpen, muted }: { title: string; list: BookingVie
                 </Muted>
                 <View style={{ marginTop: 6, alignSelf: 'flex-start' }}><BookingStatusPill status={b.status} /></View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+              <Ionicons name="chevron-forward" size={18} color={colors.faint} />
             </Pressable>
           </View>
         ))}
@@ -85,10 +85,10 @@ function Group({ title, list, onOpen, muted }: { title: string; list: BookingVie
 }
 
 const styles = StyleSheet.create({
-  list: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: space.md },
+  list: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space.md, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: space.md },
   timeBlock: { width: 58, alignItems: 'flex-start' },
-  time: { fontSize: font.h2, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
-  timeMeta: { fontSize: font.tiny, color: colors.muted },
-  ref: { fontWeight: '800', color: colors.ink, fontSize: font.body },
+  time: { fontSize: font.h2, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
+  timeMeta: { fontSize: font.tiny, color: colors.muted, marginTop: 1 },
+  ref: { fontWeight: '600', color: colors.ink, fontSize: font.body },
 });
