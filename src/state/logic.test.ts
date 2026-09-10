@@ -104,6 +104,34 @@ describe('reservation & capacity', () => {
   });
 });
 
+describe('outcome classification at completion', () => {
+  it('checked-in→missed_pickup (unresolved); reserved-only→not_boarded (neutral); boarded→completed', () => {
+    let state = fresh();
+    const { trip, hubId } = pickTrip(state);
+
+    const a = reserve(state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Checked', seats: 1 });
+    if (!a.ok) return; state = a.state;
+    const b = reserve(state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Reserved', seats: 1 });
+    if (!b.ok) return; state = b.state;
+    const c = reserve(state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Boarded', seats: 1 });
+    if (!c.ok) return; state = c.state;
+
+    // A checks in; C checks in then boards; B stays reserved.
+    const ciA = checkIn(state, a.value.id); if (!ciA.ok) return; state = ciA.state;
+    const ciC = checkIn(state, c.value.id); if (!ciC.ok) return; state = ciC.state;
+    const bd = boardByCode(state, trip.id, c.value.boardingCode); if (!bd.ok) return; state = bd.state;
+
+    const done = completeTrip(state, trip.id); expect(done.ok).toBe(true); if (!done.ok) return; state = done.state;
+
+    const find = (id: string) => state.bookings.find((x) => x.id === id)!;
+    expect(find(a.value.id).status).toBe('missed_pickup');
+    expect(find(a.value.id).unresolved).toBe(true);
+    expect(find(b.value.id).status).toBe('not_boarded');
+    expect(find(b.value.id).unresolved).not.toBe(true); // neutral, no fault
+    expect(find(c.value.id).status).toBe('completed');
+  });
+});
+
 describe('full coordinated pickup scenario', () => {
   it('reserve 2 → check in → waiting to staff → board by code → complete', () => {
     let state = fresh();

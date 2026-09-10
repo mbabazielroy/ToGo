@@ -6,7 +6,7 @@ fares, schedules, tracking and "approvals" are illustrative.
 ## Legend / verification tiers
 
 - ✅ **DB-verified** — exercised against a real PostgreSQL 16 via `npm run db:test`
-  (64 RLS/transaction checks) and `npm run db:concurrency`. This is the actual
+  (69 RLS/transaction checks) and `npm run db:concurrency`. This is the actual
   database policy/transaction behaviour, not a mock.
 - 🟦 **FE-verified** — TypeScript typecheck + ESLint + production build + headless
   browser render/route smoke. Confirms the code compiles and screens render; does
@@ -32,16 +32,24 @@ fares, schedules, tracking and "approvals" are illustrative.
 | Authenticated users cannot self-promote | ✅ DB-verified | `sec: authenticated non-admin cannot self-promote (trigger)`, `…via RPC` |
 | User metadata cannot confer privileges | ✅ DB-verified | `handle_new_user` hard-codes `is_platform_admin=false`; signup path |
 | Missing-claims caller cannot escalate | ✅ DB-verified | `sec: missing-claims cannot self-promote via RPC` |
-| Bootstrap requires a trusted DB/server context | ✅ DB-verified | `sec: bootstrap via trusted role succeeds` (service_role, no JWT); hardened `profiles_guard` uses JWT identity **and** `current_user` role, not "no JWT ⇒ trusted" |
+| Bootstrap requires an explicit trusted authority | ✅ DB-verified | `0014` guard: admin-JWT **or** explicit `togo.admin_bootstrap` marker — no role inference. `sec: trusted role WITHOUT bootstrap marker is denied`, `sec: explicit bootstrap marker allows the change` |
+| Role alone is not accepted as proof of trust | ✅ DB-verified | `sec: trusted role WITHOUT bootstrap marker is denied` (even `service_role` blocked without the marker) |
 | Public functions cannot bypass this | ✅ DB-verified | No client-executable definer touches `is_platform_admin`; `admin_set_platform_admin` checks caller is admin |
 | Views/grants/manifest don't leak PII/credentials | ✅ DB-verified | `exposure: public views expose no credentials/contacts/internal notes`, `exposure: manifest exposes no credential/phone` |
 
-The earlier "auth.uid() is null ⇒ trusted" logic was the reported gap; it is
-replaced (migration `0011`) with a rule documented in the migration: an
-authenticated JWT identity must be an admin (this also covers a definer invoked by
-a user, since the JWT persists into definers), and a *missing* identity is trusted
-only when `current_user` is not one of the PostgREST end-user roles
-(`anon`/`authenticated`).
+Trust boundary (final, migration `0014`): a change to `is_platform_admin` is
+allowed **only** when the caller is an admin identified by JWT (covers a definer
+invoked by a user, since the JWT persists into definers) **or** the explicit
+`togo.admin_bootstrap` session marker is set — which only a direct-SQL/superuser
+context can do. No role inference. `0011`'s interim "trusted when `current_user`
+isn't an end-user role" was replaced because `current_user` becomes `postgres`
+inside any `postgres`-owned definer, so a role check is not proof of trust.
+
+**Exploitability of the earlier condition:** not exploitable through the actual
+grants/call paths — the only definer that writes `is_platform_admin`
+(`admin_set_platform_admin`) requires an admin JWT and isn't granted to `anon`, and
+`handle_new_user` hard-codes `false`. It was a dangerous latent weakness, not an
+accessible escalation. `0014` removes it regardless.
 
 ## §3 Connected operational management
 
@@ -97,7 +105,7 @@ only when `current_user` is not one of the PostgREST end-user roles
 | Record incident + responsible staff | ✅ DB-verified | incident `reporter_id`, booking_events actor |
 | Unresolved visible to ops staff | ✅ DB-verified · 🟦 FE | incidents RLS to operator/admin; Operator → Incidents |
 | Resolution with audit trail | ✅ DB-verified | `resolve_incident`, `resolved_at`; append-only `booking_events` |
-| Unboarded-at-completion handled explicitly | ✅ DB-verified | `no_show` state (not "completed"); `noshow: …` tests |
+| Unboarded-at-completion classified correctly | ✅ DB-verified | checked-in→`missed_pickup` (+unresolved, +investigation incident); reserved-only→`not_boarded` (neutral, no fault, no incident); boarded→`completed`; cancelled untouched. `outcome: …` tests |
 | Private notes vs passenger message separated | ✅ DB-verified | `staff_notes` never in passenger-visible policy/notification |
 
 ## §7 Supabase compatibility
@@ -112,7 +120,8 @@ only when `current_user` is not one of the PostgREST end-user roles
 | Supported public-key config | 🟦 FE-verified | anon/publishable key only; service-role key refused in client |
 | Auth redirect handling | 🟦 FE-verified (config) · 🟨 (live) | `config.toml` + `redirectTo`/`emailRedirectTo` |
 | Local Supabase stack run | ⛔ Blocked | Supabase CLI not installed; Docker daemon not running |
-| Integration tests (2 sessions) | 🟨 Present, unexecuted | `src/integration/supabase.itest.ts`, gated on `TOGO_TEST_*`, self-skips |
+| Integration tests (2 sessions, real assertions) | 🟨 Present, **unexecuted** | `src/integration/supabase.itest.ts` — 7 tests: passenger auth, trip browse, reserve+idempotency, cross-session manifest visibility, cross-user + cross-operator denial, Realtime delivery, missed-pickup on completion, logout cleanup. Gated on `TOGO_TEST_*`; self-skips (reported as unverified, never passed) |
+| Automated CI | 🟦 Added | `.github/workflows/ci.yml`: `checks` (typecheck/lint/test/build) + `database` (Postgres service runs the 69 RLS/txn checks + concurrency) on every push; opt-in `integration` job on manual dispatch with `TOGO_TEST_*` secrets |
 
 ## Blocked / not verified (summary)
 

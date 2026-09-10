@@ -3,7 +3,10 @@
 
 export type DirectionCode = 'KLA_MBR' | 'MBR_KLA';
 export type TripStatusCode = 'scheduled' | 'boarding' | 'en_route' | 'completed' | 'cancelled';
-export type BookingStatusCode = 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled' | 'no_show';
+export type BookingStatusCode =
+  | 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled'
+  | 'missed_pickup' | 'not_boarded'
+  | 'no_show'; // deprecated; retained for enum stability
 
 export interface HubView {
   id: string;

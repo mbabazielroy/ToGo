@@ -15,9 +15,11 @@ export function MyTrips() {
   const upcoming: Booking[] = [];
   const completed: Booking[] = [];
   const cancelled: Booking[] = [];
+  const notBoarded: Booking[] = []; // missed_pickup + not_boarded — concluded, not travelled
   for (const b of state.bookings) {
     if (b.status === 'cancelled') cancelled.push(b);
     else if (b.status === 'completed') completed.push(b);
+    else if (b.status === 'missed_pickup' || b.status === 'not_boarded') notBoarded.push(b);
     else upcoming.push(b);
   }
   const byDeparture = (a: Booking, b: Booking) => {
@@ -28,6 +30,7 @@ export function MyTrips() {
   upcoming.sort(byDeparture);
   completed.sort(byDeparture).reverse();
   cancelled.sort(byDeparture).reverse();
+  notBoarded.sort(byDeparture).reverse();
 
   const total = state.bookings.length;
 
@@ -61,6 +64,16 @@ export function MyTrips() {
               <SectionHeading title={`Completed (${completed.length})`} />
               <div className="space-y-2.5">
                 {completed.map((b) => (
+                  <TripRow key={b.id} booking={b} onClick={() => navigate(`/trips/${b.id}`)} muted />
+                ))}
+              </div>
+            </section>
+          )}
+          {notBoarded.length > 0 && (
+            <section>
+              <SectionHeading title={`Not boarded (${notBoarded.length})`} />
+              <div className="space-y-2.5">
+                {notBoarded.map((b) => (
                   <TripRow key={b.id} booking={b} onClick={() => navigate(`/trips/${b.id}`)} muted />
                 ))}
               </div>

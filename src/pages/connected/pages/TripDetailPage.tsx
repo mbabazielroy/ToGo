@@ -50,8 +50,11 @@ export function TripDetailPage() {
           {b.status === 'cancelled' && (
             <div className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700 ring-1 ring-red-200">This reservation was cancelled and the seats released.</div>
           )}
-          {b.status === 'no_show' && (
-            <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-800 ring-1 ring-amber-200">You were not boarded before the trip completed, so you were not recorded as having travelled. Please contact the operator.</div>
+          {b.status === 'missed_pickup' && (
+            <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-800 ring-1 ring-amber-200">You checked in but were not boarded before the trip completed. Our operations team is investigating and will follow up.</div>
+          )}
+          {(b.status === 'not_boarded' || b.status === 'no_show') && (
+            <div className="rounded-xl bg-sand-50 px-3 py-2.5 text-sm text-forest-700 ring-1 ring-forest-100">This trip has completed and you were not boarded, so you were not recorded as having travelled.</div>
           )}
 
           <div className="overflow-hidden rounded-2xl bg-forest-700 text-white shadow-raised">

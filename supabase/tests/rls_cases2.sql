@@ -56,20 +56,41 @@ select tests.expect_error('sec: non-admin cannot promote via RPC',
   $$ select public.admin_set_platform_admin('00000000-0000-0000-0000-000000000007', true) $$);
 reset role;
 
--- (d) Legitimate bootstrap: a trusted server role (service_role, no JWT) may set it.
+-- (d) Role alone is NOT sufficient: even service_role (a trusted role) is denied
+--     without the explicit bootstrap marker — proving we don't rely on role inference.
 select set_config('request.jwt.claims', '', false);
 set role service_role;
-do $$ begin
-  update public.profiles set is_platform_admin = true where id = '00000000-0000-0000-0000-000000000009';
-  perform tests.check('sec: bootstrap via trusted role succeeds', true);
-exception when others then
-  perform tests.check('sec: bootstrap via trusted role succeeds', false, sqlerrm);
-end $$;
+select tests.expect_error('sec: trusted role WITHOUT bootstrap marker is denied',
+  $$ update public.profiles set is_platform_admin = true where id = '00000000-0000-0000-0000-000000000009' $$);
 reset role;
+
+-- (e) Legitimate bootstrap: the explicit marker set in a trusted SQL context allows it.
+do $$ begin
+  perform set_config('togo.admin_bootstrap', 'on', true);  -- local to this txn/block
+  update public.profiles set is_platform_admin = true where id = '00000000-0000-0000-0000-000000000009';
+  perform tests.check('sec: explicit bootstrap marker allows the change', true);
+exception when others then
+  perform tests.check('sec: explicit bootstrap marker allows the change', false, sqlerrm);
+end $$;
 do $$ begin
   perform tests.check('sec: bootstrap target is now admin',
     (select is_platform_admin from public.profiles where id = '00000000-0000-0000-0000-000000000009'));
 end $$;
+
+-- (f) A non-admin authenticated user cannot even reach another user's profile row
+--     (RLS restricts UPDATE to their own row). Clients also cannot set the
+--     togo.admin_bootstrap marker via PostgREST, so the marker path is unreachable
+--     for end users; that boundary is documented in docs/BACKEND.md.
+select tests.login(:'rival');
+set role authenticated;
+do $$
+declare n int;
+begin
+  update public.profiles set is_platform_admin = true where id = '00000000-0000-0000-0000-000000000006';
+  get diagnostics n = row_count;
+  perform tests.check('sec: non-admin update of another profile affects 0 rows (RLS)', n = 0);
+end $$;
+reset role;
 
 -- (e) An existing admin may promote another via the governance RPC.
 select tests.login(:'admin');
@@ -180,9 +201,12 @@ end $$;
 reset role;
 
 -- ==========================================================================
--- NO-SHOW: unboarded reservation at trip completion is not "completed"
+-- OUTCOME CLASSIFICATION at completion:
+--   checked-in-but-unboarded -> missed_pickup (investigation)
+--   reserved-never-checked-in -> not_boarded (neutral, no fault)
 -- ==========================================================================
--- Build a fresh trip under a1 (Savannah), assign conductor 004, passenger pA reserves + checks in, then complete.
+-- Fresh trip under a1 (Savannah), conductor 004. pA reserves + checks in; pB
+-- reserves only (never checks in). Then complete.
 reset role;
 insert into public.trips (id, operator_id, direction, service_date, origin_departure, destination_arrival, fare_ugx, capacity, status)
 values ('d0000000-0000-0000-0000-0000000000d9','a0000000-0000-0000-0000-0000000000a1','KLA_MBR', current_date,
@@ -192,28 +216,46 @@ insert into public.trip_stops (id, trip_id, hub_id, stop_order, pickup_time) val
   ('e9000000-0000-0000-0000-0000000000e2','d0000000-0000-0000-0000-0000000000d9','b0000000-0000-0000-0000-0000000000b2',1, now()+interval '6 hours');
 insert into public.trip_staff (trip_id, user_id, role) values ('d0000000-0000-0000-0000-0000000000d9','00000000-0000-0000-0000-000000000004','conductor');
 
+-- pA reserves + checks in.
 select tests.login(:'pA');
 set role authenticated;
-select set_config('x.ns', (select id::text from public.reserve_booking(
+select set_config('x.ci', (select id::text from public.reserve_booking(
   'd0000000-0000-0000-0000-0000000000d9','e9000000-0000-0000-0000-0000000000e1','e9000000-0000-0000-0000-0000000000e2',
-  1,'NoShow',null,'idem-ns')), false);
-do $$ begin perform public.check_in_booking(current_setting('x.ns')::uuid); end $$;
+  1,'CheckedIn',null,'idem-ci')), false);
+do $$ begin perform public.check_in_booking(current_setting('x.ci')::uuid); end $$;
 reset role;
--- Conductor completes the trip without boarding pA.
+-- pB reserves only (never checks in).
+select tests.login(:'pB');
+set role authenticated;
+select set_config('x.rs', (select id::text from public.reserve_booking(
+  'd0000000-0000-0000-0000-0000000000d9','e9000000-0000-0000-0000-0000000000e1','e9000000-0000-0000-0000-0000000000e2',
+  1,'Reserved',null,'idem-rs')), false);
+reset role;
+-- Conductor completes the trip.
 select tests.login(:'conductor');
 set role authenticated;
 do $$ begin perform public.update_trip_status('d0000000-0000-0000-0000-0000000000d9','completed'); end $$;
 reset role;
--- Verify: booking is no_show (NOT completed), flagged unresolved, incident + notification exist.
+
 do $$ begin
-  perform tests.check('noshow: booking marked no_show (not completed)',
-    (select status = 'no_show' from public.bookings where id = current_setting('x.ns')::uuid));
-  perform tests.check('noshow: booking flagged unresolved',
-    (select unresolved from public.bookings where id = current_setting('x.ns')::uuid));
-  perform tests.check('noshow: left_unboarded incident recorded',
-    (select count(*) >= 1 from public.incidents where trip_id = 'd0000000-0000-0000-0000-0000000000d9' and kind = 'left_unboarded'));
-  perform tests.check('noshow: passenger notified honestly',
-    (select count(*) >= 1 from public.notifications where booking_id = current_setting('x.ns')::uuid and kind = 'incident'));
+  -- checked-in → missed_pickup + unresolved
+  perform tests.check('outcome: checked-in unboarded -> missed_pickup',
+    (select status = 'missed_pickup' from public.bookings where id = current_setting('x.ci')::uuid));
+  perform tests.check('outcome: missed_pickup flagged unresolved',
+    (select unresolved from public.bookings where id = current_setting('x.ci')::uuid));
+  -- reserved-only → not_boarded, NOT unresolved (no fault assigned)
+  perform tests.check('outcome: reserved-only -> not_boarded',
+    (select status = 'not_boarded' from public.bookings where id = current_setting('x.rs')::uuid));
+  perform tests.check('outcome: not_boarded is NOT flagged unresolved',
+    (select unresolved = false from public.bookings where id = current_setting('x.rs')::uuid));
+  -- a missed_pickup incident exists for investigation; NOT for the reserved-only case
+  perform tests.check('outcome: missed_pickup incident recorded',
+    (select count(*) >= 1 from public.incidents where trip_id = 'd0000000-0000-0000-0000-0000000000d9' and kind = 'missed_pickup'));
+  -- neutral notifications: missed_pickup uses an incident/investigation note; not_boarded a neutral note
+  perform tests.check('outcome: checked-in passenger gets investigation notice',
+    (select count(*) >= 1 from public.notifications where booking_id = current_setting('x.ci')::uuid and kind = 'incident'));
+  perform tests.check('outcome: reserved-only passenger gets neutral not-boarded notice',
+    (select count(*) >= 1 from public.notifications where booking_id = current_setting('x.rs')::uuid));
 end $$;
 
 -- ==========================================================================

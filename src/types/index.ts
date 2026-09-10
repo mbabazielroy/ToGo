@@ -87,7 +87,15 @@ export interface Trip {
   cancelReason?: string;
 }
 
-export type BookingStatus = 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled';
+export type BookingStatus =
+  | 'reserved'
+  | 'checked_in'
+  | 'boarded'
+  | 'completed'
+  | 'cancelled'
+  // Terminal outcomes recorded when a trip completes with the booking un-boarded:
+  | 'missed_pickup' // checked in but not boarded — operational investigation
+  | 'not_boarded'; // reserved, never checked in — neutral, no fault assigned
 
 export interface Booking {
   id: string;

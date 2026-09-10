@@ -339,16 +339,29 @@ export function completeTrip(state: AppState, tripId: string): Result<Trip> {
     stops: trip.stops.map((s) => ({ ...s, reached: true })),
     lastUpdate: new Date().toISOString(),
   };
-  // Boarded passengers complete their journey.
-  const bookings = state.bookings.map((b) =>
-    b.tripId === tripId && b.status === 'boarded' ? { ...b, status: 'completed' as const } : b,
-  );
+  // Classify each active booking's outcome at completion:
+  //  boarded    -> completed (travelled)
+  //  checked_in -> missed_pickup (unboarded despite checking in; needs follow-up)
+  //  reserved   -> not_boarded (never checked in; neutral, no fault)
+  const now = new Date().toISOString();
+  const bookings = state.bookings.map((b) => {
+    if (b.tripId !== tripId) return b;
+    if (b.status === 'boarded') return { ...b, status: 'completed' as const, boardedAt: b.boardedAt ?? now };
+    if (b.status === 'checked_in') return { ...b, status: 'missed_pickup' as const, unresolved: true };
+    if (b.status === 'reserved') return { ...b, status: 'not_boarded' as const };
+    return b;
+  });
   let next = {
     ...state,
     trips: state.trips.map((t) => (t.id === tripId ? updated : t)),
     bookings,
   };
   next = logEvent(next, 'trip_completed', `Trip completed.`, { tripId });
+  const missed = state.bookings.filter((b) => b.tripId === tripId && b.status === 'checked_in');
+  if (missed.length > 0) {
+    const seats = missed.reduce((s, b) => s + b.seats, 0);
+    next = logEvent(next, 'unresolved_pickup', `${seats} checked-in passenger seat(s) not boarded at completion.`, { tripId });
+  }
   return ok(next, updated);
 }
 

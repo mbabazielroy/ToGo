@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_integration:
+        description: 'Run the live Supabase integration suite (requires TOGO_TEST_* secrets on a disposable project)'
+        type: boolean
+        default: false
+
+jobs:
+  # Typecheck, lint, unit/adapter tests, and production build.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit + adapter tests
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  # Real PostgreSQL: RLS/transaction suite + concurrency race. The auth shim
+  # (supabase/tests/00_shim.sql) is test-only infrastructure and is never part of
+  # the migrations applied to a real project.
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PSQL: psql
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: RLS + transaction suite
+        run: bash supabase/tests/run.sh
+      - name: Concurrency race
+        run: bash supabase/tests/concurrency.sh
+
+  # Live Supabase Auth + PostgREST + Realtime. OPT-IN only: runs on manual dispatch
+  # with run_integration=true, and only when the TOGO_TEST_* secrets are configured
+  # against a DISPOSABLE test project. Never provide a service-role key here — the
+  # suite uses only the public anon key and per-user passwords.
+  integration:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Supabase integration (two sessions)
+        env:
+          TOGO_TEST_SUPABASE_URL: ${{ secrets.TOGO_TEST_SUPABASE_URL }}
+          TOGO_TEST_SUPABASE_ANON_KEY: ${{ secrets.TOGO_TEST_SUPABASE_ANON_KEY }}
+          TOGO_TEST_PASSENGER_EMAIL: ${{ secrets.TOGO_TEST_PASSENGER_EMAIL }}
+          TOGO_TEST_PASSENGER_PASSWORD: ${{ secrets.TOGO_TEST_PASSENGER_PASSWORD }}
+          TOGO_TEST_PASSENGER2_EMAIL: ${{ secrets.TOGO_TEST_PASSENGER2_EMAIL }}
+          TOGO_TEST_PASSENGER2_PASSWORD: ${{ secrets.TOGO_TEST_PASSENGER2_PASSWORD }}
+          TOGO_TEST_CONDUCTOR_EMAIL: ${{ secrets.TOGO_TEST_CONDUCTOR_EMAIL }}
+          TOGO_TEST_CONDUCTOR_PASSWORD: ${{ secrets.TOGO_TEST_CONDUCTOR_PASSWORD }}
+          TOGO_TEST_OTHER_STAFF_EMAIL: ${{ secrets.TOGO_TEST_OTHER_STAFF_EMAIL }}
+          TOGO_TEST_OTHER_STAFF_PASSWORD: ${{ secrets.TOGO_TEST_OTHER_STAFF_PASSWORD }}
+          TOGO_TEST_TRIP_ID: ${{ secrets.TOGO_TEST_TRIP_ID }}
+          TOGO_TEST_PICKUP_STOP_ID: ${{ secrets.TOGO_TEST_PICKUP_STOP_ID }}
+          TOGO_TEST_DROPOFF_STOP_ID: ${{ secrets.TOGO_TEST_DROPOFF_STOP_ID }}
+          TOGO_TEST_COMPLETABLE_TRIP_ID: ${{ secrets.TOGO_TEST_COMPLETABLE_TRIP_ID }}
+        run: npm run test:integration

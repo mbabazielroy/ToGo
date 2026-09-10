@@ -49,11 +49,12 @@ supabase db reset         # re-applies migrations + supabase/seed.sql locally
 ```
 
 ### Option B — SQL editor
-Paste each file in `supabase/migrations/` **in numeric order** (`0001` → `0013`)
+Paste each file in `supabase/migrations/` **in numeric order** (`0001` → `0016`)
 into the Supabase SQL editor and run them. Do **not** run
 `supabase/tests/00_shim.sql` against a real project — Supabase already provides the
-`auth` schema and roles. Note `0012_no_show_enum.sql` adds an enum value and must
-be committed before `0013` runs; apply files one at a time (the CLI does this).
+`auth` schema and roles. Note the enum-value files (`0012`, `0015`) must each be
+committed before later files that use those values; apply files one at a time (the
+CLI does this).
 
 Then optionally run `supabase/seed.sql` — **test/local environments only** — for
 illustrative departures. Never insert the fictional operators/hubs/approvals into
@@ -64,7 +65,7 @@ a production project.
 Adding frontend env values only flips the app into connected mode against an
 **empty** schema. A usable shared pilot needs, in order:
 
-1. **Migrations** applied (`0001`–`0013`).
+1. **Migrations** applied (`0001`–`0016`).
 2. **Auth redirects** configured (§4) and email confirmations decided (§4).
 3. **Trusted admin bootstrap** (§5): sign up one user, promote via SQL console.
 4. **Operational records**, created by the admin/operator in-app (no manual SQL):
@@ -103,14 +104,20 @@ a trigger and by RLS. Bootstrapping the first admin is a trusted server action:
 1. Have the person **sign up** in the app (creates a passenger `profiles` row).
 2. Find their user id in **Authentication → Users** (or `select id, email from
    auth.users;`).
-3. In the SQL editor (which runs as a privileged role with no end-user JWT), run:
+3. In the SQL editor, run this exact transaction — the `set local` line is an
+   **explicit trust marker** the guard requires (see §10); it is not settable via
+   the app:
    ```sql
+   begin;
+   set local togo.admin_bootstrap = 'on';
    update public.profiles set is_platform_admin = true
    where id = '<that-user-uuid>';
+   commit;
    ```
-   The guard trigger allows this because there is no authenticated end-user in a
-   SQL-console/service context (`auth.uid()` is null). An ordinary signed-in user
-   running the same statement is rejected.
+   Without the marker the change is rejected, even for a privileged role — trust is
+   the deliberate marker, not merely "which role" or "no JWT". An ordinary signed-in
+   user cannot set the marker (PostgREST does not expose `SET`), so they cannot use
+   this path.
 
 After that, the admin can assign all other staff from the in-app **Admin**
 workspace (or via SQL): operator memberships, hub attendants, and trip conductors.
@@ -173,7 +180,7 @@ The policy/transaction tests run against a real Postgres (they prove RLS, not
 mocks). With a local Postgres available:
 
 ```bash
-npm run db:test         # applies shim + migrations, runs 64 RLS/transaction checks
+npm run db:test         # applies shim + migrations, runs 69 RLS/transaction checks
 npm run db:concurrency  # two overlapping reservations race for the last seat
 ```
 
@@ -199,20 +206,34 @@ booking it creates in teardown.
 
 ---
 
-## 10. Privileged-identity model (why the profile guard is safe)
+## 10. Privileged-identity model (the precise trust boundary)
 
-`profiles_guard` (migration `0011`) decides whether a change to
-`is_platform_admin` is allowed using **two** signals, not just "is there a JWT":
+`profiles_guard` (final form in migration `0014`, superseding `0011`) allows a
+change to `is_platform_admin` **only** when one of two explicit conditions holds:
 
-- If a JWT identity is present (`auth.uid()` non-null) it must be an existing
-  admin. JWT claims persist into `SECURITY DEFINER` functions, so this also blocks
-  a privileged definer invoked by an ordinary user.
-- If there is **no** JWT identity, the caller is trusted only when `current_user`
-  is **not** a PostgREST end-user role (`anon`/`authenticated`). Anonymous requests
-  therefore can never flip the bit; `service_role`/`postgres` (SQL console, server)
-  can — that is the documented bootstrap path.
+- **(a) Admin JWT.** `auth.uid()` is a non-null identity that is already a platform
+  admin. JWT claims persist into `SECURITY DEFINER` functions, so this also blocks a
+  privileged definer invoked by an ordinary user. This is the in-app path, via
+  `admin_set_platform_admin` (which itself re-checks the caller is an admin).
+- **(b) Explicit bootstrap marker.** the session GUC `togo.admin_bootstrap = 'on'`.
+  PostgREST never lets a client set arbitrary GUCs (it sets only `request.*` from
+  the JWT and calls whitelisted RPCs), and **no** function sets this marker, so it
+  can only be set by someone with direct SQL/superuser access — a genuinely trusted
+  context. This is the documented first-admin bootstrap (§5).
 
-`current_user` (not `session_user`) is used because PostgREST issues each request
-under `SET ROLE anon|authenticated`; `session_user` would not reflect that. No
-client-executable function modifies the admin bit except `admin_set_platform_admin`,
-which independently checks the caller is already an admin.
+Everything else — anonymous, missing claims, ordinary users, and any definer path
+lacking an admin JWT — is denied.
+
+**Why not a role check?** An earlier version (`0011`) trusted a no-JWT change when
+`current_user` was not `anon`/`authenticated`. But `current_user` is the
+*execution-context* role: inside a `SECURITY DEFINER` function owned by `postgres`,
+`current_user` is `postgres` for **every** caller, including `anon`. So a role
+blacklist is not proof of trust — a publicly-executable definer that updated
+profiles with no JWT would have been wrongly trusted. `0014` removes role inference
+entirely in favour of the explicit marker.
+
+**Was the `0011` condition exploitable?** No accessible exploit existed at the time:
+the only definer that writes `is_platform_admin` is `admin_set_platform_admin`,
+which requires an admin JWT and is not granted to `anon`; `handle_new_user`
+hard-codes `false`. It was a **dangerous latent weakness** (wrong basis for trust),
+not a live escalation path. `0014` closes it regardless.

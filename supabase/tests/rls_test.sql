@@ -23,8 +23,11 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-000000000005', 'attendant@test'),
   ('00000000-0000-0000-0000-000000000006', 'admin@test'),
   ('00000000-0000-0000-0000-000000000007', 'otheropstaff@test');
--- Profiles are auto-created by the trigger; make #6 an admin.
+-- Profiles are auto-created by the trigger; make #6 an admin via the explicit
+-- bootstrap marker (the documented trusted-context path). Cleared immediately after.
+select set_config('togo.admin_bootstrap', 'on', false);
 update public.profiles set is_platform_admin = true where id = '00000000-0000-0000-0000-000000000006';
+select set_config('togo.admin_bootstrap', '', false);
 
 -- Operators
 insert into public.operators (id, name, slug) values

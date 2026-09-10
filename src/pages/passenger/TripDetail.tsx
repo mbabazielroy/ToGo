@@ -90,6 +90,17 @@ export function TripDetail() {
           been released.
         </div>
       )}
+      {booking.status === 'missed_pickup' && (
+        <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-800 ring-1 ring-amber-200">
+          You checked in but were not boarded before the trip completed. Operations is investigating and
+          will follow up.
+        </div>
+      )}
+      {booking.status === 'not_boarded' && (
+        <div className="rounded-xl bg-sand-50 px-3 py-2.5 text-sm text-forest-700 ring-1 ring-forest-100">
+          This trip has completed and you were not boarded, so you were not recorded as having travelled.
+        </div>
+      )}
 
       {/* Boarding pass */}
       <div className="overflow-hidden rounded-2xl bg-forest-700 text-white shadow-raised">

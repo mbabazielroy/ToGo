@@ -1,7 +1,9 @@
 import type { TripStatus } from '../types';
 
-// Superset covering both the demo booking states and the connected 'no_show' state.
-type AnyBookingStatus = 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled' | 'no_show';
+// Superset covering both the demo booking states and the connected outcome states.
+type AnyBookingStatus =
+  | 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled'
+  | 'missed_pickup' | 'not_boarded' | 'no_show';
 
 const TRIP_STYLES: Record<TripStatus, string> = {
   scheduled: 'bg-forest-100 text-forest-700',
@@ -25,6 +27,8 @@ const BOOKING_STYLES: Record<AnyBookingStatus, string> = {
   boarded: 'bg-blue-100 text-blue-800',
   completed: 'bg-forest-200 text-forest-800',
   cancelled: 'bg-red-100 text-red-700',
+  missed_pickup: 'bg-amber-100 text-amber-800',
+  not_boarded: 'bg-sand-200 text-forest-700',
   no_show: 'bg-amber-100 text-amber-800',
 };
 
@@ -34,6 +38,8 @@ const BOOKING_LABELS: Record<AnyBookingStatus, string> = {
   boarded: 'Boarded',
   completed: 'Completed',
   cancelled: 'Cancelled',
+  missed_pickup: 'Missed pickup',
+  not_boarded: 'Not boarded',
   no_show: 'Not boarded',
 };
 
