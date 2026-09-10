@@ -2,12 +2,13 @@ import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
 import { H1, Muted, Loading, ErrorRow, SectionHeading, EmptyState } from '../../src/components/ui';
 import { BookingStatusPill } from '../../src/components/StatusPill';
 import { useAdapter, useDataEpoch } from '../../src/data/AdapterProvider';
 import { useAsync } from '../../src/hooks/useAsync';
-import { colors, radius, space, font } from '../../src/theme';
+import { colors, radius, space, font, shadow } from '../../src/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import type { BookingView } from '@shared/data/adapter';
 
@@ -55,14 +56,25 @@ function Group({ title, list, onOpen, muted }: { title: string; list: BookingVie
       <SectionHeading title={`${title} (${list.length})`} />
       <View style={{ gap: 10 }}>
         {list.map((b) => (
-          <Pressable key={b.id} onPress={() => onOpen(b.id)} style={[styles.row, muted && { opacity: 0.85 }]}>
+          <Pressable
+            key={b.id}
+            onPress={() => onOpen(b.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`Booking ${b.reference}, pickup ${formatTime(b.pickupTimeSnapshot)}, ${b.status}`}
+            style={({ pressed }) => [styles.row, muted && { opacity: 0.85 }, pressed && { opacity: 0.9 }]}
+          >
+            <View style={styles.timeBlock}>
+              <Text style={styles.time}>{formatTime(b.pickupTimeSnapshot)}</Text>
+              <Text style={styles.timeMeta}>pickup</Text>
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.ref}>{b.reference}</Text>
               <Muted style={{ fontSize: font.small }}>
-                {b.seats} seat{b.seats === 1 ? '' : 's'} · {formatUGX(b.fareUgxSnapshot * b.seats)} · {formatDate(b.pickupTimeSnapshot.slice(0, 10))} {formatTime(b.pickupTimeSnapshot)}
+                {b.seats} seat{b.seats === 1 ? '' : 's'} · {formatUGX(b.fareUgxSnapshot * b.seats)} · {formatDate(b.pickupTimeSnapshot.slice(0, 10))}
               </Muted>
               <View style={{ marginTop: 6, alignSelf: 'flex-start' }}><BookingStatusPill status={b.status} /></View>
             </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </Pressable>
         ))}
       </View>
@@ -71,6 +83,9 @@ function Group({ title, list, onOpen, muted }: { title: string; list: BookingVie
 }
 
 const styles = StyleSheet.create({
-  row: { backgroundColor: colors.white, borderRadius: radius.xl, padding: space.md, ...{ shadowColor: '#0f2619', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 1 }, elevation: 1 } },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.white, borderRadius: radius.lg, padding: space.md, ...shadow.card },
+  timeBlock: { width: 58, alignItems: 'flex-start' },
+  time: { fontSize: font.h2, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
+  timeMeta: { fontSize: font.tiny, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
   ref: { fontWeight: '800', color: colors.forest900, fontSize: font.body },
 });

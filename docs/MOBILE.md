@@ -13,8 +13,9 @@ apps/mobile/
     _layout.tsx                # providers + connected-mode auth gate + deep-link handling
     (tabs)/                    # bottom tabs: Home, Hubs, My Trips, Account
       _layout.tsx  index.tsx  hubs.tsx  trips.tsx  account.tsx
-    book/[tripId].tsx          # booking review + reserve
-    trip/[bookingId].tsx       # boarding pass (QR), check-in, cancel, tracking
+    book/[tripId].tsx          # booking review + reserve (sticky total-fare action)
+    hub/[hubId].tsx            # hub details: instructions, facilities, departures
+    trip/[bookingId].tsx       # boarding pass (QR) + journey stages, check-in, cancel
     notifications.tsx          # in-app inbox + unread state
     auth.tsx  reset.tsx        # connected-mode sign in/up + password recovery
   src/
@@ -26,7 +27,10 @@ apps/mobile/
     lib/supabase.ts            # Supabase client (SecureStore session storage)
     lib/secureSessionStore.ts  # chunked Keychain/Keystore session store
     lib/demoStorage.ts         # AsyncStorage-backed demo persistence
-    components/  hooks/  state/ # native UI kit, useAsync, search context
+    lib/feedback.ts            # gentle haptics + reduce-motion hook
+    components/                # native UI kit: BottomSheet, SchematicMap,
+                               #   DepartureRow, SegmentedControl, ui.tsx, …
+    hooks/  state/             # useAsync, search context
   metro.config.js              # shares ../../src via @shared/*
   app.json                     # scheme "togo", plugins, bundle ids
 ```
@@ -40,6 +44,53 @@ None of these touch the DOM, `localStorage`, `import.meta`, or web CSS. The
 `DemoAdapter` was refactored to accept an injected persistence sink, so the mobile
 app runs the **exact same booking rules** with **AsyncStorage** instead of
 `localStorage`.
+
+## Passenger UI (transit-app–inspired redesign)
+
+The passenger experience follows the visual language of everyday transit apps — a
+map surface with a draggable bottom sheet, a bold time hierarchy, and compact rows —
+using **ToGo's own identity** (deep-forest branding, warm-white surfaces, lime for
+selection/primary actions, charcoal text, restrained amber/red for service issues).
+No third-party logos, illustrations, or branded assets are copied.
+
+Key pieces (all in `src/components/`, driven by `src/theme.ts` tokens):
+
+- **`BottomSheet`** — draggable sheet on RN `Animated` + `PanResponder` (no extra
+  native modules, so it runs in Expo Go). Snaps between collapsed / intermediate /
+  expanded; the handle also exposes **accessible expand/collapse buttons** as a
+  drag alternative, and it honours the OS **reduce-motion** setting. On Android the
+  hardware **Back** button collapses an expanded sheet before leaving the tab.
+- **`SchematicMap`** — an **honest schematic**, deliberately *not* geographic. Hubs
+  have no published coordinates in this pilot, so pins are laid out illustratively
+  along a stylised corridor and the surface is labelled *“Schematic · illustrative,
+  not to scale.”* It draws **no invented streets and no “live” bus.** Tapping a pin
+  selects a hub; selection stays in sync with the hub chips in the sheet.
+- **`DepartureRow`** — a large absolute **pickup time** (tabular figures) beside
+  destination/direction, `hub · operator`, fare, seats, and a scheduled/delayed/
+  cancelled label. The **origin departure** is shown separately from the **hub
+  pickup** time; an old scheduled time is never relabelled as “arriving now.”
+- **`SegmentedControl`, `Chip`, `Separator`, `IconButton`** — shared primitives
+  used across the redesigned screens (lists prefer hairline separators over nested
+  cards).
+
+Screen highlights: **Home** = map + sheet with direction / date / passengers and
+hub selection over compact departure rows; **Booking** keeps a short sequence with a
+**sticky bottom action** (total fare above the button, above the safe area /
+keyboard); the **boarding pass** leads with a large destination + pickup time, hub
+name, and a **high-contrast QR on a plain light background**, with one primary
+action and cancellation kept accessible but not competing; the **active journey**
+renders as presentation stages (Reserved → Check in → Board → On the road → Arrived)
+backed by real booking/trip state, preserving the missed-pickup / not-boarded /
+cancellation messages, and it keeps the **demo simulation controls visibly
+separated** from the real flow. Haptics (`expo-haptics`, no-op on web), screen-reader
+labels, and scalable text are applied throughout.
+
+### Real geographic map (later, dev build only)
+`react-native-maps` needs a development build and a provider API key and is **not
+available in Expo Go**, so the schematic surface is the default. To wire a real map
+later: publish hub coordinates on `HubView`, add `react-native-maps` in a dev/EAS
+build with an API key, and swap `SchematicMap` for a map component behind the same
+`{ hubs, selectedHubId, onSelectHub }` props — no other screen changes are required.
 
 ## Startup commands
 
@@ -186,6 +237,7 @@ starts without an interactive install.
 | react-native-screens | 4.26.2 |
 | react-native-svg | 15.15.4 |
 | react-native-qrcode-svg | 6.3.24 |
+| expo-haptics | 57.0.2 |
 | @react-native-async-storage/async-storage | 2.2.0 |
 | expo-secure-store | 57.0.3 |
 | @supabase/supabase-js | 2.116.0 |
@@ -210,6 +262,12 @@ from this network-restricted environment — update Expo Go before testing.)
 - `expo export --platform ios --platform android` — succeeds; both Hermes bundles
   build, confirming the shared `@shared/*` imports resolve and the app bundles for
   iOS and Android.
+- **Redesign visual check via a web preview only.** `expo export --platform web`
+  (react-native-web) was served locally and rendered in headless Chromium at phone
+  width to review Home, booking, boarding pass, and hub details. These are a
+  **web preview of the React Native screens — not native iOS/Android renders**, and
+  are **not** a substitute for on-device testing. The custom `PanResponder` sheet
+  gestures and `expo-haptics` do not exercise on web.
 - Tunnel reachability **re-confirmed impossible here**: `exp.host` / `api.expo.dev` /
   ngrok endpoints all return `403 CONNECT` through the egress proxy; no tunnelling
   binary is installed; no inbound public URL exists.

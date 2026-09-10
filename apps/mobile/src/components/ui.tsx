@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   View, Text, Pressable, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, space, font, shadow } from '../theme';
 
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
@@ -89,6 +90,65 @@ export function SectionHeading({ title, right }: { title: string; right?: ReactN
       <Text style={styles.sectionText}>{title}</Text>
       {right}
     </View>
+  );
+}
+
+/** Subtle hairline separator — preferred over nesting extra cards. */
+export function Separator({ inset = 0 }: { inset?: number }) {
+  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: inset }} />;
+}
+
+/** Compact selectable chip (lime when selected). */
+export function Chip({
+  label, selected, onPress, accessibilityLabel,
+}: { label: string; selected?: boolean; onPress?: () => void; accessibilityLabel?: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!selected }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      style={({ pressed }) => [
+        { borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5 },
+        selected
+          ? { backgroundColor: colors.lime400, borderColor: colors.lime500 }
+          : { backgroundColor: colors.white, borderColor: colors.border },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <Text style={{ fontWeight: '700', fontSize: font.small, color: selected ? colors.forest900 : colors.inkSoft }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Circular icon button with a comfortable hit area. */
+export function IconButton({
+  name, onPress, accessibilityLabel, tone = 'surface', size = 20,
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  accessibilityLabel: string;
+  tone?: 'surface' | 'brand' | 'ghost';
+  size?: number;
+}) {
+  const bg = tone === 'brand' ? colors.forest700 : tone === 'ghost' ? 'transparent' : colors.white;
+  const fg = tone === 'brand' ? colors.white : colors.forest700;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={8}
+      style={({ pressed }) => [
+        { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: bg },
+        tone === 'surface' && shadow.card,
+        pressed && { opacity: 0.8 },
+      ]}
+    >
+      <Ionicons name={name} size={size} color={fg} />
+    </Pressable>
   );
 }
 

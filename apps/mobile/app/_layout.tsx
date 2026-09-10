@@ -37,7 +37,7 @@ function AuthGate() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <AdapterProvider>
         <AuthProvider>
           <SearchProvider>
@@ -46,6 +46,7 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.sand100 } }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="book/[tripId]" options={{ presentation: 'card' }} />
+                <Stack.Screen name="hub/[hubId]" />
                 <Stack.Screen name="trip/[bookingId]" />
                 <Stack.Screen name="notifications" />
                 <Stack.Screen name="auth" />

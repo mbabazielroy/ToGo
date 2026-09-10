@@ -36,7 +36,7 @@ export default function ResetScreen() {
         {!session && <View style={styles.warn}><Text style={styles.warnText}>This reset link is invalid or has expired. Request a new one from the sign-in screen.</Text></View>}
         {err && <ErrorRow message={err} onRetry={submit} />}
         <View><Text style={styles.label}>New password</Text>
-          <TextInput style={styles.input} value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" placeholderTextColor={colors.forest200} /></View>
+          <TextInput style={styles.input} value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" placeholderTextColor={colors.muted} accessibilityLabel="New password" /></View>
         <PrimaryButton title="Update password" onPress={submit} loading={busy} disabled={!session} />
         <Pressable onPress={() => { clearRecoveryMode(); router.replace('/'); }}><Text style={styles.back}>Back to sign in</Text></Pressable>
       </Card>
@@ -47,7 +47,7 @@ export default function ResetScreen() {
 const styles = StyleSheet.create({
   title: { fontSize: font.h1, fontWeight: '800', color: colors.forest900 },
   label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: colors.forest200, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.forest900, minHeight: 48 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
   warn: { backgroundColor: colors.amber100, borderRadius: radius.md, padding: space.md },
   warnText: { color: colors.amber800, fontSize: font.small },
   back: { textAlign: 'center', color: colors.forest500, fontWeight: '600', fontSize: font.small },

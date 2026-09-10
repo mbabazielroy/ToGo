@@ -49,7 +49,7 @@ export default function Account() {
           </Card>
           <Card style={{ gap: 10 }}>
             <H2>Change password</H2>
-            <TextInput style={styles.input} secureTextEntry value={pw} onChangeText={setPw} placeholder="New password (min 6)" placeholderTextColor={colors.forest200} />
+            <TextInput style={styles.input} secureTextEntry value={pw} onChangeText={setPw} placeholder="New password (min 6)" placeholderTextColor={colors.muted} accessibilityLabel="New password" />
             <PrimaryButton title="Update password" onPress={changePassword} loading={busy} />
           </Card>
           <GhostButton title="Sign out" onPress={signOut} />
@@ -83,5 +83,5 @@ export default function Account() {
 const styles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: radius.lg, backgroundColor: colors.forest100, alignItems: 'center', justifyContent: 'center' },
   name: { fontWeight: '800', color: colors.forest900, fontSize: font.title },
-  input: { borderWidth: 1, borderColor: colors.forest200, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.forest900, minHeight: 48 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
 });

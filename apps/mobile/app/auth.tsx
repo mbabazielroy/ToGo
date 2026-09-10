@@ -56,13 +56,13 @@ export default function AuthScreen() {
 
         {tab === 'signup' && (
           <View><Text style={styles.label}>Full name</Text>
-            <TextInput style={styles.input} value={fullName} onChangeText={setFullName} placeholder="Amina N." placeholderTextColor={colors.forest200} /></View>
+            <TextInput style={styles.input} value={fullName} onChangeText={setFullName} placeholder="Amina N." placeholderTextColor={colors.muted} /></View>
         )}
         <View><Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address" placeholderTextColor={colors.forest200} /></View>
+          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address" placeholderTextColor={colors.muted} /></View>
         {tab !== 'reset' && (
           <View><Text style={styles.label}>Password</Text>
-            <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry placeholderTextColor={colors.forest200} /></View>
+            <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry placeholderTextColor={colors.muted} /></View>
         )}
 
         {err && <ErrorRow message={err} onRetry={submit} />}
@@ -89,6 +89,6 @@ const styles = StyleSheet.create({
   tabText: { color: colors.forest500, fontWeight: '700' },
   tabTextActive: { color: colors.forest800 },
   label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: colors.forest200, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.forest900, minHeight: 48 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
   forgot: { textAlign: 'center', color: colors.forest500, fontWeight: '600', fontSize: font.small },
 });
