@@ -43,7 +43,7 @@ export default function RootLayout() {
           <SearchProvider>
             <ToastProvider>
               <AuthGate />
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.sand100 } }}>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="book/[tripId]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="hub/[hubId]" />

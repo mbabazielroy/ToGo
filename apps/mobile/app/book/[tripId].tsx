@@ -5,13 +5,14 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, H2, Muted, Label, PrimaryButton, Loading, ErrorRow } from '../../src/components/ui';
-import { useAdapter } from '../../src/data/AdapterProvider';
+import { Muted, Label, PrimaryButton, Loading, ErrorRow, Separator } from '../../src/components/ui';
+import { useAdapter, useAppMode } from '../../src/data/AdapterProvider';
 import { useAsync, humanError } from '../../src/hooks/useAsync';
 import { useToast } from '../../src/components/ToastProvider';
 import { haptics } from '../../src/lib/feedback';
-import { colors, radius, space, font, shadow } from '../../src/theme';
+import { colors, radius, space, font, SCREEN, control } from '../../src/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
+import { tripJourney, dropoffStopFor } from '@shared/data/journey';
 
 function makeIdemKey() {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -20,6 +21,7 @@ function makeIdemKey() {
 export default function BookScreen() {
   const { tripId, hub, pax } = useLocalSearchParams<{ tripId: string; hub?: string; pax?: string }>();
   const adapter = useAdapter();
+  const mode = useAppMode();
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -33,18 +35,17 @@ export default function BookScreen() {
   const [idemKey] = useState(makeIdemKey);
 
   const t = trip.data;
-  const stops = t ? [...t.stops].sort((a, b) => a.stopOrder - b.stopOrder) : [];
-  const pickup = stops.find((s) => s.hubId === hub) ?? stops[0];
-  const dropoff = stops[stops.length - 1];
+  const journey = t ? tripJourney(t, hub ?? null) : null;
+  const dropoff = t ? dropoffStopFor(t) : undefined;
   const total = t ? t.fareUgx * seats : 0;
   const soldOut = !!t && t.seatsAvailable < 1;
 
   async function confirm() {
-    if (busy || !t || !pickup || !dropoff) return;
+    if (busy || !t || !journey?.pickup || !dropoff) return;
     setErr(null); setBusy(true);
     try {
       const booking = await adapter.reserve({
-        tripId: t.id, pickupStopId: pickup.id, dropoffStopId: dropoff.id,
+        tripId: t.id, pickupStopId: journey.pickup.id, dropoffStopId: dropoff.id,
         seats, passengerName: name.trim() || 'Traveller', passengerPhone: phone.trim() || undefined,
         idempotencyKey: idemKey,
       });
@@ -57,55 +58,53 @@ export default function BookScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back to search" hitSlop={8} style={styles.back}>
-          <Ionicons name="chevron-back" size={20} color={colors.forest700} />
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8} style={styles.back}>
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
         </Pressable>
         <Text style={styles.topTitle}>Review &amp; reserve</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top + 8}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xxl }}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: SCREEN, paddingTop: space.md, paddingBottom: space.xxl * 2, gap: space.lg }} keyboardShouldPersistTaps="handled">
           {trip.loading && <Loading />}
           {trip.error && <ErrorRow message={trip.error} onRetry={trip.reload} />}
-          {t && pickup && dropoff && (
+          {t && journey?.pickup && (
             <>
-              <Card style={{ gap: 2 }}>
-                <Text style={styles.op}>{t.operatorName}</Text>
-                <Muted style={{ fontSize: font.small }}>{formatDate(t.serviceDate)} · departs origin {formatTime(t.originDeparture)}</Muted>
-              </Card>
+              {/* Journey summary — pickup, destination, operator, date, times */}
+              <View style={styles.summary}>
+                <Text style={styles.summaryMeta}>{t.operatorName} · {formatDate(t.serviceDate)}</Text>
+                <View style={styles.leg}>
+                  <View style={styles.legIcon}><View style={styles.dotPickup} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.legPlace}>{journey.pickup.hubName}</Text>
+                    <Text style={styles.legSub}>{journey.originCity} · Pickup</Text>
+                  </View>
+                  <Text style={styles.legTime}>{formatTime(journey.pickupTimeISO)}</Text>
+                </View>
+                <View style={styles.legLine} />
+                <View style={styles.leg}>
+                  <View style={styles.legIcon}><Ionicons name="flag" size={14} color={colors.forest700} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.legPlace}>{journey.destinationCity}</Text>
+                    <Text style={styles.legSub}>Estimated arrival</Text>
+                  </View>
+                  <Text style={styles.legTime}>{formatTime(journey.arrivalTimeISO)}</Text>
+                </View>
+              </View>
 
-              <Card style={{ gap: 10 }}>
-                <H2>Your journey</H2>
-                <JourneyRow icon="location" accent title={pickup.hubName} sub={pickup.hubCity} time={formatTime(pickup.pickupTime)} tl="Pickup" />
-                <View style={styles.dashLine} />
-                <JourneyRow icon="flag" title={dropoff.hubName} sub={dropoff.hubCity} time={formatTime(dropoff.pickupTime)} tl="Arrive" />
-                <Text style={styles.hint}>Pickup time is when your bus reaches your hub, not the origin departure.</Text>
-              </Card>
-
-              <Card style={{ gap: 12 }}>
-                <H2>Passenger details</H2>
+              {/* Passenger details */}
+              <View style={{ gap: space.md }}>
+                <Text style={styles.section}>Passenger details</Text>
                 <View>
                   <Label>Lead passenger name</Label>
-                  <TextInput
-                    style={styles.input} value={name} onChangeText={setName}
-                    placeholder="Amina N." placeholderTextColor={colors.muted}
-                    accessibilityLabel="Lead passenger name" returnKeyType="next"
-                  />
+                  <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Amina N." placeholderTextColor={colors.muted} accessibilityLabel="Lead passenger name" returnKeyType="next" />
                 </View>
                 <View>
                   <Label>Phone (optional)</Label>
-                  <TextInput
-                    style={styles.input} value={phone} onChangeText={setPhone}
-                    placeholder="+256 7xx" keyboardType="phone-pad" placeholderTextColor={colors.muted}
-                    accessibilityLabel="Phone number, optional"
-                  />
+                  <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+256 7xx" keyboardType="phone-pad" placeholderTextColor={colors.muted} accessibilityLabel="Phone number, optional" />
                 </View>
-                <View>
+                <View style={styles.paxRow}>
                   <Label>Passengers</Label>
                   <View style={styles.stepper}>
                     <Pressable onPress={() => setSeats((s) => Math.max(1, s - 1))} accessibilityRole="button" accessibilityLabel="Fewer passengers" style={styles.stepBtn}>
@@ -115,48 +114,34 @@ export default function BookScreen() {
                     <Pressable onPress={() => setSeats((s) => Math.min(Math.max(1, t.seatsAvailable), s + 1))} accessibilityRole="button" accessibilityLabel="More passengers" style={styles.stepBtn}>
                       <Ionicons name="add" size={20} color={colors.forest700} />
                     </Pressable>
-                    <Muted style={{ marginLeft: 10, fontSize: font.small }}>{t.seatsAvailable} available</Muted>
                   </View>
                 </View>
-              </Card>
+                <Muted style={{ fontSize: font.small }}>{t.seatsAvailable} seat{t.seatsAvailable === 1 ? '' : 's'} available</Muted>
+              </View>
 
-              <Card style={{ gap: 8 }}>
-                <H2>Fare</H2>
-                <Row l="Fare per passenger" r={formatUGX(t.fareUgx)} />
-                <Row l="Passengers" r={`× ${seats}`} />
-                <View style={styles.payRow}>
-                  <Ionicons name="wallet-outline" size={18} color={colors.forest700} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.payTitle}>Reserve now — pay at boarding</Text>
-                    <Muted style={{ fontSize: font.tiny }}>No payment is collected in this pilot.</Muted>
-                  </View>
-                </View>
-              </Card>
+              {/* Fare */}
+              <View style={{ gap: space.sm }}>
+                <Text style={styles.section}>Fare</Text>
+                <View style={styles.fareRow}><Text style={styles.fareL}>Fare per passenger</Text><Text style={styles.fareR}>{formatUGX(t.fareUgx)}</Text></View>
+                <View style={styles.fareRow}><Text style={styles.fareL}>Passengers</Text><Text style={styles.fareR}>× {seats}</Text></View>
+                <Separator />
+                <View style={styles.fareRow}><Text style={styles.fareL}>Payment</Text><Text style={styles.fareR}>Pay at boarding</Text></View>
+                <Muted style={{ fontSize: font.tiny }}>No payment is collected in this pilot.</Muted>
+              </View>
 
               {err && <ErrorRow message={err} onRetry={confirm} />}
-              <Muted style={{ textAlign: 'center', fontSize: font.tiny }}>
-                Demo pilot reservation — no money changes hands and pickup is not guaranteed.
-              </Muted>
             </>
           )}
         </ScrollView>
 
-        {/* Sticky action: total fare above the button, kept above the safe area / keyboard */}
-        {t && pickup && dropoff && (
+        {t && journey?.pickup && (
           <View style={[styles.footer, { paddingBottom: insets.bottom + space.md }]}>
             <View style={styles.totalRow}>
-              <View>
-                <Text style={styles.totalLabel}>Total{seats > 1 ? ` · ${seats} passengers` : ''}</Text>
-                <Text style={styles.totalHint}>Pay at boarding</Text>
-              </View>
+              <Text style={styles.totalLabel}>Total{seats > 1 ? ` · ${seats} passengers` : ''}</Text>
               <Text style={styles.totalR}>{formatUGX(total)}</Text>
             </View>
-            <PrimaryButton
-              title={soldOut ? 'Sold out' : 'Confirm reservation'}
-              onPress={confirm}
-              loading={busy}
-              disabled={soldOut}
-            />
+            <PrimaryButton title={soldOut ? 'Sold out' : 'Confirm reservation'} onPress={confirm} loading={busy} disabled={soldOut} />
+            {mode === 'demo' && <Text style={styles.demoNote}>Demo reservation — no real seat booked.</Text>}
           </View>
         )}
       </KeyboardAvoidingView>
@@ -164,45 +149,36 @@ export default function BookScreen() {
   );
 }
 
-function JourneyRow({ icon, title, sub, time, tl, accent }: { icon: 'location' | 'flag'; title: string; sub?: string; time: string; tl: string; accent?: boolean }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <View style={[styles.jIcon, { backgroundColor: accent ? colors.lime400 : colors.forest100 }]}>
-        <Ionicons name={icon} size={16} color={accent ? colors.forest900 : colors.forest700} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.jTitle}>{title}</Text>
-        {sub ? <Muted style={{ fontSize: font.small }}>{sub}</Muted> : null}
-      </View>
-      <View style={{ alignItems: 'flex-end' }}><Text style={styles.jTime}>{time}</Text><Text style={styles.jLabel}>{tl}</Text></View>
-    </View>
-  );
-}
-function Row({ l, r }: { l: string; r: string }) {
-  return <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Muted style={{ fontSize: font.body }}>{l}</Muted><Text style={{ color: colors.ink, fontWeight: '700' }}>{r}</Text></View>;
-}
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand100 },
+  root: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md, paddingVertical: space.sm },
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontSize: font.title, fontWeight: '800', color: colors.forest900 },
-  op: { fontWeight: '800', color: colors.forest900, fontSize: font.body },
-  hint: { color: colors.muted, fontSize: font.tiny, marginTop: 2 },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
-  stepper: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 4, backgroundColor: colors.white },
-  stepBtn: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.forest50, alignItems: 'center', justifyContent: 'center' },
-  stepVal: { width: 40, textAlign: 'center', fontSize: font.h2, fontWeight: '800', color: colors.ink },
-  dashLine: { marginLeft: 15, height: 16, borderLeftWidth: 2, borderStyle: 'dashed', borderColor: colors.forest200 },
-  jIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  jTitle: { fontWeight: '700', color: colors.forest900, fontSize: font.body },
-  jTime: { fontWeight: '800', color: colors.forest900 },
-  jLabel: { fontSize: font.tiny, color: colors.forest500, textTransform: 'uppercase' },
-  payRow: { flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: colors.forest50, borderRadius: radius.md, padding: 12, marginTop: 2 },
-  payTitle: { fontWeight: '700', color: colors.forest900 },
-  footer: { backgroundColor: colors.white, paddingHorizontal: space.lg, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, gap: space.sm, ...shadow.sheet },
+  topTitle: { fontSize: font.title, fontWeight: '800', color: colors.ink },
+
+  summary: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, padding: space.lg },
+  summaryMeta: { color: colors.muted, fontSize: font.small, marginBottom: space.md },
+  leg: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  legIcon: { width: 20, alignItems: 'center' },
+  dotPickup: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.lime500 },
+  legLine: { width: 2, height: 18, backgroundColor: colors.separator, marginLeft: 9, marginVertical: 2 },
+  legPlace: { fontSize: font.body, fontWeight: '700', color: colors.ink },
+  legSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
+  legTime: { fontSize: font.title, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
+
+  section: { fontSize: font.small, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, minHeight: control.height, fontSize: font.body, color: colors.ink, backgroundColor: colors.surface },
+  paxRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  stepper: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface },
+  stepBtn: { width: 46, height: control.height, alignItems: 'center', justifyContent: 'center' },
+  stepVal: { width: 36, textAlign: 'center', fontSize: font.h2, fontWeight: '800', color: colors.ink },
+
+  fareRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  fareL: { color: colors.inkSoft, fontSize: font.body },
+  fareR: { color: colors.ink, fontWeight: '700', fontSize: font.body },
+
+  footer: { backgroundColor: colors.surface, paddingHorizontal: SCREEN, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, gap: space.sm },
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  totalLabel: { fontWeight: '800', fontSize: font.body, color: colors.ink },
-  totalHint: { fontSize: font.tiny, color: colors.muted, marginTop: 1 },
-  totalR: { fontWeight: '900', fontSize: font.h1, color: colors.forest900 },
+  totalLabel: { fontWeight: '700', fontSize: font.body, color: colors.ink },
+  totalR: { fontWeight: '900', fontSize: font.h1, color: colors.ink, fontVariant: ['tabular-nums'] },
+  demoNote: { textAlign: 'center', color: colors.muted, fontSize: font.tiny },
 });

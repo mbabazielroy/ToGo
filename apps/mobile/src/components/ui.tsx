@@ -3,8 +3,9 @@ import {
   View, Text, Pressable, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, space, font, shadow } from '../theme';
+import { colors, radius, space, font, control } from '../theme';
 
+/** A quiet grouping surface: white, hairline border, no heavy shadow. */
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
@@ -30,6 +31,7 @@ export function PrimaryButton({
       onPress={onPress}
       disabled={disabled || loading}
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!(disabled || loading) }}
       style={({ pressed }) => [
         styles.btn,
         accent ? styles.btnAccent : styles.btnPrimary,
@@ -46,7 +48,7 @@ export function PrimaryButton({
 export function GhostButton({ title, onPress, danger, style }: { title: string; onPress: () => void; danger?: boolean; style?: ViewStyle }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button"
-      style={({ pressed }) => [styles.ghost, danger && styles.ghostDanger, pressed && { opacity: 0.9 }, style]}>
+      style={({ pressed }) => [styles.ghost, danger && styles.ghostDanger, pressed && { opacity: 0.85 }, style]}>
       <Text style={[styles.ghostText, danger && { color: colors.red700 }]}>{title}</Text>
     </Pressable>
   );
@@ -60,7 +62,7 @@ export function ErrorRow({ message, onRetry }: { message: string; onRetry?: () =
   return (
     <View style={styles.errorRow}>
       <Text style={styles.errorText}>{message}</Text>
-      {onRetry && <Pressable onPress={onRetry}><Text style={styles.errorRetry}>Retry</Text></Pressable>}
+      {onRetry && <Pressable onPress={onRetry} accessibilityRole="button"><Text style={styles.errorRetry}>Retry</Text></Pressable>}
     </View>
   );
 }
@@ -70,16 +72,6 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>{title}</Text>
       {children ? <Text style={styles.emptyBody}>{children}</Text> : null}
-    </View>
-  );
-}
-
-export function DemoBadge() {
-  return (
-    <View style={styles.demoBadge}>
-      <Text style={styles.demoBadgeText}>
-        Demo mode · Illustrative operators, hubs, fares & tracking — no real bookings or pickups.
-      </Text>
     </View>
   );
 }
@@ -98,7 +90,7 @@ export function Separator({ inset = 0 }: { inset?: number }) {
   return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: inset }} />;
 }
 
-/** Compact selectable chip (lime when selected). */
+/** Compact selectable chip (lime when selected — the one place lime is used). */
 export function Chip({
   label, selected, onPress, accessibilityLabel,
 }: { label: string; selected?: boolean; onPress?: () => void; accessibilityLabel?: string }) {
@@ -109,23 +101,19 @@ export function Chip({
       accessibilityState={{ selected: !!selected }}
       accessibilityLabel={accessibilityLabel ?? label}
       style={({ pressed }) => [
-        { borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5 },
-        selected
-          ? { backgroundColor: colors.lime400, borderColor: colors.lime500 }
-          : { backgroundColor: colors.white, borderColor: colors.border },
+        styles.chip,
+        selected ? styles.chipSelected : styles.chipIdle,
         pressed && { opacity: 0.85 },
       ]}
     >
-      <Text style={{ fontWeight: '700', fontSize: font.small, color: selected ? colors.forest900 : colors.inkSoft }}>
-        {label}
-      </Text>
+      <Text style={[styles.chipText, { color: selected ? colors.forest900 : colors.inkSoft }]}>{label}</Text>
     </Pressable>
   );
 }
 
 /** Circular icon button with a comfortable hit area. */
 export function IconButton({
-  name, onPress, accessibilityLabel, tone = 'surface', size = 20,
+  name, onPress, accessibilityLabel, tone = 'surface', size = 22,
 }: {
   name: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
@@ -133,8 +121,8 @@ export function IconButton({
   tone?: 'surface' | 'brand' | 'ghost';
   size?: number;
 }) {
-  const bg = tone === 'brand' ? colors.forest700 : tone === 'ghost' ? 'transparent' : colors.white;
-  const fg = tone === 'brand' ? colors.white : colors.forest700;
+  const bg = tone === 'brand' ? colors.forest700 : tone === 'ghost' ? 'transparent' : colors.surface;
+  const fg = tone === 'brand' ? colors.white : colors.ink;
   return (
     <Pressable
       onPress={onPress}
@@ -142,8 +130,9 @@ export function IconButton({
       accessibilityLabel={accessibilityLabel}
       hitSlop={8}
       style={({ pressed }) => [
-        { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: bg },
-        tone === 'surface' && shadow.card,
+        styles.iconBtn,
+        { backgroundColor: bg },
+        tone === 'surface' && { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
         pressed && { opacity: 0.8 },
       ]}
     >
@@ -153,27 +142,30 @@ export function IconButton({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.white, borderRadius: radius.xl, padding: space.lg, ...shadow.card },
-  h1: { fontSize: font.h1, fontWeight: '800', color: colors.forest900 },
-  h2: { fontSize: font.h2, fontWeight: '800', color: colors.forest900 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator },
+  h1: { fontSize: font.h1, fontWeight: '800', color: colors.ink, letterSpacing: -0.3 },
+  h2: { fontSize: font.h2, fontWeight: '800', color: colors.ink },
   muted: { fontSize: font.body, color: colors.muted },
-  label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600, marginBottom: 6 },
-  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg, paddingVertical: 15, paddingHorizontal: 20, minHeight: 50 },
+  label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted, marginBottom: 6 },
+  btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, paddingHorizontal: 20, minHeight: control.height },
   btnPrimary: { backgroundColor: colors.forest700 },
   btnAccent: { backgroundColor: colors.lime400 },
-  btnDisabled: { opacity: 0.5 },
+  btnDisabled: { opacity: 0.45 },
   btnText: { color: colors.white, fontWeight: '700', fontSize: font.body },
-  ghost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg, paddingVertical: 13, paddingHorizontal: 16, borderWidth: 1, borderColor: colors.forest200, backgroundColor: colors.white, minHeight: 46 },
+  ghost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, minHeight: control.small, paddingHorizontal: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   ghostDanger: { borderColor: colors.red100 },
   ghostText: { color: colors.forest700, fontWeight: '700', fontSize: font.small },
-  errorRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: colors.red100, borderRadius: radius.md, paddingVertical: 10, paddingHorizontal: 12 },
+  errorRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: colors.red100, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14 },
   errorText: { color: colors.red700, fontSize: font.small, flexShrink: 1 },
   errorRetry: { color: colors.red700, fontWeight: '800', fontSize: font.small, textDecorationLine: 'underline' },
-  empty: { borderWidth: 1, borderStyle: 'dashed', borderColor: colors.forest200, borderRadius: radius.xl, paddingVertical: 36, paddingHorizontal: 20, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)' },
-  emptyTitle: { fontWeight: '800', color: colors.forest800, fontSize: font.title },
+  empty: { borderWidth: 1, borderColor: colors.separator, borderRadius: radius.lg, paddingVertical: 32, paddingHorizontal: 20, alignItems: 'center', backgroundColor: colors.surface },
+  emptyTitle: { fontWeight: '800', color: colors.ink, fontSize: font.title },
   emptyBody: { marginTop: 6, color: colors.muted, textAlign: 'center', fontSize: font.small },
-  demoBadge: { backgroundColor: colors.forest900, paddingVertical: 5, paddingHorizontal: 16 },
-  demoBadgeText: { color: colors.lime200, fontSize: font.tiny, textAlign: 'center', fontWeight: '600' },
-  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.xl, marginBottom: space.sm },
-  sectionText: { fontSize: font.small, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600 },
+  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.lg, marginBottom: space.sm },
+  sectionText: { fontSize: font.small, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, color: colors.muted },
+  chip: { borderRadius: radius.pill, paddingHorizontal: 14, minHeight: control.small, alignItems: 'center', justifyContent: 'center' },
+  chipIdle: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chipSelected: { backgroundColor: colors.lime400, borderWidth: 1, borderColor: colors.lime500 },
+  chipText: { fontWeight: '700', fontSize: font.small },
+  iconBtn: { width: control.small, height: control.small, borderRadius: control.small / 2, alignItems: 'center', justifyContent: 'center' },
 });

@@ -23,3 +23,10 @@ export const DIRECTION_LABEL: Record<Trip['direction'], string> = {
   KLA_MBR: 'Kampala → Mbarara',
   MBR_KLA: 'Mbarara → Kampala',
 };
+
+/** Origin and destination CITIES for a corridor direction. The destination is the
+ *  end of the corridor — never a pickup hub in the origin city. */
+export const DIRECTION_CITIES: Record<Trip['direction'], { origin: string; destination: string }> = {
+  KLA_MBR: { origin: 'Kampala', destination: 'Mbarara' },
+  MBR_KLA: { origin: 'Mbarara', destination: 'Kampala' },
+};

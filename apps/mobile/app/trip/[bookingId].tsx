@@ -1,24 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Alert, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen } from '../../src/components/Screen';
-import { Card, H2, Muted, PrimaryButton, GhostButton, Loading, ErrorRow, Separator } from '../../src/components/ui';
-import { TripStatusPill, BookingStatusPill } from '../../src/components/StatusPill';
+import { Muted, PrimaryButton, Loading, ErrorRow, Separator } from '../../src/components/ui';
+import { BookingStatusPill } from '../../src/components/StatusPill';
 import { QRCode } from '../../src/components/QRCode';
 import { useAdapter, useAppMode, useDataEpoch } from '../../src/data/AdapterProvider';
 import { useAsync, humanError } from '../../src/hooks/useAsync';
 import { useToast } from '../../src/components/ToastProvider';
 import { haptics } from '../../src/lib/feedback';
-import { colors, radius, space, font } from '../../src/theme';
+import { colors, radius, space, font, SCREEN, control } from '../../src/theme';
 import type { BookingStatusCode, TripStatusCode } from '@shared/data/adapter';
-import { formatDate, formatTime, formatUGX, timeAgo } from '@shared/lib/time';
+import { formatTime, formatUGX, timeAgo } from '@shared/lib/time';
+import { tripJourney } from '@shared/data/journey';
 
-const DIR: Record<string, string> = { KLA_MBR: 'Kampala → Mbarara', MBR_KLA: 'Mbarara → Kampala' };
+interface Stage { key: string; label: string; hint: string }
 
-interface Stage { key: string; label: string; desc: string }
-
-/** Number of journey stages considered complete, and whether the journey stalled. */
 function stageProgress(status: BookingStatusCode, tripStatus?: TripStatusCode): { reached: number; stalled: boolean } {
   switch (status) {
     case 'reserved': return { reached: 1, stalled: false };
@@ -38,13 +36,14 @@ export default function TripScreen() {
   const mode = useAppMode();
   const router = useRouter();
   const toast = useToast();
-  const epoch = useDataEpoch();
+  const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
 
-  const booking = useAsync(() => adapter.getBooking(String(bookingId)), [bookingId, epoch]);
+  const booking = useAsync(() => adapter.getBooking(String(bookingId)), [bookingId]);
   const b = booking.data;
-  const trip = useAsync(() => (b ? adapter.getTrip(b.tripId) : Promise.resolve(null)), [b?.tripId, epoch]);
-  const location = useAsync(() => (b ? adapter.latestLocation(b.tripId) : Promise.resolve(null)), [b?.tripId, epoch]);
+  const trip = useAsync(() => (b ? adapter.getTrip(b.tripId) : Promise.resolve(null)), [b?.tripId]);
+  const location = useAsync(() => (b ? adapter.latestLocation(b.tripId) : Promise.resolve(null)), [b?.tripId]);
   const t = trip.data;
 
   useEffect(() => {
@@ -68,19 +67,16 @@ export default function TripScreen() {
     ]);
   }
 
-  const pickupHub = useMemo(
-    () => (t && b ? t.stops.find((s) => s.hubId === b.pickupHubId) : undefined),
-    [t, b],
-  );
-  const hubName = pickupHub?.hubName ?? 'your hub';
-  const destination = t ? (DIR[t.direction] ?? t.operatorName) : (b?.reference ?? '');
+  const journey = useMemo(() => (t ? tripJourney(t, b?.pickupHubId) : null), [t, b?.pickupHubId]);
+  const hubName = journey?.pickup?.hubName ?? 'your pickup hub';
+  const destination = journey ? journey.destinationCity : (b?.reference ?? '');
 
   const stages: Stage[] = [
-    { key: 'reserved', label: 'Reserved', desc: 'Your seat is held' },
-    { key: 'checkin', label: `Check in at ${hubName}`, desc: 'Tap “I’m at the hub” when you arrive' },
-    { key: 'board', label: 'Board', desc: 'Show your code to the conductor' },
-    { key: 'travel', label: 'On the road', desc: `Heading to ${t ? destination.split('→ ')[1] ?? 'your stop' : 'your stop'}` },
-    { key: 'arrive', label: 'Arrived', desc: 'Trip complete' },
+    { key: 'reserved', label: 'Reserved', hint: 'Your seat is held.' },
+    { key: 'checkin', label: `Check in at ${hubName}`, hint: 'Check in when you reach your pickup hub.' },
+    { key: 'board', label: 'Board', hint: 'Show your code to the conductor.' },
+    { key: 'travel', label: `On the way to ${destination}`, hint: 'Your bus is en route.' },
+    { key: 'arrive', label: `Arrived in ${destination}`, hint: 'Trip complete.' },
   ];
 
   const staleMs = location.data ? Date.now() - new Date(location.data.receivedAt).getTime() : 0;
@@ -88,154 +84,158 @@ export default function TripScreen() {
 
   const { reached, stalled } = b ? stageProgress(b.status, t?.status) : { reached: 0, stalled: false };
   const cancelled = b?.status === 'cancelled';
+  const currentStage = !cancelled && !stalled && reached < stages.length ? stages[reached] : undefined;
 
   return (
-    <Screen>
-      <Pressable onPress={() => router.replace('/trips')} accessibilityRole="button" accessibilityLabel="Back to My Trips" style={styles.back}>
-        <Ionicons name="chevron-back" size={18} color={colors.forest600} /><Text style={styles.backText}>My Trips</Text>
-      </Pressable>
-      {booking.loading && <Loading />}
-      {booking.error && <ErrorRow message={booking.error} onRetry={booking.reload} />}
-      {b && (
-        <>
-          {cancelled && <Banner tone="red" text="This reservation was cancelled and the seats released." />}
-          {b.status === 'missed_pickup' && <Banner tone="amber" text="You checked in but were not boarded before the trip completed. Operations is investigating and will follow up." />}
-          {(b.status === 'not_boarded' || b.status === 'no_show') && <Banner tone="sand" text="This trip has completed and you were not boarded, so you were not recorded as having travelled." />}
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.replace('/trips')} accessibilityRole="button" accessibilityLabel="Back to My Trips" hitSlop={8} style={styles.back}>
+          <Ionicons name="chevron-back" size={22} color={colors.ink} />
+        </Pressable>
+        <Text style={styles.topTitle}>Boarding pass</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-          {/* Boarding pass — large destination + pickup time, high-contrast QR on light bg */}
-          <View style={styles.pass}>
-            <View style={styles.passHead}>
-              <Text style={styles.passKicker}>Boarding pass</Text>
-              <BookingStatusPill status={b.status} />
-            </View>
-            <Text style={styles.passDest}>{destination}</Text>
-            <View style={styles.passTimeRow}>
-              <View>
-                <Text style={styles.passTime}>{formatTime(b.pickupTimeSnapshot)}</Text>
-                <Text style={styles.passTimeLabel}>Pickup · {formatDate(b.pickupTimeSnapshot.slice(0, 10))}</Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.passHub} numberOfLines={2}>{hubName}</Text>
-                {t && <Text style={styles.passOp}>{t.operatorName}</Text>}
-              </View>
-            </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scroll}>
+        {booking.loading && <Loading />}
+        {booking.error && <ErrorRow message={booking.error} onRetry={booking.reload} />}
+        {b && (
+          <View style={{ gap: space.md }}>
+            {cancelled && <Banner tone="red" text="This reservation was cancelled and the seats released." />}
+            {b.status === 'missed_pickup' && <Banner tone="amber" text="You checked in but were not boarded before the trip completed. Operations is investigating and will follow up." />}
+            {(b.status === 'not_boarded' || b.status === 'no_show') && <Banner tone="sand" text="This trip has completed and you were not boarded, so you were not recorded as having travelled." />}
 
-            <View style={styles.passBody}>
-              <View style={styles.qrWrap}>
-                <QRCode value={`TOGO:${b.boardingCredential}`} size={120} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.kLabel}>Reference</Text>
-                <Text style={styles.ref} numberOfLines={1} adjustsFontSizeToFit>{b.reference}</Text>
-                <View style={styles.kGrid}>
-                  <Text style={styles.kLabel}>Passengers · Payment</Text>
-                  <Text style={styles.kVal} numberOfLines={1}>{b.seats} · pay at boarding</Text>
+            {/* Ticket */}
+            <View style={styles.ticket}>
+              <View style={styles.ticketHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ticketKicker}>To</Text>
+                  <Text style={styles.ticketDest} numberOfLines={1}>{destination}</Text>
                 </View>
-                <Text style={styles.kLabel}>Total fare</Text>
-                <Text style={styles.passAmt} numberOfLines={1} adjustsFontSizeToFit>{formatUGX(b.fareUgxSnapshot * b.seats)}</Text>
+                <BookingStatusPill status={b.status} />
+              </View>
+              <View style={styles.ticketWhen}>
+                <View>
+                  <Text style={styles.pickupTime}>{formatTime(b.pickupTimeSnapshot)}</Text>
+                  <Text style={styles.pickupCaption}>Pickup · {hubName}</Text>
+                </View>
+                {journey && (
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.arriveTime}>{formatTime(journey.arrivalTimeISO)}</Text>
+                    <Text style={styles.pickupCaption}>Est. arrival</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.qrBlock}>
+                <QRCode value={`TOGO:${b.boardingCredential}`} size={148} />
+              </View>
+              <Text style={styles.code}>{b.reference}</Text>
+              <Text style={styles.showCode}>Show this code to the conductor.</Text>
+
+              <Separator />
+              <View style={styles.ticketFoot}>
+                <Text style={styles.footItem}>{b.seats} passenger{b.seats === 1 ? '' : 's'}</Text>
+                <Text style={styles.footDot}>·</Text>
+                <Text style={styles.footItem}>{formatUGX(b.fareUgxSnapshot * b.seats)}</Text>
+                <Text style={styles.footDot}>·</Text>
+                <Text style={styles.footItem}>Pay at boarding</Text>
               </View>
             </View>
-          </View>
-          <Muted style={{ textAlign: 'center', fontSize: font.tiny }}>
-            The QR carries an opaque credential — no personal data. Only your conductor can validate it.
-          </Muted>
 
-          {/* Primary action (only one) — check in when reserved */}
-          {b.status === 'reserved' && (
-            <PrimaryButton title="I’m at the hub — check in" accent onPress={() => act(() => adapter.checkIn(b.id), "You're checked in")} loading={busy} />
-          )}
-
-          {/* Journey stages */}
-          {!cancelled && (
-            <Card style={{ gap: 0 }}>
-              <View style={styles.stagesHead}>
-                <H2>Your journey</H2>
-                {t && <TripStatusPill status={t.status} delayed={t.delayMinutes > 0} />}
-              </View>
-              {stages.map((s, i) => {
-                const done = i < reached;
-                const current = i === reached && !stalled && reached < stages.length;
-                const blocked = stalled && i >= reached;
-                return (
-                  <View key={s.key} style={styles.stageRow}>
-                    <View style={styles.stageRail}>
-                      <View style={[
-                        styles.stageDot,
-                        done && styles.stageDotDone,
-                        current && styles.stageDotCurrent,
-                        blocked && styles.stageDotBlocked,
-                      ]}>
-                        {done && <Ionicons name="checkmark" size={12} color={colors.white} />}
-                        {current && <View style={styles.stageDotPulse} />}
-                      </View>
-                      {i < stages.length - 1 && <View style={[styles.stageLine, done && styles.stageLineDone]} />}
-                    </View>
-                    <View style={{ flex: 1, paddingBottom: i < stages.length - 1 ? space.md : 0 }}>
-                      <Text style={[styles.stageLabel, current && { color: colors.forest900 }, (blocked || (!done && !current)) && { color: colors.muted }]}>
-                        {s.label}
-                      </Text>
-                      {(current || done) && <Text style={styles.stageDesc}>{s.desc}</Text>}
-                    </View>
+            {/* Current step + next instruction */}
+            {currentStage && (
+              <View style={styles.stepNow}>
+                <Text style={styles.stepNowLabel}>Step {reached + 1} of {stages.length}</Text>
+                <Text style={styles.stepNowTitle}>{currentStage.label}</Text>
+                <Text style={styles.stepNowHint}>{currentStage.hint}</Text>
+                {b.status === 'reserved' && (
+                  <View style={{ marginTop: space.md }}>
+                    <PrimaryButton title="Check in" accent onPress={() => act(() => adapter.checkIn(b.id), "You're checked in")} loading={busy} />
                   </View>
-                );
-              })}
+                )}
+              </View>
+            )}
 
-              {t && (
-                <>
-                  <Separator />
+            {/* Collapsible full timeline */}
+            <Pressable onPress={() => setShowSteps((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: showSteps }} style={styles.stepsToggle}>
+              <Text style={styles.stepsToggleText}>{showSteps ? 'Hide journey steps' : 'Show journey steps'}</Text>
+              <Ionicons name={showSteps ? 'chevron-up' : 'chevron-down'} size={18} color={colors.forest700} />
+            </Pressable>
+            {showSteps && !cancelled && (
+              <View style={styles.timeline}>
+                {stages.map((s, i) => {
+                  const done = i < reached;
+                  const current = i === reached && !stalled && reached < stages.length;
+                  return (
+                    <View key={s.key} style={styles.stageRow}>
+                      <View style={styles.rail}>
+                        <View style={[styles.dot, done && styles.dotDone, current && styles.dotCurrent]}>
+                          {done && <Ionicons name="checkmark" size={12} color={colors.white} />}
+                        </View>
+                        {i < stages.length - 1 && <View style={[styles.line, done && styles.lineDone]} />}
+                      </View>
+                      <View style={{ flex: 1, paddingBottom: i < stages.length - 1 ? space.md : 0 }}>
+                        <Text style={[styles.stageLabel, (current || done) ? { color: colors.ink } : { color: colors.muted }]}>{s.label}</Text>
+                        {(current || done) && <Text style={styles.stageHint}>{s.hint}</Text>}
+                      </View>
+                    </View>
+                  );
+                })}
+                {t && (
                   <Text style={styles.estimate}>
-                    Scheduled estimate — pickup {formatTime(b.pickupTimeSnapshot)}, arrival {formatTime(t.destinationArrival)}
+                    Scheduled estimate — pickup {formatTime(b.pickupTimeSnapshot)}
+                    {journey ? `, arrival ${formatTime(journey.arrivalTimeISO)}` : ''}
                     {t.delayMinutes > 0 ? ` · delayed +${t.delayMinutes} min` : ''}.
                   </Text>
-                  {mode === 'connected' && (t.status === 'en_route' || t.status === 'boarding') && (
-                    <View style={styles.liveBox}>
-                      <Text style={styles.liveTitle}><Ionicons name="navigate" size={13} color={colors.forest700} /> Live location</Text>
-                      {location.data ? (
-                        <Text style={[styles.liveText, stale && { color: colors.amber800 }]}>
-                          Last update {timeAgo(location.data.receivedAt)}{stale ? '  ·  ⚠ stale, may be out of date' : ''}
-                        </Text>
-                      ) : (
-                        <Text style={styles.liveText}>No live location yet. Sharing works only while a staff device keeps the app open — this is a scheduled estimate, not GPS navigation.</Text>
-                      )}
-                    </View>
-                  )}
-                </>
-              )}
-            </Card>
-          )}
-
-          {b.status === 'checked_in' && <Banner tone="lime" text="Checked in and waiting — have your code ready for the conductor." />}
-          {b.status === 'boarded' && <Banner tone="blue" text="Boarded — safe travels!" />}
-
-          {/* Demo simulation controls — visibly separated from the real journey */}
-          {mode === 'demo' && t && t.status !== 'completed' && t.status !== 'cancelled' && !cancelled && (
-            <View style={styles.simBox}>
-              <View style={styles.simHead}>
-                <Ionicons name="construct-outline" size={14} color={colors.inkSoft} />
-                <Text style={styles.simTitle}>Demo simulation controls</Text>
+                )}
               </View>
-              <Text style={styles.simNote}>These buttons fake operator actions so you can see the journey advance. They are not part of the passenger flow.</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <GhostButton title="Start (en route)" onPress={() => act(() => adapter.updateTripStatus(t.id, 'en_route'), 'Trip started.')} />
-                <GhostButton title="Add delay" onPress={() => act(() => adapter.reportDelay(t.id, 15), 'Delay +15 min.')} />
-                <GhostButton title="Complete" onPress={() => act(() => adapter.updateTripStatus(t.id, 'completed'), 'Trip completed.')} />
+            )}
+
+            {/* Live tracking (connected) */}
+            {mode === 'connected' && t && (t.status === 'en_route' || t.status === 'boarding') && (
+              <View style={styles.info}>
+                <Text style={styles.infoTitle}><Ionicons name="navigate" size={13} color={colors.forest700} /> Live location</Text>
+                {location.data ? (
+                  <Text style={[styles.infoText, stale && { color: colors.amber800 }]}>
+                    Last update {timeAgo(location.data.receivedAt)}{stale ? '  ·  stale, may be out of date' : ''}
+                  </Text>
+                ) : (
+                  <Text style={styles.infoText}>No live location yet. Sharing works only while a staff device keeps the app open — this is a scheduled estimate, not GPS navigation.</Text>
+                )}
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Cancellation — accessible but not competing with the primary action */}
-          {(b.status === 'reserved' || b.status === 'checked_in') && (
-            <Pressable onPress={confirmCancel} accessibilityRole="button" accessibilityLabel="Cancel reservation" style={styles.cancelLink}>
-              <Text style={styles.cancelText}>Cancel reservation</Text>
-            </Pressable>
-          )}
+            {/* Demo simulation controls — separated from the real journey */}
+            {mode === 'demo' && t && t.status !== 'completed' && t.status !== 'cancelled' && !cancelled && (
+              <View style={styles.sim}>
+                <Text style={styles.simTitle}>Demo controls</Text>
+                <Text style={styles.simNote}>Fake operator actions so you can watch the journey advance. Not part of the passenger flow.</Text>
+                <View style={styles.simBtns}>
+                  <SimBtn label="Start" onPress={() => act(() => adapter.updateTripStatus(t.id, 'en_route'), 'Trip started.')} />
+                  <SimBtn label="Add delay" onPress={() => act(() => adapter.reportDelay(t.id, 15), 'Delay +15 min.')} />
+                  <SimBtn label="Complete" onPress={() => act(() => adapter.updateTripStatus(t.id, 'completed'), 'Trip completed.')} />
+                </View>
+              </View>
+            )}
 
-          <Pressable onPress={() => router.push('/notifications')} accessibilityRole="button" style={{ alignSelf: 'center', marginTop: 4 }}>
-            <Text style={styles.link}>View notifications →</Text>
-          </Pressable>
-        </>
-      )}
-    </Screen>
+            {(b.status === 'reserved' || b.status === 'checked_in') && (
+              <Pressable onPress={confirmCancel} accessibilityRole="button" accessibilityLabel="Cancel reservation" style={styles.cancel}>
+                <Text style={styles.cancelText}>Cancel reservation</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+function SimBtn({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.simBtn, pressed && { opacity: 0.85 }]}>
+      <Text style={styles.simBtnText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -243,8 +243,8 @@ function Banner({ tone, text }: { tone: 'red' | 'amber' | 'sand' | 'lime' | 'blu
   const map = {
     red: { bg: colors.red100, fg: colors.red700 },
     amber: { bg: colors.amber100, fg: colors.amber800 },
-    sand: { bg: colors.sand50, fg: colors.forest700 },
-    lime: { bg: colors.lime100, fg: colors.forest700 },
+    sand: { bg: colors.surfaceAlt, fg: colors.inkSoft },
+    lime: { bg: colors.lime100, fg: colors.forest800 },
     blue: { bg: colors.blue100, fg: colors.blue800 },
   }[tone];
   return (
@@ -255,50 +255,57 @@ function Banner({ tone, text }: { tone: 'red' | 'amber' | 'sand' | 'lime' | 'blu
 }
 
 const styles = StyleSheet.create({
-  back: { flexDirection: 'row', alignItems: 'center' },
-  backText: { color: colors.forest600, fontWeight: '700', fontSize: font.small },
+  root: { flex: 1, backgroundColor: colors.bg },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.md, paddingVertical: space.sm },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  topTitle: { fontSize: font.title, fontWeight: '800', color: colors.ink },
+  scroll: { paddingHorizontal: SCREEN, paddingTop: space.xs, paddingBottom: space.xxl * 2 },
 
-  pass: { backgroundColor: colors.forest700, borderRadius: radius.xl, overflow: 'hidden', padding: space.lg, gap: 6 },
-  passHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  passKicker: { color: colors.lime200, fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
-  passDest: { color: colors.white, fontWeight: '900', fontSize: font.h1, marginTop: 2 },
-  passTimeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 2 },
-  passTime: { color: colors.lime300, fontWeight: '900', fontSize: 34, fontVariant: ['tabular-nums'], letterSpacing: -1 },
-  passTimeLabel: { color: colors.forest100, fontSize: font.tiny, textTransform: 'uppercase', letterSpacing: 0.5 },
-  passHub: { color: colors.white, fontWeight: '700', fontSize: font.body, textAlign: 'right', maxWidth: 160 },
-  passOp: { color: colors.forest100, fontSize: font.small, textAlign: 'right' },
-  passBody: { flexDirection: 'row', gap: 14, alignItems: 'center', backgroundColor: colors.white, padding: space.md, borderRadius: radius.lg, marginTop: 10 },
-  qrWrap: { backgroundColor: colors.white, padding: 6, borderRadius: radius.md },
-  kLabel: { fontSize: font.tiny, color: colors.muted, textTransform: 'uppercase', marginTop: 6, letterSpacing: 0.4 },
-  kVal: { fontSize: font.body, color: colors.ink, fontWeight: '700' },
-  kGrid: {},
-  ref: { fontSize: font.h2, fontWeight: '900', color: colors.forest900, fontVariant: ['tabular-nums'] },
-  passAmt: { fontSize: font.title, fontWeight: '900', color: colors.forest900 },
+  ticket: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, padding: space.lg, gap: space.sm },
+  ticketHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.sm },
+  ticketKicker: { color: colors.muted, fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  ticketDest: { color: colors.ink, fontWeight: '900', fontSize: font.h1 },
+  ticketWhen: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  pickupTime: { color: colors.ink, fontWeight: '900', fontSize: font.time, fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
+  pickupCaption: { color: colors.muted, fontSize: font.small, marginTop: 1 },
+  arriveTime: { color: colors.inkSoft, fontWeight: '800', fontSize: font.h2, fontVariant: ['tabular-nums'] },
+  qrBlock: { alignSelf: 'center', backgroundColor: colors.white, padding: space.sm, borderRadius: radius.md, marginTop: space.xs },
+  code: { textAlign: 'center', fontSize: font.h2, fontWeight: '900', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: 1 },
+  showCode: { textAlign: 'center', color: colors.muted, fontSize: font.small, marginBottom: space.xs },
+  ticketFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap', paddingTop: space.xs },
+  footItem: { color: colors.inkSoft, fontSize: font.small, fontWeight: '600' },
+  footDot: { color: colors.muted },
 
-  stagesHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md },
-  stageRow: { flexDirection: 'row', gap: 12 },
-  stageRail: { alignItems: 'center', width: 24 },
-  stageDot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.separator, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
-  stageDotDone: { backgroundColor: colors.forest600, borderColor: colors.forest600 },
-  stageDotCurrent: { borderColor: colors.lime500, backgroundColor: colors.lime100 },
-  stageDotBlocked: { borderColor: colors.border, backgroundColor: colors.surfaceAlt },
-  stageDotPulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.lime500 },
-  stageLine: { flex: 1, width: 2, backgroundColor: colors.separator, marginTop: 2 },
-  stageLineDone: { backgroundColor: colors.forest600 },
-  stageLabel: { fontWeight: '800', color: colors.inkSoft, fontSize: font.body },
-  stageDesc: { color: colors.muted, fontSize: font.small, marginTop: 2 },
+  stepNow: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, padding: space.lg },
+  stepNowLabel: { color: colors.forest600, fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
+  stepNowTitle: { color: colors.ink, fontWeight: '800', fontSize: font.h2, marginTop: 2 },
+  stepNowHint: { color: colors.inkSoft, fontSize: font.small, marginTop: 4 },
 
-  estimate: { color: colors.inkSoft, fontSize: font.small, marginTop: space.md },
-  liveBox: { backgroundColor: colors.forest50, borderRadius: radius.md, padding: space.md, marginTop: space.sm },
-  liveTitle: { fontWeight: '800', color: colors.forest700, fontSize: font.small },
-  liveText: { color: colors.muted, fontSize: font.small, marginTop: 4 },
+  stepsToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: space.sm, minHeight: control.small },
+  stepsToggleText: { color: colors.forest700, fontWeight: '700', fontSize: font.small },
+  timeline: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, padding: space.lg },
+  stageRow: { flexDirection: 'row', gap: space.md },
+  rail: { alignItems: 'center', width: 22 },
+  dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  dotDone: { backgroundColor: colors.forest600, borderColor: colors.forest600 },
+  dotCurrent: { borderColor: colors.lime500, backgroundColor: colors.lime100 },
+  line: { flex: 1, width: 2, backgroundColor: colors.separator, marginTop: 2 },
+  lineDone: { backgroundColor: colors.forest600 },
+  stageLabel: { fontWeight: '700', fontSize: font.body },
+  stageHint: { color: colors.muted, fontSize: font.small, marginTop: 2 },
+  estimate: { color: colors.inkSoft, fontSize: font.small, marginTop: space.sm },
 
-  simBox: { backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, padding: space.md, borderWidth: 1, borderColor: colors.separator, borderStyle: 'dashed' },
-  simHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  info: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md },
+  infoTitle: { fontWeight: '800', color: colors.forest700, fontSize: font.small },
+  infoText: { color: colors.inkSoft, fontSize: font.small, marginTop: 4 },
+
+  sim: { backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
   simTitle: { fontWeight: '800', color: colors.inkSoft, fontSize: font.small, textTransform: 'uppercase', letterSpacing: 0.5 },
   simNote: { color: colors.muted, fontSize: font.tiny, marginTop: 4, lineHeight: 15 },
+  simBtns: { flexDirection: 'row', gap: space.sm, marginTop: space.sm, flexWrap: 'wrap' },
+  simBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: 14, height: control.small, justifyContent: 'center', backgroundColor: colors.surface },
+  simBtnText: { color: colors.inkSoft, fontWeight: '700', fontSize: font.small },
 
-  cancelLink: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
+  cancel: { alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16, minHeight: control.small, justifyContent: 'center' },
   cancelText: { color: colors.red700, fontWeight: '700', fontSize: font.small, textDecorationLine: 'underline' },
-  link: { color: colors.forest600, fontWeight: '700', fontSize: font.small },
 });

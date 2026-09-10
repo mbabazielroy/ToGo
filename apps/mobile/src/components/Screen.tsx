@@ -1,41 +1,58 @@
 import type { ReactNode } from 'react';
-import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, space, font } from '../theme';
+import { colors, space, font, SCREEN } from '../theme';
 import { useAppMode } from '../data/AdapterProvider';
-import { DemoBadge } from './ui';
+
+export const DEMO_EXPLANATION =
+  'Demo mode uses illustrative operators, hubs, fares and tracking. Nothing here books a real seat or arranges a real pickup. Reservations are stored only on this device.';
+
+/** Compact, tappable mode indicator (Demo / Connected). Tapping Demo explains it. */
+export function ModeTag() {
+  const mode = useAppMode();
+  const demo = mode === 'demo';
+  return (
+    <Pressable
+      onPress={() => demo && Alert.alert('Demo mode', DEMO_EXPLANATION)}
+      accessibilityRole={demo ? 'button' : undefined}
+      accessibilityLabel={demo ? 'Demo mode. Tap to learn what this means.' : 'Connected pilot'}
+      hitSlop={8}
+      style={[styles.modeTag, demo ? styles.modeTagDemo : styles.modeTagLive]}
+    >
+      <Text style={[styles.modeTagText, demo ? styles.modeTagTextDemo : styles.modeTagTextLive]}>
+        {demo ? 'Demo' : 'Connected'}
+      </Text>
+    </Pressable>
+  );
+}
 
 function BrandHeader({ subtitle }: { subtitle?: string }) {
-  const mode = useAppMode();
   return (
     <View style={styles.header}>
       <View style={styles.brandRow}>
         <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
-        <Text style={styles.brand}>To<Text style={{ color: colors.lime300 }}>Go</Text></Text>
-        <View style={styles.modeTag}>
-          <Text style={styles.modeTagText}>{mode === 'connected' ? 'Connected pilot' : 'Demo'}</Text>
-        </View>
+        <Text style={styles.brand}>ToGo</Text>
+        <View style={{ flex: 1 }} />
+        <ModeTag />
       </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   );
 }
 
-/** Standard screen: safe-area, deep-green brand header, demo badge, scrollable body. */
+/** Standard screen: safe-area, compact brand header, neutral off-white body. */
 export function Screen({
   children, scroll = true, subtitle, showHeader = true,
 }: { children: ReactNode; scroll?: boolean; subtitle?: string; showHeader?: boolean }) {
   const insets = useSafeAreaInsets();
-  const mode = useAppMode();
   const Body = scroll ? ScrollView : View;
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {showHeader && <BrandHeader subtitle={subtitle} />}
-      {mode === 'demo' && <DemoBadge />}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Body
           style={{ flex: 1 }}
-          contentContainerStyle={scroll ? { padding: space.lg, paddingBottom: insets.bottom + space.xxl, gap: space.md } : undefined}
+          contentContainerStyle={scroll ? { paddingHorizontal: SCREEN, paddingTop: space.md, paddingBottom: insets.bottom + space.xxl, gap: space.md } : undefined}
           keyboardShouldPersistTaps="handled"
         >
           {children}
@@ -46,13 +63,17 @@ export function Screen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand100 },
-  header: { backgroundColor: colors.forest700, paddingHorizontal: space.lg, paddingVertical: space.md },
+  root: { flex: 1, backgroundColor: colors.bg },
+  header: { paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.sm },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logo: { width: 30, height: 30, borderRadius: 9, backgroundColor: colors.lime400, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: colors.forest900, fontWeight: '900', fontSize: 16 },
-  brand: { color: colors.white, fontWeight: '900', fontSize: font.h2 },
-  modeTag: { marginLeft: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  modeTagText: { color: colors.lime200, fontSize: font.tiny, fontWeight: '700' },
-  subtitle: { color: colors.lime200, fontSize: font.tiny, marginTop: 4 },
+  logo: { width: 24, height: 24, borderRadius: 7, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: colors.white, fontWeight: '900', fontSize: 14 },
+  brand: { color: colors.ink, fontWeight: '900', fontSize: font.title, letterSpacing: -0.2 },
+  subtitle: { color: colors.muted, fontSize: font.small, marginTop: 2 },
+  modeTag: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  modeTagDemo: { backgroundColor: colors.surfaceAlt },
+  modeTagLive: { backgroundColor: colors.forest100 },
+  modeTagText: { fontSize: font.tiny, fontWeight: '800' },
+  modeTagTextDemo: { color: colors.inkSoft },
+  modeTagTextLive: { color: colors.forest700 },
 });

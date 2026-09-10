@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../src/components/Screen';
-import { Muted, Loading, ErrorRow, EmptyState } from '../src/components/ui';
+import { Muted, Loading, ErrorRow, EmptyState, Separator } from '../src/components/ui';
 import { useAdapter, useDataEpoch } from '../src/data/AdapterProvider';
 import { useAsync, humanError } from '../src/hooks/useAsync';
 import { useToast } from '../src/components/ToastProvider';
@@ -42,18 +42,23 @@ export default function Notifications() {
       {!notifs.loading && items.length === 0 && (
         <EmptyState title="No notifications yet">Booking confirmations, schedule changes, delays and cancellations appear here.</EmptyState>
       )}
-      <View style={{ gap: 8 }}>
-        {items.map((n) => (
-          <Pressable key={n.id} onPress={() => !n.readAt && markRead(n.id)} style={[styles.item, n.readAt && { opacity: 0.7 }]}>
-            <View style={[styles.dot, { backgroundColor: n.readAt ? colors.forest200 : colors.lime400 }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemTitle}>{n.title}</Text>
-              <Text style={styles.itemBody}>{n.body}</Text>
-              <Text style={styles.itemTime}>{timeAgo(n.createdAt)}{n.readAt ? ' · read' : ''}</Text>
+      {items.length > 0 && (
+        <View style={styles.list}>
+          {items.map((n, i) => (
+            <View key={n.id}>
+              {i > 0 && <Separator inset={30} />}
+              <Pressable onPress={() => !n.readAt && markRead(n.id)} accessibilityRole="button" style={({ pressed }) => [styles.item, n.readAt && { opacity: 0.7 }, pressed && { backgroundColor: colors.forest50 }]}>
+                <View style={[styles.dot, { backgroundColor: n.readAt ? colors.border : colors.lime500 }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemTitle}>{n.title}</Text>
+                  <Text style={styles.itemBody}>{n.body}</Text>
+                  <Text style={styles.itemTime}>{timeAgo(n.createdAt)}{n.readAt ? ' · read' : ''}</Text>
+                </View>
+              </Pressable>
             </View>
-          </Pressable>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
     </Screen>
   );
 }
@@ -61,11 +66,12 @@ export default function Notifications() {
 const styles = StyleSheet.create({
   back: { flexDirection: 'row', alignItems: 'center' },
   backText: { color: colors.forest600, fontWeight: '700', fontSize: font.small },
-  title: { fontSize: font.h1, fontWeight: '800', color: colors.forest900 },
-  markAll: { color: colors.forest600, fontWeight: '700', fontSize: font.small },
-  item: { flexDirection: 'row', gap: 10, backgroundColor: colors.white, borderRadius: radius.lg, padding: space.md },
+  title: { fontSize: font.h1, fontWeight: '800', color: colors.ink },
+  markAll: { color: colors.forest700, fontWeight: '700', fontSize: font.small },
+  list: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, paddingHorizontal: space.md },
+  item: { flexDirection: 'row', gap: 10, paddingVertical: space.md },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
-  itemTitle: { fontWeight: '800', color: colors.forest900, fontSize: font.body },
-  itemBody: { color: colors.muted, fontSize: font.small },
-  itemTime: { color: colors.forest500, fontSize: font.tiny, marginTop: 2 },
+  itemTitle: { fontWeight: '800', color: colors.ink, fontSize: font.body },
+  itemBody: { color: colors.inkSoft, fontSize: font.small, marginTop: 1 },
+  itemTime: { color: colors.muted, fontSize: font.tiny, marginTop: 2 },
 });

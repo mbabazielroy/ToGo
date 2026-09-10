@@ -28,8 +28,8 @@ apps/mobile/
     lib/secureSessionStore.ts  # chunked Keychain/Keystore session store
     lib/demoStorage.ts         # AsyncStorage-backed demo persistence
     lib/feedback.ts            # gentle haptics + reduce-motion hook
-    components/                # native UI kit: BottomSheet, SchematicMap,
-                               #   DepartureRow, SegmentedControl, ui.tsx, …
+    components/                # native UI kit: DepartureRow, SelectSheet,
+                               #   Screen (+ ModeTag), ui.tsx, …
     hooks/  state/             # useAsync, search context
   metro.config.js              # shares ../../src via @shared/*
   app.json                     # scheme "togo", plugins, bundle ids
@@ -45,52 +45,64 @@ None of these touch the DOM, `localStorage`, `import.meta`, or web CSS. The
 app runs the **exact same booking rules** with **AsyncStorage** instead of
 `localStorage`.
 
-## Passenger UI (transit-app–inspired redesign)
+## Passenger UI — composition & visual system
 
-The passenger experience follows the visual language of everyday transit apps — a
-map surface with a draggable bottom sheet, a bold time hierarchy, and compact rows —
-using **ToGo's own identity** (deep-forest branding, warm-white surfaces, lime for
-selection/primary actions, charcoal text, restrained amber/red for service issues).
-No third-party logos, illustrations, or branded assets are copied.
+The passenger app is **list-first**: choosing a pickup hub and seeing departures is
+the whole first screen. There is no large map on Home — hubs have no published
+coordinates in this pilot, so an empty illustration would waste half the screen.
+Direction, full date selection, and the hub list live in **focused selection
+sheets**, not all at once on Home.
 
-Key pieces (all in `src/components/`, driven by `src/theme.ts` tokens):
+**Visual system** (`src/theme.ts`, logical RN units — not screenshot pixels):
+neutral off-white background (`bg`), white surfaces, near-black text (`ink`),
+forest-green actions, and lime used only for the selected state. Spacing scale
+4/8/12/16/24/32 with a 20 screen gutter; body 16, secondary 13–14, titles 26,
+prominent times 30–34; controls ~50 high; corners 12–16 (sheet 24). Structure is
+carried by hairline separators, not stacked cards or heavy shadows.
 
-- **`BottomSheet`** — draggable sheet on RN `Animated` + `PanResponder` (no extra
-  native modules, so it runs in Expo Go). Snaps between collapsed / intermediate /
-  expanded; the handle also exposes **accessible expand/collapse buttons** as a
-  drag alternative, and it honours the OS **reduce-motion** setting. On Android the
-  hardware **Back** button collapses an expanded sheet before leaving the tab.
-- **`SchematicMap`** — an **honest schematic**, deliberately *not* geographic. Hubs
-  have no published coordinates in this pilot, so pins are laid out illustratively
-  along a stylised corridor and the surface is labelled *“Schematic · illustrative,
-  not to scale.”* It draws **no invented streets and no “live” bus.** Tapping a pin
-  selects a hub; selection stays in sync with the hub chips in the sheet.
-- **`DepartureRow`** — a large absolute **pickup time** (tabular figures) beside
-  destination/direction, `hub · operator`, fare, seats, and a scheduled/delayed/
-  cancelled label. The **origin departure** is shown separately from the **hub
-  pickup** time; an old scheduled time is never relabelled as “arriving now.”
-- **`SegmentedControl`, `Chip`, `Separator`, `IconButton`** — shared primitives
-  used across the redesigned screens (lists prefer hairline separators over nested
-  cards).
+Key pieces (`src/components/`):
 
-Screen highlights: **Home** = map + sheet with direction / date / passengers and
-hub selection over compact departure rows; **Booking** keeps a short sequence with a
-**sticky bottom action** (total fare above the button, above the safe area /
-keyboard); the **boarding pass** leads with a large destination + pickup time, hub
-name, and a **high-contrast QR on a plain light background**, with one primary
-action and cancellation kept accessible but not competing; the **active journey**
-renders as presentation stages (Reserved → Check in → Board → On the road → Arrived)
-backed by real booking/trip state, preserving the missed-pickup / not-boarded /
-cancellation messages, and it keeps the **demo simulation controls visibly
-separated** from the real flow. Haptics (`expo-haptics`, no-op on web), screen-reader
-labels, and scalable text are applied throughout.
+- **`DepartureRow`** — two lines: **pickup time** (left) · **fare** (right), then
+  operator (or `To <city> · operator`), then `hub · schedule/status · seats`. Names
+  wrap; fares never truncate; sold-out (`Full`) and delayed are called out. The
+  corridor is established by the screen, so it isn't repeated on every row.
+- **`SelectSheet`** — a focused `Modal` bottom sheet (backdrop tap / close / Android
+  Back all dismiss) used for the Journey (direction + date) and Pickup-hub pickers.
+- **`Screen` + `ModeTag`** — compact brand header; the **Demo** indicator is a small
+  tappable chip that explains itself (no full-width banner). A concise *“Demo
+  reservation — no real seat booked.”* appears at confirmation instead.
+- Shared primitives: `Card`, `Separator`, `Chip`, `IconButton`, buttons, states.
+
+Screen highlights: **Home** = compact top bar (wordmark · Demo · notifications), one
+search panel (journey + pickup with **Change**), a compact filter row (date +
+passengers), then departures with ≥2 rows visible at 390×844. **Booking** = one
+journey summary (pickup hub + city, **destination city**, operator, date, times) +
+a simple passenger form + a fare list, with a **sticky Confirm above the safe area**
+(total above the button) and scroll padding so the footer never covers content.
+**Boarding pass** = destination, pickup time, hub, status, a large QR on a plain
+light surface, a readable code with *“Show this code to the conductor.”*, a compact
+passenger/fare summary, the **current step + next instruction** prominent with one
+`Check in` action, and the full timeline behind **Show journey steps**. **Hub
+details** = a compact `Pickup hub` title, the name shown once, address/hours, a small
+`Demo location` chip, `Where to wait`, a facilities grid, redesigned departure rows,
+and a fixed `Use this pickup hub`.
+
+### Destination / arrival correctness (`@shared/data/journey`)
+A trip's `stops` are **pickup hubs in the origin city only**; the journey's
+destination is the corridor endpoint **city** arriving at `trip.destinationArrival`.
+`tripJourney(trip, pickupHubId)` is the single source of truth for the endpoints and
+is used by search, booking review, the persisted booking, and the boarding pass, so
+they agree. This fixes the earlier bug where the last pickup hub (e.g. *Natete
+Junction Stop, Kampala*) was shown as the arrival of a Kampala → Mbarara trip.
+`dropoffStopFor(trip)` supplies only the reservation's dropoff argument (ignored in
+demo, validated in connected) and is never used to label the arrival. Guarded by
+`src/data/journey.test.ts`.
 
 ### Real geographic map (later, dev build only)
-`react-native-maps` needs a development build and a provider API key and is **not
-available in Expo Go**, so the schematic surface is the default. To wire a real map
-later: publish hub coordinates on `HubView`, add `react-native-maps` in a dev/EAS
-build with an API key, and swap `SchematicMap` for a map component behind the same
-`{ hubs, selectedHubId, onSelectHub }` props — no other screen changes are required.
+A genuine map needs `react-native-maps`, a dev/EAS build, and a provider API key —
+**not available in Expo Go** — plus published hub coordinates (none exist in this
+pilot). Until then the app stays list-first and never invents operational hub
+coordinates or draws streets.
 
 ## Startup commands
 
@@ -252,9 +264,10 @@ from this network-restricted environment — update Expo Go before testing.)
 - Authoritative versions read from the **lockfile** (table above) and cross-checked
   against `expo/bundledNativeModules.json` — no contradiction.
 - `tsc --noEmit` (mobile) — passes.
-- `vitest` (mobile) — 4 tests pass: shared reserve/capacity/cancel rules, outcome
-  classification (missed_pickup / not_boarded), and single-use boarding — all
-  through the injected native persistence sink.
+- `vitest` (shared) — 28 tests pass: reserve/capacity/cancel rules, outcome
+  classification (missed_pickup / not_boarded), single-use boarding, and the new
+  **journey-endpoint regression suite** (`src/data/journey.test.ts`) that locks the
+  destination to the corridor city and the arrival to `destinationArrival`.
 - `expo-doctor` — **19/21 checks pass**, re-run this phase. The 2 failures are
   **network-blocked and remain UNVERIFIED**: the Expo config-schema host and the
   React Native Directory API are not on the egress allow-list (they return the
@@ -262,12 +275,16 @@ from this network-restricted environment — update Expo Go before testing.)
 - `expo export --platform ios --platform android` — succeeds; both Hermes bundles
   build, confirming the shared `@shared/*` imports resolve and the app bundles for
   iOS and Android.
-- **Redesign visual check via a web preview only.** `expo export --platform web`
-  (react-native-web) was served locally and rendered in headless Chromium at phone
-  width to review Home, booking, boarding pass, and hub details. These are a
-  **web preview of the React Native screens — not native iOS/Android renders**, and
-  are **not** a substitute for on-device testing. The custom `PanResponder` sheet
-  gestures and `expo-haptics` do not exercise on web.
+- **Visual check via a web preview only.** `expo export --platform web`
+  (react-native-web) was served locally and rendered in headless Chromium to review
+  Home, the Journey sheet, booking, boarding pass, and hub details at **390×844**, a
+  **narrow 340×760**, and an **enlarged-UI proxy (1.3× page zoom)**. Checked: no
+  clipped destination/fare/action, no overlapping controls, no empty map area, no
+  developer language in passenger flows, no repeated page titles, and the correct
+  destination across search → review → boarding pass. These are a **web preview of
+  the React Native screens — not native iOS/Android renders.** True OS text scaling,
+  `Modal`/gesture behaviour, and `expo-haptics` are **not exercised on web and remain
+  unverified**; the 1.3× zoom is a layout proxy, not RN font scaling.
 - Tunnel reachability **re-confirmed impossible here**: `exp.host` / `api.expo.dev` /
   ngrok endpoints all return `403 CONNECT` through the egress proxy; no tunnelling
   binary is installed; no inbound public URL exists.
