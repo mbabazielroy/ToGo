@@ -1,0 +1,24 @@
+{
+  "//": "Documented EAS starting point. Running `eas build` requires a (free) Expo account, and iOS builds require Apple Developer signing. Neither is provisioned by this repo — no installable build exists yet. See docs/MOBILE.md.",
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

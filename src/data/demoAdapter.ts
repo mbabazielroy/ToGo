@@ -5,7 +5,6 @@
 
 import type { AppState } from '../types';
 import { buildSeedState } from '../data/seed';
-import { loadState, saveState } from '../lib/storage';
 import { kampalaToday, shiftMinutes } from '../lib/time';
 import * as logic from '../state/logic';
 import { operatorById } from '../lib/lookup';
@@ -39,9 +38,15 @@ function parseStop(id: string): { tripId: string; hubId: string } {
 export class DemoAdapter implements DataAdapter {
   readonly mode = 'demo' as const;
   private state: AppState;
+  /** Persistence sink. Defaults to web localStorage; platforms (e.g. React Native)
+   *  can inject their own (AsyncStorage) so the SAME rules run with native storage. */
+  private persistFn: (s: AppState) => void;
 
-  constructor(initial?: AppState) {
-    this.state = initial ?? loadState();
+  // Platform-neutral: no web storage import here. The caller supplies the initial
+  // state and a persistence sink (web localStorage or React Native AsyncStorage).
+  constructor(initial?: AppState, persistFn?: (s: AppState) => void) {
+    this.state = initial ?? buildSeedState(kampalaToday());
+    this.persistFn = persistFn ?? (() => {});
   }
 
   /** For tests: operate on an explicit seed. */
@@ -50,9 +55,10 @@ export class DemoAdapter implements DataAdapter {
   }
 
   private persist() {
-    // Only persist when using the shared browser state (not in unit tests).
+    // Persist through the injected sink (web localStorage by default; a no-op in
+    // unit tests). Wrapped so a storage failure never breaks the demo in-memory.
     try {
-      saveState(this.state);
+      this.persistFn(this.state);
     } catch {
       /* ignore */
     }

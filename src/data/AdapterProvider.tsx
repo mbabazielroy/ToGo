@@ -4,13 +4,15 @@ import { SupabaseAdapter } from './supabaseAdapter';
 import { DemoAdapter } from './demoAdapter';
 import { supabase } from '../lib/supabase';
 import { APP_MODE } from '../lib/env';
+import { loadState, saveState } from '../lib/storage';
 
 const AdapterContext = createContext<DataAdapter | null>(null);
 
 export function AdapterProvider({ children }: { children: ReactNode }) {
   const adapter = useMemo<DataAdapter>(() => {
     if (APP_MODE === 'connected' && supabase) return new SupabaseAdapter(supabase);
-    return new DemoAdapter();
+    // Web demo: back the shared adapter with browser localStorage.
+    return new DemoAdapter(loadState(), saveState);
   }, []);
   return <AdapterContext.Provider value={adapter}>{children}</AdapterContext.Provider>;
 }

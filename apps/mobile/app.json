@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "ToGo",
+    "slug": "togo-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "togo",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "primaryColor": "#1f4d31",
+    "splash": {
+      "backgroundColor": "#1f4d31",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.togo.mobile"
+    },
+    "android": {
+      "package": "app.togo.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#1f4d31"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "demoOnlyNote": "Illustrative pilot. No real transport service, partnerships, or payments."
+    }
+  }
+}

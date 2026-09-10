@@ -35,6 +35,16 @@ ToGo runs in one of two modes, chosen automatically by whether Supabase is confi
 This phase turns the prototype into a backend-connected **pilot**. It does not
 authorize a real transport launch, and it does not add real payments.
 
+## Mobile app (Expo)
+
+A native iOS/Android **passenger** app lives in **[`apps/mobile`](apps/mobile)**
+(Expo SDK 57 + Expo Router + TypeScript). It reuses this repo's platform-neutral
+types and business rules via a `@shared/*` alias — it is not a WebView wrapper —
+and supports the same demo and connected (Supabase) modes. The staff/admin
+workspaces remain on the web app. Full setup, Expo Go testing from an iPhone, and
+auth-callback limitations are in **[docs/MOBILE.md](docs/MOBILE.md)**. The web
+commands below are unchanged.
+
 ---
 
 ## Installation and local startup
