@@ -120,25 +120,102 @@ To open the app from an iPhone you need a dev server the phone can reach:
 - **Tunnel:** `npm run start:tunnel` publishes via Expo's tunnel (ngrok). Requires
   outbound internet and an Expo login.
 
-In this repository's remote build environment the tunnel host (`exp.host`) is
-blocked by the network egress policy, and the container's `localhost` is not
-reachable from an external phone, so **no working QR/URL can be produced from
-here** — the dev server must be started somewhere the iPhone can reach (a laptop on
-the same Wi-Fi, or any host with open egress for the tunnel).
+In this repository's remote build environment the tunnel is **impossible** (this
+was re-verified, not assumed): the network egress proxy is an allow-list — only
+package registries and Anthropic hosts are reachable, while `exp.host`,
+`api.expo.dev`, `u.expo.dev`, and the ngrok endpoints all return
+`403 CONNECT tunnel failed`. No tunnelling binary (ngrok/cloudflared/ssh) is
+present, and there is no inbound/forwarded public URL. The container's `localhost`
+is not an iPhone-reachable address. So **no working QR/URL can be produced from
+this build environment** — the dev server must run somewhere with open outbound
+internet that the iPhone can reach.
+
+## Fastest verified-path option for an iPhone with no laptop: GitHub Codespaces
+
+Because Codespaces has open outbound internet, `expo start --tunnel` there can
+publish a public `exp://…exp.direct` URL an iPhone opens over cellular or any
+Wi-Fi. A `.devcontainer/devcontainer.json` is included that installs the mobile
+dependencies automatically; `@expo/ngrok` is already a dev dependency so the tunnel
+starts without an interactive install.
+
+> Honesty: this Codespaces route is **not yet verified end-to-end** from a device —
+> it cannot be exercised from the build environment. The steps below are the
+> concrete path; the founder must run them from their own GitHub account.
+
+**Phone-only steps (all from the iPhone browser + Expo Go):**
+1. Install **Expo Go** (App Store) and update it — the store build tracks the latest
+   Expo SDK (57), which matches this project.
+2. In the iPhone browser, sign in to **github.com**, open the `mbabazielroy/ToGo`
+   repo → **Code ▾ → Codespaces → Create codespace** on the working branch. Wait for
+   it to build (it runs `npm install` in `apps/mobile` automatically).
+3. In the Codespace's web terminal (the browser page has one), run:
+   ```
+   cd apps/mobile && npm run start:tunnel
+   ```
+4. When Metro prints the QR and the `exp://…exp.direct` URL, either scan the QR with
+   the iPhone Camera, or copy the `exp://…` URL and paste it into Expo Go's "Enter
+   URL manually". The ToGo app loads in demo mode (no Supabase needed).
+
+**Account requirements**
+- A **GitHub account** (Codespaces is enabled for personal accounts).
+- **No Expo account is required** for a tunnel; if a prompt appears, a free Expo
+  account also works. Demo mode needs no Supabase and no login.
+
+**Possible usage charges**
+- GitHub Codespaces has a monthly **free allowance** for personal accounts
+  (typically 120 core-hours + 15 GB-months; a 2-core machine ≈ 60 h/month). Beyond
+  the free allowance it is **billed to the GitHub account**. This config never
+  provisions paid resources on its own, but *running* a Codespace consumes the quota.
+
+**Server-lifetime limitations**
+- A Codespace **auto-suspends after ~30 minutes idle** and stops counting compute
+  while stopped; the tunnel dies when the Codespace stops or the terminal is closed.
+- Restarting the Codespace and re-running the tunnel command gives a **new** URL.
+- **Stop or delete the Codespace** from github.com when done to avoid consuming the
+  allowance.
+
+## Installed versions (authoritative — from `apps/mobile/package-lock.json`)
+
+| Package | Locked version |
+| --- | --- |
+| expo | 57.0.21 |
+| react-native | 0.86.3 |
+| react / react-dom | 19.2.3 |
+| expo-router | 57.0.20 |
+| react-native-safe-area-context | 5.7.0 |
+| react-native-screens | 4.26.2 |
+| react-native-svg | 15.15.4 |
+| react-native-qrcode-svg | 6.3.24 |
+| @react-native-async-storage/async-storage | 2.2.0 |
+| expo-secure-store | 57.0.3 |
+| @supabase/supabase-js | 2.116.0 |
+
+These are consistent with Expo SDK 57's bundled set (`expo/bundledNativeModules.json`
+pins react-native `0.86.3` and react `19.2.3`). **Expo Go from the App Store tracks
+the latest published SDK (57)**, so an up-to-date Expo Go matches this project. (This
+is Expo's stated Go policy; it was not confirmed against the live App Store listing
+from this network-restricted environment — update Expo Go before testing.)
 
 ## Verification performed (this environment)
+- Authoritative versions read from the **lockfile** (table above) and cross-checked
+  against `expo/bundledNativeModules.json` — no contradiction.
 - `tsc --noEmit` (mobile) — passes.
 - `vitest` (mobile) — 4 tests pass: shared reserve/capacity/cancel rules, outcome
   classification (missed_pickup / not_boarded), and single-use boarding — all
   through the injected native persistence sink.
-- `expo-doctor` — 19/21 checks pass; the 2 failures are network-blocked in this
-  environment (Expo config-schema host and the React Native Directory API), not
-  project issues.
+- `expo-doctor` — **19/21 checks pass**, re-run this phase. The 2 failures are
+  **network-blocked and remain UNVERIFIED**: the Expo config-schema host and the
+  React Native Directory API are not on the egress allow-list (they return the
+  proxy's "Host not in allow-list" response). They are not project defects.
 - `expo export --platform ios --platform android` — succeeds; both Hermes bundles
   build, confirming the shared `@shared/*` imports resolve and the app bundles for
   iOS and Android.
-- **No native simulator or physical device was used.** Authentication callbacks
-  were **not** tested on a device. No QR/tunnel could be produced here (see above).
+- Tunnel reachability **re-confirmed impossible here**: `exp.host` / `api.expo.dev` /
+  ngrok endpoints all return `403 CONNECT` through the egress proxy; no tunnelling
+  binary is installed; no inbound public URL exists.
+- **No native simulator or physical device was used.** Authentication callbacks and
+  Expo Go loading were **NOT** tested on a device. No QR/tunnel/working connection
+  was produced from this environment.
 
 ## Later path to Android and iOS builds (EAS)
 Running in Expo Go covers this phase. Installable store/standalone builds use EAS:

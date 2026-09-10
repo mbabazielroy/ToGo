@@ -1,0 +1,16 @@
+{
+  "name": "ToGo mobile (Expo tunnel)",
+  "// purpose": "GitHub Codespaces config for testing the Expo passenger app on a phone via `expo start --tunnel`. Codespaces has open outbound internet, so the Expo/ngrok tunnel (blocked in the build environment) can establish a public URL an iPhone reaches. This file provisions NOTHING paid by itself; running a Codespace may consume your GitHub Codespaces quota (see docs/MOBILE.md).",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "forwardPorts": [8081],
+  "portsAttributes": {
+    "8081": { "label": "Expo Metro", "onAutoForward": "silent" }
+  },
+  "postCreateCommand": "cd apps/mobile && npm install",
+  "waitFor": "postCreateCommand",
+  "customizations": {
+    "vscode": {
+      "extensions": ["expo.vscode-expo-tools", "dbaeumer.vscode-eslint"]
+    }
+  }
+}
