@@ -11,9 +11,12 @@
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:test": "bash supabase/tests/run.sh",
+    "db:concurrency": "bash supabase/tests/concurrency.sh"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "lucide-react": "^0.469.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

@@ -12,9 +12,28 @@ The first corridor is **Kampala ⇄ Mbarara**.
 
 > ⚠️ **Demo only.** Every operator, hub, fare, schedule, payment and tracking
 > update in this app is illustrative. Nothing here implies a real partnership,
-> approval, booking, or pickup guarantee. No money changes hands. There is no
-> backend — all state lives in your browser's `localStorage` and is **not shared
-> between devices or browsers**.
+> approval, booking, or pickup guarantee. No money changes hands.
+
+## Two modes
+
+ToGo runs in one of two modes, chosen automatically by whether Supabase is configured:
+
+- **Demo mode** (default, no configuration): a fully-usable local prototype. State
+  lives in the browser's `localStorage` and is **not shared between devices**. A
+  role switcher lets you preview every view. This is the original prototype,
+  unchanged.
+- **Connected pilot mode** (Supabase configured): real email/password
+  authentication and shared PostgreSQL data with Row Level Security and realtime.
+  A booking on one device appears in the right staff views on another. Workspaces
+  are shown by **verified permission** (no role switcher). On any auth/permission/
+  network error the app shows the error — it never silently falls back to demo.
+
+  See **[docs/BACKEND.md](docs/BACKEND.md)** for full setup and
+  **[docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md)** for what is
+  implemented, verified, and still blocked on infrastructure.
+
+This phase turns the prototype into a backend-connected **pilot**. It does not
+authorize a real transport launch, and it does not add real payments.
 
 ---
 
@@ -32,12 +51,18 @@ Other useful commands:
 ```bash
 npm run build      # type-check and build the production bundle into dist/
 npm run preview    # serve the production build locally
-npm run test       # run the Vitest state-transition test suite
+npm run test       # run the Vitest suite (demo rules + adapter parity)
 npm run lint       # run ESLint
 npm run typecheck  # run the TypeScript compiler with no emit
+npm run db:test        # apply migrations to a local Postgres and run the RLS/txn suite
+npm run db:concurrency # prove the capacity guard under two racing reservations
 ```
 
-**To run the prototype:** `npm install && npm run dev`
+**To run the prototype (demo mode):** `npm install && npm run dev`
+
+**To run the connected pilot:** copy `.env.example` to `.env.local`, fill in your
+Supabase URL + anon key, apply `supabase/migrations`, then `npm run dev`. Full
+steps in [docs/BACKEND.md](docs/BACKEND.md).
 
 ---
 
