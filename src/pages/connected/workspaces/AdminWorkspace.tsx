@@ -1,52 +1,60 @@
 import { useState } from 'react';
-import { Shield, CheckCircle2, Ban, RefreshCw, UserPlus } from 'lucide-react';
-import { requireSupabase } from '../../../lib/supabase';
+import { Shield, CheckCircle2, Ban, RefreshCw, UserPlus, Building2, MapPin } from 'lucide-react';
 import { useToast } from '../../../components/ToastProvider';
 import { useAsync, humanError } from '../hooks';
 import { Loading, ErrorRow, StaffNote } from '../parts';
+import { management } from '../../../data/management';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export function AdminWorkspace() {
-  const sb = requireSupabase();
   const toast = useToast();
+  const operators = useAsync(() => management.listOperators(), []);
+  const hubs = useAsync(() => management.listHubs(), []);
 
-  const hubs = useAsync(async () => {
-    const { data, error } = await sb.from('hubs').select('*').order('city');
-    if (error) throw error;
-    return data as any[];
-  }, []);
-  const operators = useAsync(async () => {
-    const { data, error } = await sb.from('operators').select('*').order('name');
-    if (error) throw error;
-    return data as any[];
-  }, []);
+  const [opName, setOpName] = useState('');
+  const [opSlug, setOpSlug] = useState('');
+  const [hub, setHub] = useState({ name: '', city: 'Kampala', area: '' });
 
-  async function setApproval(hubId: string, status: string) {
-    try {
-      const { error } = await sb.from('hubs').update({
-        approval_status: status,
-        approved_at: status === 'approved' ? new Date().toISOString() : null,
-      }).eq('id', hubId);
-      if (error) throw error;
-      toast(`Hub ${status}.`, 'ok');
-      hubs.reload();
-    } catch (e) { toast(humanError(e), 'error'); }
+  async function run(fn: () => Promise<unknown>, ok: string, after?: () => void) {
+    try { await fn(); toast(ok, 'ok'); after?.(); }
+    catch (e) { toast(humanError(e), 'error'); }
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-extrabold text-forest-900"><Shield size={22} /> Platform admin</h1>
-        <StaffNote>
-          Administrators manage platform configuration and staff assignments. Public users can never
-          promote themselves — these controls are enforced by database policies, not just the UI.
-        </StaffNote>
+        <StaffNote>Admins manage platform configuration and staff assignments. Approval is an internal record of a real-world decision — it is not a claim of official authorization. Operators can never approve their own hubs or grant themselves platform rights (enforced by database policies).</StaffNote>
       </div>
 
-      {/* Hub approvals */}
+      {/* Operators */}
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-forest-600">Hub approvals</h2>
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-forest-600"><Building2 size={15} /> Operators</h2>
+          <button onClick={operators.reload} className="text-forest-400"><RefreshCw size={15} /></button>
+        </div>
+        {operators.loading && <Loading />}
+        {operators.error && <ErrorRow message={operators.error} onRetry={operators.reload} />}
+        <div className="space-y-2">
+          {(operators.data ?? []).map((o) => (
+            <div key={o.id} className="card flex items-center justify-between p-3.5">
+              <div><div className="font-semibold text-forest-900">{o.name}</div><div className="text-xs text-forest-500">{o.slug} · {o.is_active ? 'active' : 'inactive'}</div></div>
+              <button onClick={() => run(() => management.updateOperator(o.id, { is_active: !o.is_active }), 'Operator updated.', operators.reload)}
+                className="btn-ghost px-3 py-1.5 text-xs">{o.is_active ? 'Deactivate' : 'Activate'}</button>
+            </div>
+          ))}
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); run(() => management.createOperator(opName, opSlug), 'Operator created.', () => { setOpName(''); setOpSlug(''); operators.reload(); }); }}
+          className="card mt-2 grid grid-cols-[1fr_1fr_auto] gap-2 p-3">
+          <input className="input" placeholder="Name" value={opName} onChange={(e) => setOpName(e.target.value)} />
+          <input className="input" placeholder="slug" value={opSlug} onChange={(e) => setOpSlug(e.target.value)} />
+          <button className="btn-primary px-3 py-2 text-sm">Add</button>
+        </form>
+      </section>
+
+      {/* Hubs + approval */}
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-forest-600"><MapPin size={15} /> Hubs &amp; approval</h2>
           <button onClick={hubs.reload} className="text-forest-400"><RefreshCw size={15} /></button>
         </div>
         {hubs.loading && <Loading />}
@@ -56,21 +64,24 @@ export function AdminWorkspace() {
             <div key={h.id} className="card flex items-center justify-between p-3.5">
               <div>
                 <div className="font-semibold text-forest-900">{h.name} <span className="text-xs text-forest-400">· {h.city}</span></div>
-                <div className="text-xs text-forest-500">
-                  {h.approval_status}{h.is_demo ? ' · demo' : ''} · {h.is_active ? 'active' : 'inactive'}
-                </div>
+                <div className="text-xs text-forest-500">{h.approval_status}{h.is_demo ? ' · demo' : ''} · {h.is_active ? 'active' : 'inactive'}</div>
               </div>
               <div className="flex gap-1.5">
-                {h.approval_status !== 'approved' && (
-                  <button onClick={() => setApproval(h.id, 'approved')} className="btn-accent px-3 py-1.5 text-xs"><CheckCircle2 size={14} /> Approve</button>
-                )}
-                {h.approval_status === 'approved' && (
-                  <button onClick={() => setApproval(h.id, 'suspended')} className="flex items-center gap-1 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600"><Ban size={14} /> Suspend</button>
-                )}
+                {h.approval_status !== 'approved'
+                  ? <button onClick={() => run(() => management.setHubApproval(h.id, 'approved', 'Approved via admin console'), 'Hub approved.', hubs.reload)} className="btn-accent px-3 py-1.5 text-xs"><CheckCircle2 size={14} /> Approve</button>
+                  : <button onClick={() => run(() => management.setHubApproval(h.id, 'suspended'), 'Hub suspended.', hubs.reload)} className="flex items-center gap-1 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600"><Ban size={14} /> Suspend</button>}
+                <button onClick={() => run(() => management.updateHub(h.id, { is_active: !h.is_active }), 'Hub updated.', hubs.reload)} className="btn-ghost px-3 py-1.5 text-xs">{h.is_active ? 'Deactivate' : 'Activate'}</button>
               </div>
             </div>
           ))}
         </div>
+        <form onSubmit={(e) => { e.preventDefault(); run(() => management.createHub(hub), 'Hub created (draft).', () => { setHub({ name: '', city: 'Kampala', area: '' }); hubs.reload(); }); }}
+          className="card mt-2 grid grid-cols-[1fr_1fr_1fr_auto] gap-2 p-3">
+          <input className="input" placeholder="Name" value={hub.name} onChange={(e) => setHub({ ...hub, name: e.target.value })} />
+          <input className="input" placeholder="City" value={hub.city} onChange={(e) => setHub({ ...hub, city: e.target.value })} />
+          <input className="input" placeholder="Area" value={hub.area} onChange={(e) => setHub({ ...hub, area: e.target.value })} />
+          <button className="btn-primary px-3 py-2 text-sm">Add</button>
+        </form>
       </section>
 
       {/* Staff assignment */}
@@ -79,13 +90,11 @@ export function AdminWorkspace() {
   );
 }
 
-function StaffAssignment({ operators, hubs }: { operators: any[]; hubs: any[] }) {
-  const sb = requireSupabase();
+function StaffAssignment({ operators, hubs }: { operators: { id: string; name: string }[]; hubs: { id: string; name: string; city: string }[] }) {
   const toast = useToast();
-  const [kind, setKind] = useState<'operator' | 'hub' | 'trip'>('operator');
+  const [kind, setKind] = useState<'operator' | 'hub' | 'admin'>('operator');
   const [userId, setUserId] = useState('');
   const [targetId, setTargetId] = useState('');
-  const [tripId, setTripId] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function assign(e: React.FormEvent) {
@@ -93,18 +102,10 @@ function StaffAssignment({ operators, hubs }: { operators: any[]; hubs: any[] })
     if (!userId.trim()) { toast('Enter a user id (UUID).', 'error'); return; }
     setBusy(true);
     try {
-      if (kind === 'operator') {
-        const { error } = await sb.from('operator_members').insert({ operator_id: targetId, user_id: userId.trim(), role: 'staff' });
-        if (error) throw error;
-      } else if (kind === 'hub') {
-        const { error } = await sb.from('hub_staff').insert({ hub_id: targetId, user_id: userId.trim() });
-        if (error) throw error;
-      } else {
-        const { error } = await sb.from('trip_staff').insert({ trip_id: tripId.trim(), user_id: userId.trim(), role: 'conductor' });
-        if (error) throw error;
-      }
-      toast('Assignment created.', 'ok');
-      setUserId('');
+      if (kind === 'operator') await management.assignOperatorMember(targetId, userId.trim());
+      else if (kind === 'hub') await management.assignHubStaff(targetId, userId.trim());
+      else await management.setPlatformAdmin(userId.trim(), true);
+      toast('Assignment saved.', 'ok'); setUserId('');
     } catch (e) { toast(humanError(e), 'error'); }
     finally { setBusy(false); }
   }
@@ -113,15 +114,11 @@ function StaffAssignment({ operators, hubs }: { operators: any[]; hubs: any[] })
     <section>
       <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-forest-600"><UserPlus size={15} /> Assign staff</h2>
       <form onSubmit={assign} className="card space-y-3 p-4">
-        <p className="text-xs text-forest-500">
-          Assign a user (by their auth user id) to a workspace. Find user ids in the Supabase Auth dashboard.
-          Passengers see no staff views until assigned here.
-        </p>
+        <p className="text-xs text-forest-500">Assign a user (by auth user id, from the Supabase Auth dashboard) to a role. The first platform admin is created by the trusted SQL bootstrap; this promotes further admins.</p>
         <div className="grid grid-cols-3 gap-1 rounded-xl bg-sand-100 p-1 text-sm font-semibold">
-          {(['operator', 'hub', 'trip'] as const).map((k) => (
-            <button key={k} type="button" onClick={() => setKind(k)}
-              className={`rounded-lg py-2 ${kind === k ? 'bg-white text-forest-800 shadow-card' : 'text-forest-500'}`}>
-              {k === 'operator' ? 'Operator staff' : k === 'hub' ? 'Hub attendant' : 'Conductor'}
+          {(['operator', 'hub', 'admin'] as const).map((k) => (
+            <button key={k} type="button" onClick={() => setKind(k)} className={`rounded-lg py-2 ${kind === k ? 'bg-white text-forest-800 shadow-card' : 'text-forest-500'}`}>
+              {k === 'operator' ? 'Operator staff' : k === 'hub' ? 'Hub attendant' : 'Platform admin'}
             </button>
           ))}
         </div>
@@ -129,23 +126,13 @@ function StaffAssignment({ operators, hubs }: { operators: any[]; hubs: any[] })
           <input className="input font-mono" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="00000000-0000-…" /></label>
         {kind === 'operator' && (
           <label className="block"><span className="field-label">Operator</span>
-            <select className="input" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-              <option value="">Select…</option>
-              {operators.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select></label>
+            <select className="input" value={targetId} onChange={(e) => setTargetId(e.target.value)}><option value="">Select…</option>{operators.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
         )}
         {kind === 'hub' && (
           <label className="block"><span className="field-label">Hub</span>
-            <select className="input" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-              <option value="">Select…</option>
-              {hubs.map((h) => <option key={h.id} value={h.id}>{h.name} — {h.city}</option>)}
-            </select></label>
+            <select className="input" value={targetId} onChange={(e) => setTargetId(e.target.value)}><option value="">Select…</option>{hubs.map((h) => <option key={h.id} value={h.id}>{h.name} — {h.city}</option>)}</select></label>
         )}
-        {kind === 'trip' && (
-          <label className="block"><span className="field-label">Trip id (UUID)</span>
-            <input className="input font-mono" value={tripId} onChange={(e) => setTripId(e.target.value)} placeholder="trip uuid" /></label>
-        )}
-        <button type="submit" disabled={busy} className="btn-primary w-full">Create assignment</button>
+        <button type="submit" disabled={busy} className="btn-primary w-full">Save assignment</button>
       </form>
     </section>
   );

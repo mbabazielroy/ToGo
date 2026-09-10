@@ -1,117 +1,133 @@
-# ToGo — implementation status (backend-connected pilot phase)
+# ToGo — implementation status matrix
 
-_Snapshot for the phase that turns the prototype into a backend-connected pilot._
-This does **not** authorize a real transport launch. All operators, hubs, fares,
-schedules, tracking, and "approvals" are illustrative.
+Backend-connected pilot. **Not** a real transport launch — all operators, hubs,
+fares, schedules, tracking and "approvals" are illustrative.
 
-## 1. What was implemented
+## Legend / verification tiers
 
-**Architecture**
-- Clean data-access layer (`src/data/adapter.ts`) with two implementations:
-  - `DemoAdapter` — the existing local state + rules (`src/data/demoAdapter.ts`).
-  - `SupabaseAdapter` — the shared backend (`src/data/supabaseAdapter.ts`).
-- Mode detection (`src/lib/env.ts`): demo when unconfigured, connected when the
-  public Supabase URL + anon key are present. **No silent fallback** to demo on
-  auth/permission/network errors. Service-role keys are refused in the client.
-- The original demo app is untouched and remains the default experience.
+- ✅ **DB-verified** — exercised against a real PostgreSQL 16 via `npm run db:test`
+  (64 RLS/transaction checks) and `npm run db:concurrency`. This is the actual
+  database policy/transaction behaviour, not a mock.
+- 🟦 **FE-verified** — TypeScript typecheck + ESLint + production build + headless
+  browser render/route smoke. Confirms the code compiles and screens render; does
+  **not** exercise the live Supabase stack.
+- 🟨 **Not runtime-verified** — implemented, but the live path through Supabase
+  **Auth (GoTrue) / PostgREST / Realtime** was not executed (no Supabase project
+  available in this environment). A gated, self-skipping integration suite exists
+  (`npm run test:integration`).
+- ⛔ **Blocked** — needs infrastructure not available here.
 
-**Database & migrations** (`supabase/migrations/0001–0010`)
-- Tables: profiles, operators, operator_members, hubs, hub_staff, vehicles,
-  routes, route_stops, trips, trip_stops, trip_staff, bookings, booking_events,
-  location_updates, notifications, incidents — with FKs, indexes, checks, and
-  timestamps. Money is integer UGX; instants are `timestamptz`.
-- Bookings **snapshot** fare and pickup/dropoff stops + times, so later schedule or
-  price edits never change what a passenger booked.
-- Passenger-visible vs internal hub data separated; only approved, active,
-  non-demo hubs are bookable (via `hubs_public` / `trips_public` /
-  `trip_stops_public` column-safe views).
+> Important distinction: **DB-verified ≠ through-Supabase-verified.** The RLS and
+> RPC logic is proven at the database level with a local auth shim that emulates
+> `auth.uid()`/roles. The GoTrue login, PostgREST RPC marshalling, and Realtime
+> delivery on top of it are **not** executed here.
 
-**Auth & permissions**
-- Email/password signup, login, logout, email-confirmation handling, and password
-  reset with loading/error states (`src/auth`, `src/pages/connected/AuthScreen.tsx`).
-- Public signup creates a **passenger only**; users cannot promote themselves or
-  edit their own privileged assignments (trigger + RLS).
-- Roles: passenger, operator staff, hub attendant, conductor, platform admin (a
-  user may hold several staff assignments). Enforced by **RLS policies + secured
-  functions**, not hidden UI. The role switcher exists **only in demo mode**;
-  connected mode shows workspaces from verified permissions.
+---
 
-**Transactional booking & boarding** (`0009_functions.sql`)
-- Secured `SECURITY DEFINER` functions (fixed `search_path`, restricted grants,
-  explicit caller/assignment checks) for reserve, cancel, check-in, board, trip
-  status, cancel trip, unresolved pickups, schedule edits, location, notifications,
-  and minimal-PII manifests.
-- Atomic reserve validates auth, trip status + cutoff, active ordered stops,
-  quantity, capacity (row-locked), and current fare. Whole-trip capacity;
-  intermediate-stop resale deferred. Idempotency keys; conflicting reuse fails.
-  Opaque boarding credentials; duplicate/invalid-state boarding rejected.
-- Append-only audit (`booking_events`) — no client update/delete.
+## §2 Privileged profile changes (security)
 
-**Connected flows** (`src/pages/connected/**`)
-- Passenger workspace: search bookable trips, reserve (idempotent, double-submit
-  guarded), My Trips with realtime, boarding pass (opaque-credential QR), check-in,
-  cancel, notifications, and location **freshness** (never an invented position).
-- Staff workspaces: hub attendant (expected/check-in), conductor (manifest, board
-  by credential, lifecycle, unresolved-pickup guard, foreground location sharing),
-  operator (their departures, edit with capacity floor, cancel), admin (hub
-  approvals, staff assignment).
-- Loading / empty / permission-denied / retry states; honest pending/failed
-  status; nothing shown as confirmed before the server accepts it.
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Anonymous cannot change privileged fields | ✅ DB-verified | `sec: anon did not gain admin`; RLS blocks `anon` UPDATE + hardened trigger |
+| Authenticated users cannot self-promote | ✅ DB-verified | `sec: authenticated non-admin cannot self-promote (trigger)`, `…via RPC` |
+| User metadata cannot confer privileges | ✅ DB-verified | `handle_new_user` hard-codes `is_platform_admin=false`; signup path |
+| Missing-claims caller cannot escalate | ✅ DB-verified | `sec: missing-claims cannot self-promote via RPC` |
+| Bootstrap requires a trusted DB/server context | ✅ DB-verified | `sec: bootstrap via trusted role succeeds` (service_role, no JWT); hardened `profiles_guard` uses JWT identity **and** `current_user` role, not "no JWT ⇒ trusted" |
+| Public functions cannot bypass this | ✅ DB-verified | No client-executable definer touches `is_platform_admin`; `admin_set_platform_admin` checks caller is admin |
+| Views/grants/manifest don't leak PII/credentials | ✅ DB-verified | `exposure: public views expose no credentials/contacts/internal notes`, `exposure: manifest exposes no credential/phone` |
 
-**Location, notifications, incidents**
-- Foreground staff location sharing with explicit start/stop, permission-on-demand,
-  status (active/denied/unavailable/interrupted), throttling, coordinate
-  validation, observed+received times, and assignment-checked writes. Passengers
-  see last-update time and a stale flag. Simulated tracking stays demo-only.
-- Persistent in-app notifications generated from trusted mutations (booking
-  confirmed, schedule change, delay, trip cancelled) with dedupe keys.
-- Incident records (breakdown / missed pickup / left-unboarded / hub unavailable)
-  with private staff notes and a passenger-facing service message.
+The earlier "auth.uid() is null ⇒ trusted" logic was the reported gap; it is
+replaced (migration `0011`) with a rule documented in the migration: an
+authenticated JWT identity must be an admin (this also covers a definer invoked by
+a user, since the JWT persists into definers), and a *missing* identity is trusted
+only when `current_user` is not one of the PostgREST end-user roles
+(`anon`/`authenticated`).
 
-**Config & delivery**
-- `.env.example`, `supabase/config.toml`, `supabase/seed.sql` (clearly test data),
-  `docs/BACKEND.md` (setup, redirects, admin bootstrap), this status doc, and
-  `npm run db:test` / `db:concurrency`.
+## §3 Connected operational management
 
-## 2. What was verified
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Operator create/edit | ✅ DB-verified · 🟦 FE | `admin_create_operator/update_operator`; Admin console |
+| Hub create/edit/activate/approve (internal record) | ✅ DB-verified · 🟦 FE | `admin_*_hub`, `admin_set_hub_approval` sets `approved_by/at`; Admin console |
+| Vehicle create/edit/capacity | ✅ DB-verified · 🟦 FE | `operator_*_vehicle`; Operator → Fleet |
+| Routes + ordered stops (approved hubs only) | ✅ DB-verified · 🟦 FE | `operator_create_route`, `operator_set_route_stops` (`mgmt: route rejects unapproved hub`); Operator → Routes |
+| Departure creation & scheduling | ✅ DB-verified · 🟦 FE | `operator_create_departure` (`mgmt: operator created a departure with stops`, pickup-times mismatch guard); Operator → Departures |
+| Conductor & attendant assignments | ✅ DB-verified · 🟦 FE | `operator_assign_conductor`, `admin_assign_hub_staff`; Operator → Team / Admin |
+| Trip delays & cancellations | ✅ DB-verified · 🟦 FE | `report_delay`, `cancel_trip`; Operator → Departures |
+| Incident report/resolve + private notes | ✅ DB-verified · 🟦 FE | `report_incident`/`resolve_incident` (`incident: …`), staff_notes never passenger-visible; Operator → Incidents |
+| Operator can't approve own hubs / self-promote | ✅ DB-verified | `mgmt: operator cannot approve a hub`, `…cannot assign hub staff`, `…cannot create an operator`, `escalation: …` |
+| Booked trips protected from destructive edits | ✅ DB-verified | capacity floor (`mgmt/capacity: cannot drop below active`), `deactivate_trip_stop` blocks stops with bookings, schedule edit notifies |
 
-Run in this environment against a **real PostgreSQL 16**:
+## §4 Connected passenger experience
 
-- **RLS + transaction suite — 37/37 passing** (`npm run db:test`). Covers: reserve
-  + fare snapshot, overbooking limits, cancellation restoring capacity once,
-  idempotent replay + conflicting-key failure, cross-passenger booking isolation,
-  internal-hub hiding, attendant scope, boarding validation (unknown / wrong-trip /
-  cancelled / double-board), cross-operator access denial, self-promotion &
-  self-assignment blocks, unauthorized location writes + throttling + coordinate
-  validation, invalid trip transitions, and capacity-floor edits.
-- **Concurrency — passing** (`npm run db:concurrency`): two overlapping
-  transactions race for the last seat; exactly one wins, the other gets `SOLD_OUT`.
-- **Frontend adapter parity — 6/6** and **demo logic — 17/17** (`npm test`, 23 total).
-- **Build, typecheck, lint** all pass.
-- **Demo mode** still renders and books end-to-end in a headless browser with zero
-  page errors; **connected mode** renders its auth screen with zero page errors.
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Direction/date/passenger/hub search | 🟦 FE-verified · 🟨 | `PassengerHome` |
+| Origin departure vs hub pickup times | 🟦 FE-verified | search cards show both |
+| Booking review & fare breakdown | 🟦 FE-verified | `BookPage` |
+| Boarding pass + functional QR credential | 🟦 FE-verified | `TripDetailPage`, opaque `TOGO:<credential>` QR |
+| Check-in & waiting instructions | 🟨 Not runtime-verified | `check_in_booking` RPC wired; UI present |
+| Upcoming / completed / cancelled / no-show trips | 🟦 FE-verified | `PassengerHome` list + status pills incl. "Not boarded" |
+| In-app notifications + read/unread | 🟨 Not runtime-verified | `NotificationsPage`, `mark_notification_read` |
+| Account + password recovery | 🟦 FE-verified (render) · 🟨 (live email) | `AccountPage`, `ResetPasswordPage` |
+| Proper routes (refresh/back/deep-link) | 🟦 FE-verified | react-router routes; deep-link + reset-route smoke passed |
+| Mobile layout, large targets, error/retry states | 🟦 FE-verified | shared `useAsync`, `ErrorRow`, bottom nav |
 
-## 3. What remains blocked (needs infrastructure)
+## §5 Authentication edge cases
 
-- **No Supabase project/credentials** were available, so the **Supabase JS
-  adapter's live round-trip** (GoTrue auth + PostgREST + Realtime) is
-  **not runtime-verified**. The RLS/transaction logic it calls **is** verified at
-  the database level; the client mapping is typechecked and builds.
-- Cross-device passenger→staff realtime and the two-authenticated-context browser
-  flow require a running backend (GoTrue/PostgREST/Realtime), which the local raw
-  Postgres does not provide.
-- Email delivery (confirmations/reset) requires Supabase Auth SMTP/Inbucket.
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Email confirmation callback | 🟨 Not runtime-verified | `detectSessionInUrl` + `onAuthStateChange` |
+| Password recovery callback + new-password form | 🟦 FE (render) · 🟨 (live) | `PASSWORD_RECOVERY` → `recoveryMode` → `ResetPasswordPage` |
+| Expired/invalid links | 🟦 FE-verified | reset page shows "invalid or expired" when no session |
+| Session restoration after refresh | 🟨 Not runtime-verified | `getSession` on load |
+| Expired-session handling mid-action | 🟨 Not runtime-verified | adapter surfaces errors; `onAuthStateChange` clears state |
+| Logout clears private data + subscriptions | 🟦 FE-verified | `signOut` resets state; route unmount cleans channel subscriptions |
+| Safe redirect handling | 🟦 FE-verified | redirects pinned to `window.location.origin` |
+| Email delivery tested | ⛔ Blocked | requires Supabase Auth SMTP/Inbucket — **not tested** |
 
-## 4. Smallest next configuration step
+## §6 Notifications & pickup exceptions
 
-Create a Supabase project and set two values in `.env.local`:
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Trusted actions create deduped notifications | ✅ DB-verified | `_notify` with `dedupe_key`; `reserve/delay/cancel/no_show` paths |
+| Accessible notification inbox | 🟦 FE-verified | `NotificationsPage` |
+| Warn before leaving checked-in passengers | 🟦 FE-verified | Conductor depart modal |
+| Require a reason for override | ✅ DB-verified | `record_unresolved_pickup` records reason + incident |
+| Record incident + responsible staff | ✅ DB-verified | incident `reporter_id`, booking_events actor |
+| Unresolved visible to ops staff | ✅ DB-verified · 🟦 FE | incidents RLS to operator/admin; Operator → Incidents |
+| Resolution with audit trail | ✅ DB-verified | `resolve_incident`, `resolved_at`; append-only `booking_events` |
+| Unboarded-at-completion handled explicitly | ✅ DB-verified | `no_show` state (not "completed"); `noshow: …` tests |
+| Private notes vs passenger message separated | ✅ DB-verified | `staff_notes` never in passenger-visible policy/notification |
 
-```
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<publishable-anon-key>
-```
+## §7 Supabase compatibility
 
-Then apply migrations (`supabase db push` or paste `0001–0010` in the SQL editor)
-and, optionally, `supabase/seed.sql`. Sign up one user and promote them to admin
-per `docs/BACKEND.md §5`. That single step flips the app into connected mode and
-enables end-to-end verification against the already-proven schema.
+| Item | Status | Notes |
+| --- | --- | --- |
+| Auth schema / user provisioning | 🟨 Not runtime-verified | `handle_new_user` trigger on `auth.users`; shim emulates for DB tests |
+| API-exposed schemas & grants | 🟨 Not runtime-verified | `public` schema; explicit grants to `anon`/`authenticated`; verified logically, not via PostgREST |
+| RPC arg names & response shapes | 🟦 FE-verified (types) · 🟨 | adapter/`management.ts` map to `p_*` args; not called over PostgREST here |
+| Public views & column access | ✅ DB-verified | views + grants tested |
+| Realtime publication & subscriptions | 🟨 Not runtime-verified | publication guarded in `0010`; client subscribes with scoped channels |
+| Supported public-key config | 🟦 FE-verified | anon/publishable key only; service-role key refused in client |
+| Auth redirect handling | 🟦 FE-verified (config) · 🟨 (live) | `config.toml` + `redirectTo`/`emailRedirectTo` |
+| Local Supabase stack run | ⛔ Blocked | Supabase CLI not installed; Docker daemon not running |
+| Integration tests (2 sessions) | 🟨 Present, unexecuted | `src/integration/supabase.itest.ts`, gated on `TOGO_TEST_*`, self-skips |
+
+## Blocked / not verified (summary)
+
+- The **live Supabase path** (GoTrue login, PostgREST RPC, Realtime delivery) is
+  not executed — no Supabase project/credentials here.
+- **Email delivery** is not tested.
+- A **local full Supabase stack** could not be started (no Docker daemon / CLI).
+
+## Smallest next step toward a working shared pilot
+
+1. Create a throwaway Supabase project; put its URL + anon key in `.env.local`.
+2. `supabase db push` (migrations `0001`–`0013`), then optionally `supabase/seed.sql`.
+3. Set Auth redirect URLs to your origin; sign up one user; promote to admin via
+   the trusted SQL bootstrap (`docs/BACKEND.md §5`).
+4. In the app's Admin console, create/approve a hub, add an operator + membership,
+   a vehicle, a route with stops, and a departure; assign a conductor.
+5. Run `npm run test:integration` with the `TOGO_TEST_*` vars pointed at that
+   project to verify the two-session Auth+PostgREST+RLS path end-to-end.

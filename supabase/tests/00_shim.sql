@@ -12,14 +12,16 @@ create table if not exists auth.users (
 );
 
 -- auth.uid()/auth.role() read the JWT claims GUC, exactly like Supabase.
+-- Robust against an unset OR empty-string claims GUC (production Supabase supplies
+-- NULL when unauthenticated; our test harness may set '').
 create or replace function auth.uid() returns uuid
 language sql stable as $$
-  select nullif(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', '')::uuid;
+  select nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid;
 $$;
 
 create or replace function auth.role() returns text
 language sql stable as $$
-  select coalesce(current_setting('request.jwt.claims', true)::jsonb ->> 'role', 'anon');
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', 'anon');
 $$;
 
 -- Roles Supabase ships with.

@@ -27,11 +27,15 @@ interface AuthContextValue {
   profile: Profile | null;
   assignments: Assignments;
   error: string | null;
+  /** True after a password-recovery link is opened; the app should show the new-password form. */
+  recoveryMode: boolean;
+  clearRecoveryMode: () => void;
   refresh: () => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -42,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [assignments, setAssignments] = useState<Assignments>(EMPTY_ASSIGNMENTS);
   const [error, setError] = useState<string | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   const loadWorkspaces = useCallback(async (uid: string) => {
     if (!supabase) return;
@@ -85,7 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     let active = true;
     refresh().finally(() => active && setLoading(false));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      // A password-recovery link produces a temporary session + this event; the app
+      // must send the user to the new-password form instead of the normal app.
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
       setSession(s ?? null);
       if (s?.user) {
         loadWorkspaces(s.user.id).catch((e) => setError((e as Error).message));
@@ -130,18 +138,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     if (!supabase) throw new Error('Not connected');
+    // redirectTo must be an allow-listed, same-origin URL (safe redirect).
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo: `${window.location.origin}/auth/reset`,
     });
     if (error) throw error;
   }, []);
 
+  const updatePassword = useCallback(async (newPassword: string) => {
+    if (!supabase) throw new Error('Not connected');
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+    setRecoveryMode(false);
+  }, []);
+
+  const clearRecoveryMode = useCallback(() => setRecoveryMode(false), []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       loading, session, user: session?.user ?? null, profile, assignments, error,
-      refresh, signUp, signIn, signOut, resetPassword,
+      recoveryMode, clearRecoveryMode,
+      refresh, signUp, signIn, signOut, resetPassword, updatePassword,
     }),
-    [loading, session, profile, assignments, error, refresh, signUp, signIn, signOut, resetPassword],
+    [loading, session, profile, assignments, error, recoveryMode, clearRecoveryMode,
+     refresh, signUp, signIn, signOut, resetPassword, updatePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

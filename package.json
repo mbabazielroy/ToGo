@@ -12,6 +12,7 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:test": "bash supabase/tests/run.sh",
     "db:concurrency": "bash supabase/tests/concurrency.sh"
   },

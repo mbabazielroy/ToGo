@@ -49,11 +49,33 @@ supabase db reset         # re-applies migrations + supabase/seed.sql locally
 ```
 
 ### Option B — SQL editor
-Paste each file in `supabase/migrations/` **in numeric order** (0001 → 0010) into
-the Supabase SQL editor and run them. Do **not** run `supabase/tests/00_shim.sql`
-against a real project — Supabase already provides the `auth` schema and roles.
+Paste each file in `supabase/migrations/` **in numeric order** (`0001` → `0013`)
+into the Supabase SQL editor and run them. Do **not** run
+`supabase/tests/00_shim.sql` against a real project — Supabase already provides the
+`auth` schema and roles. Note `0012_no_show_enum.sql` adds an enum value and must
+be committed before `0013` runs; apply files one at a time (the CLI does this).
 
-Then optionally run `supabase/seed.sql` for illustrative departures.
+Then optionally run `supabase/seed.sql` — **test/local environments only** — for
+illustrative departures. Never insert the fictional operators/hubs/approvals into
+a production project.
+
+### Complete bring-up sequence (nothing works from `.env` alone)
+
+Adding frontend env values only flips the app into connected mode against an
+**empty** schema. A usable shared pilot needs, in order:
+
+1. **Migrations** applied (`0001`–`0013`).
+2. **Auth redirects** configured (§4) and email confirmations decided (§4).
+3. **Trusted admin bootstrap** (§5): sign up one user, promote via SQL console.
+4. **Operational records**, created by the admin/operator in-app (no manual SQL):
+   - Admin console: create an **operator**; create + **approve** at least one
+     **hub** per city; assign the operator's staff (operator membership) and hub
+     attendants.
+   - Operator console: add a **vehicle**, create a **route** and set its ordered
+     **stops** (approved hubs only), create a **departure**, and assign a
+     **conductor**.
+5. Passengers can now sign up, search, and book; staff workspaces appear by
+   verified permission.
 
 ---
 
@@ -151,10 +173,46 @@ The policy/transaction tests run against a real Postgres (they prove RLS, not
 mocks). With a local Postgres available:
 
 ```bash
-npm run db:test         # applies shim + migrations, runs 37 RLS/transaction checks
+npm run db:test         # applies shim + migrations, runs 64 RLS/transaction checks
 npm run db:concurrency  # two overlapping reservations race for the last seat
 ```
 
 `supabase/tests/00_shim.sql` emulates the Supabase `auth` schema/roles so the same
 migrations can be exercised on a plain Postgres. Against a real Supabase project,
 use pgTAP or the SQL editor with `set role authenticated` + a JWT claims GUC.
+
+These prove the **database** policies/transactions. They do **not** cover the live
+GoTrue/PostgREST/Realtime path. For that, run the two-session integration suite
+against a **designated throwaway** project:
+
+```bash
+TOGO_TEST_SUPABASE_URL=… TOGO_TEST_SUPABASE_ANON_KEY=… \
+TOGO_TEST_PASSENGER_EMAIL=… TOGO_TEST_PASSENGER_PASSWORD=… \
+TOGO_TEST_CONDUCTOR_EMAIL=… TOGO_TEST_CONDUCTOR_PASSWORD=… \
+TOGO_TEST_TRIP_ID=… TOGO_TEST_PICKUP_STOP_ID=… TOGO_TEST_DROPOFF_STOP_ID=… \
+npm run test:integration
+```
+
+It self-skips (never runs against an arbitrary DB) unless all `TOGO_TEST_*` vars
+are set, isolates its fixtures with a per-run idempotency key, and cancels the
+booking it creates in teardown.
+
+---
+
+## 10. Privileged-identity model (why the profile guard is safe)
+
+`profiles_guard` (migration `0011`) decides whether a change to
+`is_platform_admin` is allowed using **two** signals, not just "is there a JWT":
+
+- If a JWT identity is present (`auth.uid()` non-null) it must be an existing
+  admin. JWT claims persist into `SECURITY DEFINER` functions, so this also blocks
+  a privileged definer invoked by an ordinary user.
+- If there is **no** JWT identity, the caller is trusted only when `current_user`
+  is **not** a PostgREST end-user role (`anon`/`authenticated`). Anonymous requests
+  therefore can never flip the bit; `service_role`/`postgres` (SQL console, server)
+  can — that is the documented bootstrap path.
+
+`current_user` (not `session_user`) is used because PostgREST issues each request
+under `SET ROLE anon|authenticated`; `session_user` would not reflect that. No
+client-executable function modifies the admin bit except `admin_set_platform_admin`,
+which independently checks the caller is already an admin.

@@ -3,7 +3,7 @@
 
 export type DirectionCode = 'KLA_MBR' | 'MBR_KLA';
 export type TripStatusCode = 'scheduled' | 'boarding' | 'en_route' | 'completed' | 'cancelled';
-export type BookingStatusCode = 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled';
+export type BookingStatusCode = 'reserved' | 'checked_in' | 'boarded' | 'completed' | 'cancelled' | 'no_show';
 
 export interface HubView {
   id: string;

@@ -9,7 +9,7 @@
 set client_min_messages = warning;
 
 create schema if not exists tests;
-grant usage on schema tests to authenticated, anon;
+grant usage on schema tests to authenticated, anon, service_role;
 
 -- --------------------------------------------------------------------------
 -- Seed fixture data as superuser (bypasses RLS).
@@ -88,6 +88,13 @@ exception when others then
 end $$;
 
 -- Let simulated authenticated/anon users record results and call helpers.
-grant all on tests.results to authenticated, anon;
+grant all on tests.results to authenticated, anon, service_role;
 grant execute on function tests.login(uuid), tests.check(text, boolean, text),
-  tests.expect_error(text, text) to authenticated, anon;
+  tests.expect_error(text, text) to authenticated, anon, service_role;
+
+-- Faithfully model Supabase: the service_role has full table access (and BYPASSRLS,
+-- set in the shim). Real Supabase grants these by default; the shim ran before the
+-- tables existed, so grant them now for the trusted-bootstrap test path.
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant execute on all routines in schema public to service_role;

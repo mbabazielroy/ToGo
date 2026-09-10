@@ -22,6 +22,9 @@ for f in "$ROOT"/supabase/migrations/*.sql; do
 done
 
 echo "==> Running RLS + transaction tests"
-# Fixtures/helpers and cases run in a single psql session so GUCs persist.
-cat "$ROOT/supabase/tests/rls_test.sql" "$ROOT/supabase/tests/rls_cases.sql" \
+# Fixtures/helpers and all case files run in a single psql session so GUCs persist.
+cat "$ROOT/supabase/tests/rls_test.sql" \
+    "$ROOT/supabase/tests/rls_cases.sql" \
+    "$ROOT/supabase/tests/rls_cases2.sql" \
+    "$ROOT/supabase/tests/rls_report.sql" \
   | $PSQL -q -v ON_ERROR_STOP=1 -d "$DB" -f -
