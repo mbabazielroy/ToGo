@@ -38,20 +38,28 @@ jobs:
   # bundle export (no device needed). Installs apps/mobile separately from the web.
   mobile:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+      # The mobile app compiles the shared ../../src modules (via @shared/*), and
+      # src/data/supabaseAdapter.ts imports @supabase/supabase-js. TypeScript resolves
+      # that from the repo-root node_modules, so the root deps must be installed too.
+      - name: Install root deps (shared src)
+        run: npm ci
+      - name: Install mobile deps
+        working-directory: apps/mobile
+        run: npm install
       - name: Typecheck
+        working-directory: apps/mobile
         run: npm run typecheck
       - name: Shared-rule + persistence tests
+        working-directory: apps/mobile
         run: npm test
       - name: Bundle export (iOS + Android)
+        working-directory: apps/mobile
         run: npx expo export --platform ios --platform android
 
   database:
