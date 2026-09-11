@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +44,13 @@ export default function Home() {
   const chooseHub = (id: string | null) => { haptics.select(); set({ hubId: id }); setSheet(null); };
   const setDirection = (d: DirectionCode) => { haptics.select(); set({ direction: d, hubId: null }); };
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = () => {
+    setRefreshing(true);
+    hubs.reload(); trips.reload(); bookings.reload(); notifs.reload();
+    setTimeout(() => setRefreshing(false), 700);
+  };
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Identity + notifications */}
@@ -69,6 +76,7 @@ export default function Home() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: insets.bottom + space.xxl }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.forest700} />}
       >
         <Text style={styles.title}>Find a departure</Text>
 
@@ -113,7 +121,7 @@ export default function Home() {
         {trips.loading && <Loading />}
         {trips.error && <ErrorRow message={trips.error} onRetry={trips.reload} />}
         {trips.data && trips.data.length === 0 && (
-          <EmptyState title="No departures">Try another day, switch route, or choose “Any hub”.</EmptyState>
+          <EmptyState title="No departures available for this date">Try another day or switch route.</EmptyState>
         )}
         {trips.data && trips.data.length > 0 && (
           <Group style={{ paddingHorizontal: SCREEN }}>
@@ -174,7 +182,7 @@ export default function Home() {
                 </View>
               ))}
             </Group>
-            {originHubs.length === 0 && <Text style={styles.sheetLabel}>No approved hubs in this city yet.</Text>}
+            {originHubs.length === 0 && <Text style={styles.sheetLabel}>Pickup locations are being added.</Text>}
             {selectedHub && (
               <Pressable onPress={() => { setSheet(null); router.push(`/hub/${selectedHub.id}`); }} accessibilityRole="button" style={styles.detailsLink}>
                 <Text style={styles.detailsLinkText}>View {selectedHub.name} details</Text>

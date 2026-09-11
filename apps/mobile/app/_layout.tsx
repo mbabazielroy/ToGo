@@ -10,9 +10,12 @@ import { useAuthDeepLinks } from '../src/auth/useAuthDeepLinks';
 import { APP_MODE } from '../src/env';
 import { colors } from '../src/theme';
 
-// Connected-mode route protection. In demo mode there is no auth, so this is inert.
+// Connected-mode auth routing. Public browsing is allowed (hubs/departures are
+// public); authentication is required only for protected actions (reserving, My
+// Trips, notifications, account), which each prompt to sign in in context. The only
+// global redirect here is password-recovery, which must land on the reset screen.
 function AuthGate() {
-  const { loading, session, recoveryMode } = useAuth();
+  const { loading, recoveryMode } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   useAuthDeepLinks();
@@ -20,16 +23,8 @@ function AuthGate() {
   useEffect(() => {
     if (APP_MODE !== 'connected' || loading) return;
     const top = segments[0] as string | undefined;
-    const onAuth = top === 'auth';
-    const onReset = top === 'reset';
-    if (recoveryMode && !onReset) {
-      router.replace('/reset');
-    } else if (!session && !onAuth && !onReset) {
-      router.replace('/auth');
-    } else if (session && !recoveryMode && (onAuth || onReset)) {
-      router.replace('/');
-    }
-  }, [loading, session, recoveryMode, segments, router]);
+    if (recoveryMode && top !== 'reset') router.replace('/reset');
+  }, [loading, recoveryMode, segments, router]);
 
   return null;
 }

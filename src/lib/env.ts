@@ -7,6 +7,7 @@
 
 const url = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
 const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+const demoFlag = (import.meta.env.VITE_TOGO_DEMO ?? '').trim().toLowerCase();
 
 export const SUPABASE_URL = url;
 export const SUPABASE_ANON_KEY = anonKey;
@@ -15,9 +16,15 @@ export const SUPABASE_ANON_KEY = anonKey;
 export const isSupabaseConfigured: boolean =
   url.startsWith('http') && anonKey.length > 20;
 
+/** Demo fixtures are enabled only by an explicit development/test flag. */
+export const DEMO_ENABLED: boolean = demoFlag === '1' || demoFlag === 'true';
+
 export type AppMode = 'demo' | 'connected';
 
-export const APP_MODE: AppMode = isSupabaseConfigured ? 'connected' : 'demo';
+// Normal entry = connected; the local demo prototype is opt-in only. When connected
+// mode is intended but unconfigured/unreachable, AppRoot shows a setup/connection
+// screen — it never silently opens demo mode.
+export const APP_MODE: AppMode = DEMO_ENABLED ? 'demo' : 'connected';
 
 // Defensive: catch an accidentally-exposed service role key at dev time.
 if (

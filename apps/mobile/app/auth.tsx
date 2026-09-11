@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import * as Linking from 'expo-linking';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../src/components/Screen';
 import { Card, Muted, PrimaryButton, ErrorRow } from '../src/components/ui';
 import { useAuth } from '../src/auth/AuthProvider';
@@ -11,9 +13,18 @@ import { colors, radius, space, font } from '../src/theme';
 type Tab = 'signin' | 'signup' | 'reset';
 
 export default function AuthScreen() {
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, resetPassword, session, recoveryMode } = useAuth();
   const toast = useToast();
+  const router = useRouter();
+  const { next } = useLocalSearchParams<{ next?: string }>();
+  const returnTo = (typeof next === 'string' && next.startsWith('/') ? next : '/') as Href;
   const [tab, setTab] = useState<Tab>('signin');
+
+  // Once signed in, continue to the preserved journey (or Home). This keeps the
+  // selected trip through sign-in without ever reserving before authentication.
+  useEffect(() => {
+    if (session && !recoveryMode) router.replace(returnTo);
+  }, [session, recoveryMode, returnTo, router]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -41,9 +52,13 @@ export default function AuthScreen() {
 
   return (
     <Screen showHeader={false}>
-      <View style={{ alignItems: 'center', marginTop: space.xl, marginBottom: space.lg }}>
+      <Pressable onPress={() => router.replace('/')} accessibilityRole="button" accessibilityLabel="Continue browsing" style={styles.back}>
+        <Ionicons name="chevron-back" size={22} color={colors.forest700} />
+        <Text style={styles.backText}>Browse</Text>
+      </Pressable>
+      <View style={{ alignItems: 'center', marginTop: space.sm, marginBottom: space.lg }}>
         <View style={styles.logo}><Text style={styles.logoText}>ToGo</Text></View>
-        <Muted>Your bus. Your stop. — Connected pilot sign in.</Muted>
+        <Muted>{next ? 'Sign in to reserve your seat.' : 'Your bus. Your stop. — Connected pilot sign in.'}</Muted>
       </View>
       <Card style={{ gap: 12 }}>
         <View style={styles.tabs}>
@@ -81,6 +96,8 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
+  back: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 6 },
+  backText: { color: colors.forest700, fontWeight: '600', fontSize: font.body },
   logo: { backgroundColor: colors.forest700, borderRadius: radius.lg, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 8 },
   logoText: { color: colors.white, fontWeight: '900', fontSize: 24 },
   tabs: { flexDirection: 'row', backgroundColor: colors.sand100, borderRadius: radius.md, padding: 4 },

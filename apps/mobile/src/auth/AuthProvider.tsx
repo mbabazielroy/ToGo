@@ -24,6 +24,7 @@ interface AuthCtx {
   signOut: () => Promise<void>;
   resetPassword: (email: string, redirectTo?: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  updateProfile: (patch: { full_name?: string; phone?: string | null }) => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -103,12 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRecoveryMode(false);
   }, []);
 
+  const updateProfile = useCallback(async (patch: { full_name?: string; phone?: string | null }) => {
+    if (!supabase || !session?.user) throw new Error('Not signed in');
+    const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id);
+    if (error) throw error;
+    await loadProfile(session.user.id);
+  }, [session, loadProfile]);
+
   const clearRecoveryMode = useCallback(() => setRecoveryMode(false), []);
 
   const value = useMemo<AuthCtx>(() => ({
     loading, session, user: session?.user ?? null, profile, error, recoveryMode,
-    clearRecoveryMode, setRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword,
-  }), [loading, session, profile, error, recoveryMode, clearRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword]);
+    clearRecoveryMode, setRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword, updateProfile,
+  }), [loading, session, profile, error, recoveryMode, clearRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword, updateProfile]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -4,9 +4,10 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
-import { H1, Muted, Loading, ErrorRow, SectionHeading, EmptyState, Separator } from '../../src/components/ui';
+import { H1, Muted, Loading, ErrorRow, SectionHeading, EmptyState, Separator, PrimaryButton } from '../../src/components/ui';
 import { BookingStatusPill } from '../../src/components/StatusPill';
-import { useAdapter, useDataEpoch } from '../../src/data/AdapterProvider';
+import { useAdapter, useAppMode, useDataEpoch } from '../../src/data/AdapterProvider';
+import { useAuth } from '../../src/auth/AuthProvider';
 import { useAsync } from '../../src/hooks/useAsync';
 import { colors, radius, space, font } from '../../src/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
@@ -15,17 +16,21 @@ import type { BookingView } from '@shared/data/adapter';
 export default function MyTrips() {
   const adapter = useAdapter();
   const router = useRouter();
+  const mode = useAppMode();
+  const { session } = useAuth();
   const epoch = useDataEpoch();
-  const bookings = useAsync(() => adapter.myBookings(), [epoch]);
+  const signedOut = mode === 'connected' && !session;
+  const bookings = useAsync(() => (signedOut ? Promise.resolve([]) : adapter.myBookings()), [epoch, signedOut]);
 
   // Refetch when the tab regains focus (e.g. after booking/cancelling).
-  useFocusEffect(useCallback(() => { bookings.reload(); }, []));
-  // Live refresh in connected mode.
+  useFocusEffect(useCallback(() => { if (!signedOut) bookings.reload(); }, [signedOut]));
+  // Live refresh in connected mode (only while signed in).
   useEffect(() => {
+    if (signedOut) return;
     const sub = adapter.subscribeMyBookings(() => bookings.reload());
     return () => sub.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [signedOut]);
 
   const all = bookings.data ?? [];
   const upcoming = all.filter((b) => ['reserved', 'checked_in', 'boarded'].includes(b.status));
@@ -36,10 +41,19 @@ export default function MyTrips() {
   return (
     <Screen>
       <H1>My Trips</H1>
-      {bookings.loading && <Loading />}
-      {bookings.error && <ErrorRow message={bookings.error} onRetry={bookings.reload} />}
-      {!bookings.loading && all.length === 0 && (
-        <EmptyState title="No trips yet">Reserve a seat from Home and it appears here with your boarding pass.</EmptyState>
+      {signedOut ? (
+        <View style={{ gap: space.md, marginTop: space.sm }}>
+          <EmptyState title="Sign in to see your trips">Your reservations and boarding passes appear here once you sign in.</EmptyState>
+          <PrimaryButton title="Sign in" onPress={() => router.push('/auth?next=/trips')} />
+        </View>
+      ) : (
+        <>
+          {bookings.loading && <Loading />}
+          {bookings.error && <ErrorRow message={bookings.error} onRetry={bookings.reload} />}
+          {!bookings.loading && all.length === 0 && (
+            <EmptyState title="You have no upcoming trips">Reserve a seat from Home and it appears here with your boarding pass.</EmptyState>
+          )}
+        </>
       )}
       <Group title="Upcoming" list={upcoming} onOpen={(id) => router.push(`/trip/${id}`)} />
       <Group title="Completed" list={completed} onOpen={(id) => router.push(`/trip/${id}`)} muted />

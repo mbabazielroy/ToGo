@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
-import { H1, Muted, Loading, ErrorRow, SectionHeading, Separator } from '../../src/components/ui';
+import { H1, Muted, Loading, ErrorRow, SectionHeading, Separator, EmptyState } from '../../src/components/ui';
 import { useAdapter, useDataEpoch } from '../../src/data/AdapterProvider';
 import { useAsync } from '../../src/hooks/useAsync';
 import { colors, radius, space, font } from '../../src/theme';
@@ -22,6 +22,9 @@ export default function Hubs() {
 
       {hubs.loading && <Loading />}
       {hubs.error && <ErrorRow message={hubs.error} onRetry={hubs.reload} />}
+      {!hubs.loading && !hubs.error && (hubs.data?.length ?? 0) === 0 && (
+        <EmptyState title="Pickup locations are being added">Approved pickup hubs will appear here as operators set them up.</EmptyState>
+      )}
       {cities.map((city) => {
         const list = (hubs.data ?? []).filter((h: HubView) => h.city === city);
         if (list.length === 0) return null;

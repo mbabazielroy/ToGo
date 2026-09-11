@@ -132,26 +132,36 @@ npx expo export --platform ios --platform android   # bundle check (no device ne
 The existing **web** commands at the repo root are unchanged (`npm run dev`,
 `build`, `lint`, `typecheck`, `test`, `db:test`, …).
 
-## Demo vs connected configuration
+## Connected mode (default) vs demo
 
-- **Demo mode (default, no config):** fictional hubs/operators/departures, local
-  booking persistence via AsyncStorage, simulated tracking + trip progression, a
-  reset-demo control, and a persistent "Demo" label. No credentials, no network.
-- **Connected mode:** create `apps/mobile/.env` (or `.env.local`) from
-  `.env.example`:
-  ```
-  EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-  EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable-anon-key>
-  ```
-  `EXPO_PUBLIC_*` values are **inlined into the JS bundle at build/start time** —
-  they are public, so use only the URL and publishable/anon key. **Never** put a
-  `service_role` key or any privileged secret here. Changing these requires
-  **restarting the dev server / rebuilding**; they are not read at runtime from the
-  device. Connected mode uses the existing Supabase schema, secured RPCs, scoped
-  Realtime subscriptions, and in-app notifications. It never silently falls back to
-  demo on a backend error, shows honest pending/failed/offline/stale states, and
-  clears the session (and thus private data) on logout. Simulation controls appear
-  only in demo mode.
+**Connected mode is the normal entry point.** Create `apps/mobile/.env` (or
+`.env.local`) from `.env.example`:
+```
+EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<publishable-anon-key>
+```
+`EXPO_PUBLIC_*` values are **inlined into the JS bundle at build/start time** — they
+are public, so use only the URL and publishable/anon key. **Never** put a
+`service_role` key or any privileged secret here. Changing these requires
+**restarting the dev server / rebuilding**; they are not read at runtime from the
+device.
+
+- **No configuration → a polished "Setup needed" screen** (with Retry). The app
+  never silently opens demo mode.
+- **Configured but unreachable/mis-migrated → a "Can't reach ToGo" screen** with
+  Retry (a light HEAD probe of the public `hubs_public` view decides this).
+- **Configured + reachable → the connected app.** Public browsing (hubs and
+  departures) works signed-out; reserving, My Trips, notifications, and the account
+  require sign-in, and the selected journey is preserved through sign-in (the booking
+  URL carries trip + hub + passengers). Uses the existing schema, secured RPCs, scoped
+  Realtime, and in-app notifications; shows honest pending/failed/empty/stale states;
+  live location is shown only when real tracking data exists, otherwise a scheduled
+  estimate. Payment stays "Pay at boarding" — no payment is processed.
+
+- **Demo mode is development/test only** and must be opted into explicitly with
+  `EXPO_PUBLIC_TOGO_DEMO=1`: fictional fixtures, AsyncStorage persistence, simulated
+  tracking + trip progression, a reset-demo control, and a "Demo" label. It is never
+  the fallback for a missing/unavailable backend.
 
 ### Session storage security
 The Supabase session is stored via `expo-secure-store` (iOS Keychain / Android
@@ -228,7 +238,16 @@ starts without an interactive install.
    ```
 4. When Metro prints the QR and the `exp://…exp.direct` URL, either scan the QR with
    the iPhone Camera, or copy the `exp://…` URL and paste it into Expo Go's "Enter
-   URL manually". The ToGo app loads in demo mode (no Supabase needed).
+   URL manually".
+
+**Opening the CONNECTED app on the iPhone.** Connected mode is the default, so it
+needs the two public values present when Metro starts. In the Codespace terminal,
+before `npm run start:tunnel`, create `apps/mobile/.env` with your Supabase project
+URL and publishable/anon key (see `.env.example`), then start the tunnel. Because
+`EXPO_PUBLIC_*` is inlined at start time, **restart Metro after changing `.env`**.
+Without configuration the app opens to the honest **"Setup needed"** screen rather
+than demo. To preview the visual design without a backend, start Metro with
+`EXPO_PUBLIC_TOGO_DEMO=1` for the opt-in demo prototype.
 
 **Account requirements**
 - A **GitHub account** (Codespaces is enabled for personal accounts).

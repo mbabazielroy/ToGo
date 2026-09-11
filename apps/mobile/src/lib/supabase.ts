@@ -30,3 +30,22 @@ export function requireSupabase(): SupabaseClient {
   if (!supabase) throw new Error('Supabase is not configured — connected mode is unavailable.');
   return supabase;
 }
+
+/**
+ * A light reachability probe used to distinguish "configured but unreachable/
+ * mis-migrated" from "ready". Reads a public view (readable by anon) with a HEAD
+ * count so it transfers no rows. Any error (network, 4xx, missing schema) means
+ * the connected backend is not usable yet.
+ */
+export async function pingSupabase(): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: 'not-configured' };
+  try {
+    const { error } = await supabase
+      .from('hubs_public')
+      .select('id', { head: true, count: 'exact' });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message ?? 'unreachable' };
+  }
+}

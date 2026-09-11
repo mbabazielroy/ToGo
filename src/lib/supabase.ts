@@ -20,3 +20,18 @@ export function requireSupabase(): SupabaseClient {
   }
   return supabase;
 }
+
+/**
+ * Light reachability probe: reads a public view (anon-readable) with a HEAD count.
+ * Any error (network, 4xx, missing schema) means the connected backend is not usable.
+ */
+export async function pingSupabase(): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) return { ok: false, error: 'not-configured' };
+  try {
+    const { error } = await supabase.from('hubs_public').select('id', { head: true, count: 'exact' });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message ?? 'unreachable' };
+  }
+}

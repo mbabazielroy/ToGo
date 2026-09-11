@@ -1,14 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DataAdapter } from '@shared/data/adapter';
 import { DemoAdapter } from '@shared/data/demoAdapter';
 import { SupabaseAdapter } from '@shared/data/supabaseAdapter';
 import { buildSeedState } from '@shared/data/seed';
 import { kampalaToday } from '@shared/lib/time';
-import { APP_MODE } from '../env';
-import { supabase } from '../lib/supabase';
+import { APP_MODE, DEMO_ENABLED, isSupabaseConfigured } from '../env';
+import { supabase, pingSupabase } from '../lib/supabase';
 import { loadDemoState, saveDemoState, clearDemoState } from '../lib/demoStorage';
-import { colors } from '../theme';
+import { ConnectionScreen, ConnectionChecking, type ConnState } from '../components/ConnectionScreen';
 
 interface AdapterCtx {
   adapter: DataAdapter;
@@ -22,20 +21,42 @@ interface AdapterCtx {
 const Ctx = createContext<AdapterCtx | null>(null);
 
 export function AdapterProvider({ children }: { children: ReactNode }) {
-  const connected = APP_MODE === 'connected' && !!supabase;
-  const [adapter, setAdapter] = useState<DataAdapter | null>(
-    connected ? new SupabaseAdapter(supabase!) : null,
-  );
-  const [epoch, setEpoch] = useState(0);
+  const connected = APP_MODE === 'connected';
 
+  const [adapter, setAdapter] = useState<DataAdapter | null>(null);
+  const [epoch, setEpoch] = useState(0);
+  const [connState, setConnState] = useState<ConnState>(connected ? 'checking' : 'ready');
+  const [connError, setConnError] = useState<string | undefined>(undefined);
+  const [retrying, setRetrying] = useState(false);
+  const supaAdapter = useRef<SupabaseAdapter | null>(null);
+
+  // Demo mode: back the shared rules with AsyncStorage. (Explicit dev/test flag only.)
   useEffect(() => {
-    if (connected) return; // connected adapter is ready synchronously
+    if (connected) return;
     let active = true;
     loadDemoState().then((initial) => {
       if (active) setAdapter(new DemoAdapter(initial, saveDemoState));
     });
     return () => { active = false; };
   }, [connected]);
+
+  const check = useCallback(async () => {
+    if (!connected) return;
+    if (!isSupabaseConfigured || !supabase) { setConnState('unconfigured'); return; }
+    setRetrying(true);
+    const res = await pingSupabase();
+    setRetrying(false);
+    if (res.ok) {
+      if (!supaAdapter.current) supaAdapter.current = new SupabaseAdapter(supabase);
+      setAdapter(supaAdapter.current);
+      setConnState('ready');
+    } else {
+      setConnError(res.error);
+      setConnState('unreachable');
+    }
+  }, [connected]);
+
+  useEffect(() => { check(); }, [check]);
 
   const resetDemo = useCallback(async () => {
     if (connected) return;
@@ -51,13 +72,13 @@ export function AdapterProvider({ children }: { children: ReactNode }) {
     [adapter, connected, resetDemo, epoch],
   );
 
-  if (!value) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.sand100 }}>
-        <ActivityIndicator color={colors.forest700} />
-      </View>
-    );
+  // Connected-mode failure UX — never a silent demo fallback.
+  if (connected && connState !== 'ready') {
+    if (connState === 'checking') return <ConnectionChecking />;
+    return <ConnectionScreen state={connState} detail={connError} onRetry={check} retrying={retrying} />;
   }
+
+  if (!value) return <ConnectionChecking />;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -69,7 +90,7 @@ export function useAdapter(): DataAdapter {
 
 export function useAppMode(): 'demo' | 'connected' {
   const c = useContext(Ctx);
-  return c?.mode ?? 'demo';
+  return c?.mode ?? (DEMO_ENABLED ? 'demo' : 'connected');
 }
 
 export function useResetDemo(): () => Promise<void> {

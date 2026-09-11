@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NavBar, Group, Muted, PrimaryButton, Loading, ErrorRow, Separator, SectionHeading } from '../../src/components/ui';
 import { useAdapter, useAppMode } from '../../src/data/AdapterProvider';
+import { useAuth } from '../../src/auth/AuthProvider';
 import { useAsync, humanError } from '../../src/hooks/useAsync';
 import { useToast } from '../../src/components/ToastProvider';
 import { haptics } from '../../src/lib/feedback';
@@ -22,10 +23,13 @@ export default function BookScreen() {
   const { tripId, hub, pax } = useLocalSearchParams<{ tripId: string; hub?: string; pax?: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
+  const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const trip = useAsync(() => adapter.getTrip(String(tripId)), [tripId]);
+  // Connected mode reserves against real accounts — require sign-in first.
+  const needsAuth = mode === 'connected' && !session;
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,6 +46,13 @@ export default function BookScreen() {
 
   async function confirm() {
     if (busy || !t || !journey?.pickup || !dropoff) return;
+    // Never reserve before authentication — send the passenger to sign in and
+    // return to this exact journey (trip + hub + passengers preserved in the URL).
+    if (needsAuth) {
+      const back = `/book/${t.id}?hub=${hub ?? ''}&pax=${seats}`;
+      router.push(`/auth?next=${encodeURIComponent(back)}`);
+      return;
+    }
     setErr(null); setBusy(true);
     try {
       const booking = await adapter.reserve({
@@ -133,7 +144,7 @@ export default function BookScreen() {
               <Text style={styles.totalLabel}>Total{seats > 1 ? ` · ${seats} passengers` : ''}</Text>
               <Text style={styles.totalR}>{formatUGX(total)}</Text>
             </View>
-            <PrimaryButton title={soldOut ? 'Sold out' : 'Confirm reservation'} onPress={confirm} loading={busy} disabled={soldOut} />
+            <PrimaryButton title={soldOut ? 'Sold out' : needsAuth ? 'Sign in to reserve' : 'Confirm reservation'} onPress={confirm} loading={busy} disabled={soldOut} />
             {mode === 'demo' && <Text style={styles.demoNote}>Demo reservation — no real seat booked.</Text>}
           </View>
         )}
