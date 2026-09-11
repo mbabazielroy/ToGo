@@ -14,7 +14,9 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:test": "bash supabase/tests/run.sh",
-    "db:concurrency": "bash supabase/tests/concurrency.sh"
+    "db:concurrency": "bash supabase/tests/concurrency.sh",
+    "dev:preview": "VITE_TOGO_DEMO=1 vite",
+    "preview:local": "VITE_TOGO_DEMO=1 vite"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

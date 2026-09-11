@@ -3,10 +3,13 @@ import type {
   ActivityKind,
   AppState,
   Booking,
+  StaffMember,
+  StaffRole,
   Trip,
 } from '../types';
 import { makeBookingRef, makeBoardingCode, uid } from '../lib/id';
-import { shiftMinutes, minutesBetween } from '../lib/time';
+import { shiftMinutes, minutesBetween, kampalaDateTime, formatTime } from '../lib/time';
+import { buildStops } from '../data/seed';
 
 // ---------------------------------------------------------------------------
 // Result helpers
@@ -147,6 +150,7 @@ export function reserve(state: AppState, input: ReserveInput): Result<Booking> {
     passengerName: name,
     phone: input.phone?.trim() || undefined,
     seats: input.seats,
+    fareAtBooking: trip.farePerSeat,
     status: 'reserved',
     createdAt: new Date().toISOString(),
   };
@@ -464,6 +468,174 @@ export function editTrip(state: AppState, tripId: string, edit: TripEditInput): 
   let next = { ...state, trips: state.trips.map((t) => (t.id === tripId ? updated : t)) };
   next = logEvent(next, 'schedule_edit', `Departure schedule updated.`, { tripId });
   return ok(next, updated);
+}
+
+// ---------------------------------------------------------------------------
+// Dispatcher: create departures & assign crew
+// ---------------------------------------------------------------------------
+
+/** The staff member of a given role currently assigned to a trip, if any. */
+export function staffForTrip(
+  state: AppState,
+  tripId: string,
+  role: StaffRole,
+): StaffMember | undefined {
+  return (state.staff ?? []).find((s) => s.role === role && s.assignedTripIds.includes(tripId));
+}
+
+/** Scheduled time window [departure, arrival] of a trip, delay-independent. */
+function tripWindow(trip: Trip): [number, number] {
+  return [new Date(trip.originDeparture).getTime(), new Date(trip.destinationArrival).getTime()];
+}
+
+/** Two trips overlap if their scheduled windows intersect (a person cannot crew both). */
+function windowsOverlap(a: Trip, b: Trip): boolean {
+  const [as, ae] = tripWindow(a);
+  const [bs, be] = tripWindow(b);
+  return as < be && bs < ae;
+}
+
+/** A trip another assignment would clash with, for a staff member being put on `trip`. */
+function conflictingTrip(state: AppState, staff: StaffMember, trip: Trip): Trip | undefined {
+  for (const otherId of staff.assignedTripIds) {
+    if (otherId === trip.id) continue;
+    const other = getTrip(state, otherId);
+    if (!other) continue;
+    if (other.status === 'cancelled') continue;
+    if (windowsOverlap(trip, other)) return other;
+  }
+  return undefined;
+}
+
+export interface CreateTripInput {
+  routeId: string;
+  operatorId: string;
+  vehicleId: string;
+  date: string; // YYYY-MM-DD (Kampala)
+  departHHMM: string; // "07:00"
+  durationMin: number;
+  farePerSeat: number;
+  driverId?: string | null;
+  conductorId?: string | null;
+}
+
+export function createTrip(state: AppState, input: CreateTripInput): Result<Trip> {
+  const route = state.routes.find((r) => r.id === input.routeId);
+  if (!route) return fail('Choose a valid route.');
+  const operator = state.operators.find((o) => o.id === input.operatorId);
+  if (!operator) return fail('Choose a valid operator.');
+  const vehicle = state.vehicles.find((v) => v.id === input.vehicleId);
+  if (!vehicle) return fail('Choose a vehicle.');
+  if (vehicle.operatorId !== input.operatorId) {
+    return fail('That vehicle belongs to a different operator.');
+  }
+  if (!input.date) return fail('Choose a departure date.');
+  const m = /^(\d{1,2}):(\d{2})$/.exec(input.departHHMM.trim());
+  if (!m) return fail('Enter a departure time as HH:MM.');
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (hh > 23 || mm > 59) return fail('Enter a valid departure time.');
+  if (!Number.isFinite(input.durationMin) || input.durationMin <= 0) {
+    return fail('Journey duration must be greater than zero so arrival is after departure.');
+  }
+  if (!Number.isFinite(input.farePerSeat) || input.farePerSeat < 0) {
+    return fail('Fare cannot be negative.');
+  }
+  if (vehicle.seats < 1) return fail('Vehicle capacity must be at least 1.');
+
+  const originDeparture = new Date(kampalaDateTime(input.date, hh, mm)).toISOString();
+  const destinationArrival = shiftMinutes(originDeparture, input.durationMin);
+  const trip: Trip = {
+    id: uid('trip'),
+    routeId: route.id,
+    operatorId: operator.id,
+    vehicleId: vehicle.id,
+    direction: route.direction,
+    date: input.date,
+    originDeparture,
+    destinationArrival,
+    farePerSeat: Math.round(input.farePerSeat),
+    capacity: vehicle.seats,
+    status: 'scheduled',
+    delayMinutes: 0,
+    stops: buildStops(route.id, originDeparture),
+    progress: 0,
+    lastUpdate: new Date().toISOString(),
+  };
+
+  let next: AppState = { ...state, trips: [...state.trips, trip] };
+  next = logEvent(
+    next,
+    'trip_created',
+    `New ${route.direction === 'KLA_MBR' ? 'Kampala → Mbarara' : 'Mbarara → Kampala'} departure created for ${operator.name}.`,
+    { tripId: trip.id },
+  );
+
+  // Optional crew assignment as part of creation; a clash aborts the whole create.
+  if (input.driverId) {
+    const r = assignStaff(next, trip.id, 'driver', input.driverId);
+    if (!r.ok) return r as Result<Trip>;
+    next = r.state;
+  }
+  if (input.conductorId) {
+    const r = assignStaff(next, trip.id, 'conductor', input.conductorId);
+    if (!r.ok) return r as Result<Trip>;
+    next = r.state;
+  }
+  return ok(next, trip);
+}
+
+/** Assign (or, with staffId null, clear) the driver or conductor of a trip. */
+export function assignStaff(
+  state: AppState,
+  tripId: string,
+  role: Extract<StaffRole, 'driver' | 'conductor'>,
+  staffId: string | null,
+): Result<Trip> {
+  const trip = getTrip(state, tripId);
+  if (!trip) return fail('Trip not found.');
+  if (trip.status === 'completed' || trip.status === 'cancelled') {
+    return fail('This trip can no longer be re-crewed.');
+  }
+  const roster = state.staff ?? [];
+
+  // Clear the current holder of this role on this trip.
+  const cleared = roster.map((s) =>
+    s.role === role && s.assignedTripIds.includes(tripId)
+      ? { ...s, assignedTripIds: s.assignedTripIds.filter((id) => id !== tripId) }
+      : s,
+  );
+
+  if (!staffId) {
+    let next: AppState = { ...state, staff: cleared };
+    next = logEvent(next, 'assignment', `${role === 'driver' ? 'Driver' : 'Conductor'} unassigned.`, { tripId });
+    return ok(next, trip);
+  }
+
+  const member = cleared.find((s) => s.id === staffId);
+  if (!member) return fail('That staff member could not be found.');
+  if (member.role !== role) return fail(`${member.name} is not a ${role}.`);
+  if (member.operatorId && member.operatorId !== trip.operatorId) {
+    return fail(`${member.name} is not on this operator’s crew.`);
+  }
+  const clash = conflictingTrip({ ...state, staff: cleared }, member, trip);
+  if (clash) {
+    return fail(
+      `${member.name} is already crewing an overlapping trip departing ${formatTime(clash.originDeparture)}.`,
+    );
+  }
+
+  const staff = cleared.map((s) =>
+    s.id === staffId ? { ...s, assignedTripIds: [...s.assignedTripIds, tripId] } : s,
+  );
+  let next: AppState = { ...state, staff };
+  next = logEvent(
+    next,
+    'assignment',
+    `${member.name} assigned as ${role} for a departure.`,
+    { tripId },
+  );
+  return ok(next, trip);
 }
 
 // ---------------------------------------------------------------------------

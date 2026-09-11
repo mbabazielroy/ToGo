@@ -5,22 +5,22 @@ import { colors, space, font, SCREEN } from '../theme';
 import { useAppMode } from '../data/AdapterProvider';
 
 export const DEMO_EXPLANATION =
-  'Demo mode uses illustrative operators, hubs, fares and tracking. Nothing here books a real seat or arranges a real pickup. Reservations are stored only on this device.';
+  'Preview mode uses simulated operators, hubs, fares, staff and tracking. Nothing here books a real seat or arranges a real pickup — everything is stored only on this device so you can explore the full workflow.';
 
-/** Compact, tappable mode indicator (Demo / Connected). Tapping Demo explains it. */
+/** Compact, tappable mode indicator (Preview / Connected). Tapping Preview explains it. */
 export function ModeTag() {
   const mode = useAppMode();
   const demo = mode === 'demo';
   return (
     <Pressable
-      onPress={() => demo && Alert.alert('Demo mode', DEMO_EXPLANATION)}
+      onPress={() => demo && Alert.alert('Preview mode', DEMO_EXPLANATION)}
       accessibilityRole={demo ? 'button' : undefined}
-      accessibilityLabel={demo ? 'Demo mode. Tap to learn what this means.' : 'Connected pilot'}
+      accessibilityLabel={demo ? 'Preview mode. Data is simulated. Tap to learn more.' : 'Connected pilot'}
       hitSlop={8}
       style={[styles.modeTag, demo ? styles.modeTagDemo : styles.modeTagLive]}
     >
       <Text style={[styles.modeTagText, demo ? styles.modeTagTextDemo : styles.modeTagTextLive]}>
-        {demo ? 'Demo' : 'Connected'}
+        {demo ? 'Preview' : 'Connected'}
       </Text>
     </Pressable>
   );

@@ -12,7 +12,10 @@
     "doctor": "npx expo-doctor",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "preview": "EXPO_PUBLIC_TOGO_DEMO=1 expo start",
+    "preview:tunnel": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --tunnel",
+    "preview:web": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --web"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -34,7 +37,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "react-native-url-polyfill": "^2.0.0"
+    "react-native-url-polyfill": "^2.0.0",
+    "expo-camera": "~57.0.4"
   },
   "devDependencies": {
     "@expo/ngrok": "^4.1.3",

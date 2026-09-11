@@ -145,7 +145,7 @@ export default function BookScreen() {
               <Text style={styles.totalR}>{formatUGX(total)}</Text>
             </View>
             <PrimaryButton title={soldOut ? 'Sold out' : needsAuth ? 'Sign in to reserve' : 'Confirm reservation'} onPress={confirm} loading={busy} disabled={soldOut} />
-            {mode === 'demo' && <Text style={styles.demoNote}>Demo reservation — no real seat booked.</Text>}
+            {mode === 'demo' && <Text style={styles.demoNote}>Preview reservation — no real seat booked.</Text>}
           </View>
         )}
       </KeyboardAvoidingView>

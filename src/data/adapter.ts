@@ -35,6 +35,8 @@ export interface TripView {
   operatorId: string;
   operatorName: string;
   vehicleLabel?: string;
+  driverName?: string;
+  conductorName?: string;
   direction: DirectionCode;
   serviceDate: string; // YYYY-MM-DD
   originDeparture: string; // ISO
@@ -124,6 +126,20 @@ export interface TripSearch {
   hubId?: string | null;
 }
 
+/** A staff member for preview persona switching. In connected mode the persona is
+ *  the authenticated user, so `listStaff` is a preview-only directory. */
+export interface StaffView {
+  id: string;
+  name: string;
+  role: 'driver' | 'conductor' | 'attendant';
+  phone?: string;
+  operatorId?: string;
+  operatorName?: string;
+  assignedTripCount: number;
+  assignedHubId?: string;
+  assignedHubName?: string;
+}
+
 /** A subscription handle the UI can clean up. */
 export interface Subscription {
   unsubscribe: () => void;
@@ -144,10 +160,22 @@ export interface DataAdapter {
   cancelBooking(bookingId: string): Promise<BookingView>;
   checkIn(bookingId: string): Promise<BookingView>;
 
-  // Staff
+  // Staff — persona directory + assignments (preview persona switching; connected
+  // resolves the persona from the authenticated user's verified assignments).
+  listStaff(): Promise<StaffView[]>;
+  staffTrips(staffId: string): Promise<TripView[]>;
+  attendantHubId(staffId: string): Promise<string | null>;
+
+  // Staff — operations
   checkInByReference(reference: string): Promise<BookingView>;
   getTripManifest(tripId: string): Promise<ManifestRow[]>;
   getHubExpected(hubId: string): Promise<HubExpectedRow[]>;
+  /** Missed-pickup / unresolved incidents recorded at a hub (attendant view). */
+  hubIncidents(hubId: string): Promise<HubExpectedRow[]>;
+  /** Read-only: resolve which booking a boarding credential/code would board, WITHOUT
+   *  boarding it, so the UI can confirm first. Throws typed AdapterErrors
+   *  (INVALID_CODE / WRONG_TRIP / CANCELLED / ALREADY_BOARDED). */
+  resolveBoarding(tripId: string, credential: string): Promise<BookingView>;
   boardByCredential(tripId: string, credential: string): Promise<BookingView>;
   updateTripStatus(tripId: string, status: TripStatusCode): Promise<TripView>;
   reportDelay(tripId: string, minutes: number): Promise<TripView>;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Alert, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/components/Screen';
@@ -91,16 +91,25 @@ export default function Account() {
         </>
       )}
 
+      <Pressable onPress={() => router.push('/staff')} accessibilityRole="button" accessibilityLabel="Open staff workspace" style={({ pressed }) => [styles.staffRow, pressed && { opacity: 0.85 }]}>
+        <View style={styles.staffIcon}><Ionicons name="briefcase-outline" size={20} color={colors.forest700} /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.staffTitle}>Staff workspace</Text>
+          <Text style={styles.staffSub}>{mode === 'demo' ? 'Preview driver, conductor and attendant views' : 'Your assigned operational workspaces'}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+      </Pressable>
+
       {mode === 'demo' && (
         <>
           <Card style={{ gap: 6 }}>
-            <H2>Demo profile</H2>
-            <Muted>You are in local demo mode — no account needed. Bookings persist on this device only and are not shared.</Muted>
+            <H2>Preview profile</H2>
+            <Muted>You are in local preview mode — no account needed. Bookings and staff actions persist on this device only and are not shared.</Muted>
           </Card>
           <Card style={{ gap: 10 }}>
-            <Label>Reset demo</Label>
-            <Muted>Restore fresh seed data and clear demo bookings on this device.</Muted>
-            <GhostButton title="Reset demo data" onPress={confirmReset} danger />
+            <Label>Reset preview</Label>
+            <Muted>Restore fresh seed data (operators, hubs, departures, staff) and clear preview bookings on this device.</Muted>
+            <GhostButton title="Reset preview data" onPress={confirmReset} danger />
           </Card>
         </>
       )}
@@ -119,5 +128,9 @@ export default function Account() {
 const styles = StyleSheet.create({
   avatar: { width: 48, height: 48, borderRadius: radius.lg, backgroundColor: colors.forest100, alignItems: 'center', justifyContent: 'center' },
   name: { fontWeight: '600', color: colors.ink, fontSize: font.title },
+  staffRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.md },
+  staffIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.forest100, alignItems: 'center', justifyContent: 'center' },
+  staffTitle: { fontSize: font.body, fontWeight: '600', color: colors.ink },
+  staffSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
 });

@@ -108,6 +108,9 @@ export interface Booking {
   phone?: string;
   /** Number of seats/passengers in this booking. */
   seats: number;
+  /** Fare per seat quoted at reservation time. Preserved as a snapshot so later
+   *  operator fare edits never retroactively change what a passenger was quoted. */
+  fareAtBooking?: number;
   status: BookingStatus;
   createdAt: string;
   checkedInAt?: string;
@@ -128,7 +131,9 @@ export type ActivityKind =
   | 'trip_cancelled'
   | 'unresolved_pickup'
   | 'reach_hub'
-  | 'schedule_edit';
+  | 'schedule_edit'
+  | 'trip_created'
+  | 'assignment';
 
 export interface ActivityEvent {
   id: string;
@@ -141,6 +146,23 @@ export interface ActivityEvent {
 }
 
 export type DemoRole = 'passenger' | 'attendant' | 'conductor' | 'operator';
+
+export type StaffRole = 'driver' | 'conductor' | 'attendant';
+
+/** A fictional staff member for preview persona switching. Assignments mirror what a
+ *  real backend would grant via verified operator-member / conductor / hub-staff
+ *  records — preview selection here grants no backend permission. */
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: StaffRole;
+  phone?: string;
+  operatorId?: string;
+  /** Drivers/conductors: trips they are assigned to today. */
+  assignedTripIds: string[];
+  /** Attendants: the hub they staff. */
+  assignedHubId?: string;
+}
 
 export interface DemoProfile {
   name: string;
@@ -160,4 +182,6 @@ export interface AppState {
   trips: Trip[];
   bookings: Booking[];
   activity: ActivityEvent[];
+  /** Fictional staff for preview persona switching (optional for back-compat). */
+  staff?: StaffMember[];
 }

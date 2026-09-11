@@ -18,6 +18,7 @@ import {
   type ManifestRow,
   type NotificationView,
   type ReserveInput,
+  type StaffView,
   type Subscription,
   type TripSearch,
   type TripStatusCode,
@@ -82,11 +83,16 @@ export class DemoAdapter implements DataAdapter {
       };
     });
     const reserved = logic.seatsReserved(this.state, t.id);
+    const staff = this.state.staff ?? [];
+    const driver = staff.find((s) => s.role === 'driver' && s.assignedTripIds.includes(t.id));
+    const conductor = staff.find((s) => s.role === 'conductor' && s.assignedTripIds.includes(t.id));
     return {
       id: t.id,
       operatorId: t.operatorId,
       operatorName: op?.name ?? 'Operator',
       vehicleLabel: this.state.vehicles.find((v) => v.id === t.vehicleId)?.label,
+      driverName: driver?.name,
+      conductorName: conductor?.name,
       direction: t.direction,
       serviceDate: t.date,
       originDeparture: t.originDeparture,
@@ -185,6 +191,32 @@ export class DemoAdapter implements DataAdapter {
     this.apply(logic.checkIn(this.state, bookingId));
     return this.bookingView(bookingId)!;
   }
+  async listStaff(): Promise<StaffView[]> {
+    const staff = this.state.staff ?? [];
+    return staff.map((s) => {
+      const op = s.operatorId ? operatorById(this.state, s.operatorId) : undefined;
+      const hub = s.assignedHubId ? this.state.hubs.find((h) => h.id === s.assignedHubId) : undefined;
+      return {
+        id: s.id, name: s.name, role: s.role, phone: s.phone,
+        operatorId: s.operatorId, operatorName: op?.name,
+        assignedTripCount: s.assignedTripIds.length,
+        assignedHubId: s.assignedHubId, assignedHubName: hub?.name,
+      };
+    });
+  }
+  async staffTrips(staffId: string): Promise<TripView[]> {
+    const s = (this.state.staff ?? []).find((x) => x.id === staffId);
+    if (!s) return [];
+    return s.assignedTripIds
+      .map((id) => this.tripView(id))
+      .filter((t): t is TripView => !!t)
+      .sort((a, b) => a.originDeparture.localeCompare(b.originDeparture));
+  }
+  async attendantHubId(staffId: string): Promise<string | null> {
+    const s = (this.state.staff ?? []).find((x) => x.id === staffId);
+    return s?.assignedHubId ?? null;
+  }
+
   async checkInByReference(reference: string): Promise<BookingView> {
     const b = this.apply(logic.checkInByReference(this.state, reference));
     return this.bookingView(b.id)!;
@@ -215,6 +247,32 @@ export class DemoAdapter implements DataAdapter {
           pickupTime: t ? (logic.effectivePickupTime(t, hubId) ?? b.createdAt) : b.createdAt,
         };
       });
+  }
+  async hubIncidents(hubId: string): Promise<HubExpectedRow[]> {
+    return this.state.bookings
+      .filter((b) => b.pickupHubId === hubId && (b.unresolved || b.status === 'missed_pickup'))
+      .map((b) => {
+        const t = this.state.trips.find((x) => x.id === b.tripId);
+        return {
+          bookingId: b.id, reference: b.reference, passengerName: b.passengerName,
+          seats: b.seats, status: b.status, tripId: b.tripId,
+          pickupTime: t ? (logic.effectivePickupTime(t, hubId) ?? b.createdAt) : b.createdAt,
+        };
+      });
+  }
+  async resolveBoarding(tripId: string, credential: string): Promise<BookingView> {
+    const code = credential.replace(/^TOGO:/i, '').trim();
+    const t = this.state.trips.find((x) => x.id === tripId);
+    if (!t) throw new AdapterError('INVALID_CODE', 'Unknown trip.');
+    const b = this.state.bookings.find((x) => x.tripId === tripId && x.boardingCode === code);
+    if (!b) {
+      const other = this.state.bookings.find((x) => x.boardingCode === code);
+      if (other) throw new AdapterError('WRONG_TRIP', 'That code belongs to a different trip.');
+      throw new AdapterError('INVALID_CODE', 'That boarding code was not recognised.');
+    }
+    if (b.status === 'cancelled') throw new AdapterError('CANCELLED', 'That booking was cancelled.');
+    if (b.status === 'boarded' || b.status === 'completed') throw new AdapterError('ALREADY_BOARDED', 'That passenger is already boarded.');
+    return this.bookingView(b.id)!;
   }
   async boardByCredential(tripId: string, credential: string): Promise<BookingView> {
     const b = this.apply(logic.boardByCode(this.state, tripId, credential));

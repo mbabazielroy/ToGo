@@ -9,6 +9,7 @@ import {
   type ManifestRow,
   type NotificationView,
   type ReserveInput,
+  type StaffView,
   type Subscription,
   type TripSearch,
   type TripStatusCode,
@@ -170,6 +171,23 @@ export class SupabaseAdapter implements DataAdapter {
   async checkIn(bookingId: string): Promise<BookingView> {
     return mapBooking(await this.rpc('check_in_booking', { p_booking_id: bookingId }));
   }
+  // Preview persona switching is a local-only affordance. In connected mode the
+  // persona is the authenticated user; a persona directory is not exposed to
+  // clients. Staff assignment queries below are stubs until the driver/hub-staff
+  // assignment surface is verified against a live backend (see docs/MVP_READINESS).
+  async listStaff(): Promise<StaffView[]> {
+    return [];
+  }
+  async staffTrips(_staffId: string): Promise<TripView[]> {
+    // TODO(connected): resolve trips assigned to auth.uid() via verified
+    // conductor/driver assignment records once available. Not runtime-verified.
+    return [];
+  }
+  async attendantHubId(_staffId: string): Promise<string | null> {
+    // TODO(connected): resolve the authenticated attendant's hub from hub_staff.
+    return null;
+  }
+
   async checkInByReference(reference: string): Promise<BookingView> {
     return mapBooking(await this.rpc('check_in_by_reference', { p_reference: reference }));
   }
@@ -190,6 +208,15 @@ export class SupabaseAdapter implements DataAdapter {
       bookingId: r.booking_id, reference: r.reference, passengerName: r.passenger_name,
       seats: r.seats, status: r.status, tripId: r.trip_id, pickupTime: r.pickup_time,
     }));
+  }
+  async hubIncidents(_hubId: string): Promise<HubExpectedRow[]> {
+    // TODO(connected): expose a hub-incidents query for attendants. Not runtime-verified.
+    return [];
+  }
+  async resolveBoarding(_tripId: string, _credential: string): Promise<BookingView> {
+    // No read-only resolve RPC exists yet; connected boarding confirms by code then
+    // calls board_booking (which validates server-side). Not runtime-verified.
+    throw new AdapterError('UNSUPPORTED', 'Resolve-before-board is not available in connected mode yet.');
   }
   async boardByCredential(tripId: string, credential: string): Promise<BookingView> {
     return mapBooking(await this.rpc('board_booking', { p_trip_id: tripId, p_credential: credential }));

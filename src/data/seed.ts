@@ -7,10 +7,11 @@ import type {
   TripStop,
   Vehicle,
   Direction,
+  StaffMember,
 } from '../types';
 import { addDays, kampalaToday, kampalaDateTime, minutesBetween } from '../lib/time';
 
-export const STORAGE_VERSION = 3;
+export const STORAGE_VERSION = 4;
 
 // ---------------------------------------------------------------------------
 // Hubs — illustrative pickup locations. NOT officially approved or partnered.
@@ -137,7 +138,7 @@ const TRIP_TEMPLATES: TripTemplate[] = [
   { id: 'ankole_mbr_pm', routeId: 'route_mbr_kla', direction: 'MBR_KLA', operatorId: 'op_ankole', vehicleId: 'veh_ankole1', departHour: 16, departMin: 30, durationMin: 250, fare: 22000, capacity: 30, dayOffsets: [0, 1] },
 ];
 
-function buildStops(routeId: string, originDeparture: string): TripStop[] {
+export function buildStops(routeId: string, originDeparture: string): TripStop[] {
   const route = ROUTES.find((r) => r.id === routeId)!;
   return route.hubSequence.map((hubId, i) => ({
     hubId,
@@ -181,7 +182,42 @@ export function buildSeedTrips(todayISO: string = kampalaToday()): Trip[] {
   return trips;
 }
 
+// ---------------------------------------------------------------------------
+// Fictional staff for preview persona switching. A driver + conductor per operator
+// (assigned that operator's trips today) and one attendant per city's main hub.
+// Preview assignment mirrors what a real backend grants via verified records; it
+// confers no backend permission.
+// ---------------------------------------------------------------------------
+const STAFF_TEMPLATES: { id: string; name: string; role: 'driver' | 'conductor'; operatorId: string; phone?: string }[] = [
+  { id: 'staff_drv_sav', name: 'Moses Okello', role: 'driver', operatorId: 'op_savannah', phone: '+256 700 100200' },
+  { id: 'staff_con_sav', name: 'Grace Nakato', role: 'conductor', operatorId: 'op_savannah', phone: '+256 700 100201' },
+  { id: 'staff_drv_pearl', name: 'Isaac Mugisha', role: 'driver', operatorId: 'op_pearl', phone: '+256 700 100300' },
+  { id: 'staff_con_pearl', name: 'Sarah Auma', role: 'conductor', operatorId: 'op_pearl', phone: '+256 700 100301' },
+];
+
+const ATTENDANTS: { id: string; name: string; hubId: string; phone?: string }[] = [
+  { id: 'staff_att_kla', name: 'Peter Ssemanda', hubId: 'hub_kla_nakawa', phone: '+256 700 100400' },
+  { id: 'staff_att_mbr', name: 'Diana Kembabazi', hubId: 'hub_mbr_central', phone: '+256 700 100401' },
+];
+
+export function buildSeedStaff(trips: Trip[], todayISO: string): StaffMember[] {
+  const todayTrips = trips.filter((t) => t.date === todayISO);
+  const drivers = STAFF_TEMPLATES.map((s) => ({
+    id: s.id,
+    name: s.name,
+    role: s.role,
+    phone: s.phone,
+    operatorId: s.operatorId,
+    assignedTripIds: todayTrips.filter((t) => t.operatorId === s.operatorId).map((t) => t.id),
+  }));
+  const attendants: StaffMember[] = ATTENDANTS.map((a) => ({
+    id: a.id, name: a.name, role: 'attendant' as const, phone: a.phone, assignedTripIds: [], assignedHubId: a.hubId,
+  }));
+  return [...drivers, ...attendants];
+}
+
 export function buildSeedState(todayISO: string = kampalaToday()): AppState {
+  const trips = buildSeedTrips(todayISO);
   return {
     version: STORAGE_VERSION,
     role: 'passenger',
@@ -195,9 +231,10 @@ export function buildSeedState(todayISO: string = kampalaToday()): AppState {
     operators: OPERATORS,
     vehicles: VEHICLES,
     routes: ROUTES,
-    trips: buildSeedTrips(todayISO),
+    trips,
     bookings: [],
     activity: [],
+    staff: buildSeedStaff(trips, todayISO),
   };
 }
 

@@ -141,7 +141,7 @@ export function TripDetail() {
           <span className="flex items-center gap-1.5 text-sm text-forest-100">
             <Wallet size={15} /> Pay at boarding
           </span>
-          <span className="font-bold">{formatUGX(trip.farePerSeat * booking.seats)}</span>
+          <span className="font-bold">{formatUGX((booking.fareAtBooking ?? trip.farePerSeat) * booking.seats)}</span>
         </div>
       </div>
 

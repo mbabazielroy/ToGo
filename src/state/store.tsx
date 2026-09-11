@@ -13,7 +13,8 @@ import { loadState, saveState } from '../lib/storage';
 import { buildSeedState } from '../data/seed';
 import { kampalaToday } from '../lib/time';
 import * as logic from './logic';
-import type { ReserveInput, Result, TripEditInput } from './logic';
+import type { CreateTripInput, ReserveInput, Result, TripEditInput } from './logic';
+import type { StaffRole } from '../types';
 
 interface StoreContextValue {
   state: AppState;
@@ -32,6 +33,12 @@ interface StoreContextValue {
   cancelTrip: (tripId: string, reason: string) => Result<import('../types').Trip>;
   recordUnresolvedPickup: (tripId: string, hubId: string, reason: string) => Result<number>;
   editTrip: (tripId: string, edit: TripEditInput) => Result<import('../types').Trip>;
+  createTrip: (input: CreateTripInput) => Result<import('../types').Trip>;
+  assignStaff: (
+    tripId: string,
+    role: Extract<StaffRole, 'driver' | 'conductor'>,
+    staffId: string | null,
+  ) => Result<import('../types').Trip>;
   advanceBus: (tripId: string, step?: number) => Result<import('../types').Trip>;
   // Meta
   setRole: (role: DemoRole) => void;
@@ -81,6 +88,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recordUnresolvedPickup: (id, hub, reason) =>
         run((s) => logic.recordUnresolvedPickup(s, id, hub, reason)),
       editTrip: (id, edit) => run((s) => logic.editTrip(s, id, edit)),
+      createTrip: (input) => run((s) => logic.createTrip(s, input)),
+      assignStaff: (id, role, staffId) => run((s) => logic.assignStaff(s, id, role, staffId)),
       advanceBus: (id, step) => run((s) => logic.advanceBus(s, id, step)),
       setRole: (role) => setState((s) => ({ ...s, role })),
       updateProfile: (patch) => setState((s) => ({ ...s, profile: { ...s.profile, ...patch } })),

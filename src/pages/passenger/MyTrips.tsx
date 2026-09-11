@@ -131,7 +131,7 @@ function TripRow({
           <BookingStatusPill status={booking.status} />
           <span className="text-[11px] text-forest-400">
             {hub?.name} · {booking.seats} seat{booking.seats === 1 ? '' : 's'} ·{' '}
-            {formatUGX(trip.farePerSeat * booking.seats)}
+            {formatUGX((booking.fareAtBooking ?? trip.farePerSeat) * booking.seats)}
           </span>
         </div>
       </div>

@@ -70,7 +70,7 @@ export default function HubDetail() {
               <Text style={styles.addr}>{hub.area}</Text>
               <View style={styles.metaRow}>
                 {hub.openingHours ? <Text style={styles.hours}>{hub.openingHours}</Text> : null}
-                {mode === 'demo' && <Text style={styles.demoTag}>Demo location</Text>}
+                {mode === 'demo' && <Text style={styles.demoTag}>Preview location</Text>}
               </View>
             </View>
 
@@ -79,7 +79,7 @@ export default function HubDetail() {
                 <SectionHeading title="Where to wait" />
                 <Group style={{ padding: space.lg }}>
                   <Text style={styles.instr}>{hub.arrivalInstructions}</Text>
-                  {mode === 'demo' && <Text style={styles.illus}>Illustrative for the demo.</Text>}
+                  {mode === 'demo' && <Text style={styles.illus}>Simulated preview data.</Text>}
                 </Group>
               </>
             ) : null}

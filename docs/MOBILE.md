@@ -132,6 +132,42 @@ npx expo export --platform ios --platform android   # bundle check (no device ne
 The existing **web** commands at the repo root are unchanged (`npm run dev`,
 `build`, `lint`, `typecheck`, `test`, `db:test`, …).
 
+## Preview mode — a working local app (no Supabase required)
+
+Supabase is created later. To open a **fully working** app now — for design review,
+demos, and exercising the whole operational flow — start in **preview (demo) mode**,
+which uses seeded fictional data and on-device persistence. A discreet **Preview**
+indicator explains the data is simulated; connected mode and its honest
+setup/connection-error screens are untouched, and a configured connected app is
+**never** silently switched to local data.
+
+**Web preview** (from the repo root):
+```bash
+npm run preview:local        # = VITE_TOGO_DEMO=1 vite  → http://localhost:5173
+# alias: npm run dev:preview
+```
+Opens the passenger app with a role switcher (top-right): **Passenger**, **Hub
+attendant**, **Conductor**, and the **Dispatcher console** (Operator). All four
+share the same local dataset, so a passenger reservation immediately appears in the
+attendant, conductor, and dispatcher views on the same device.
+
+**Mobile preview** (from `apps/mobile/`):
+```bash
+npm run preview              # = EXPO_PUBLIC_TOGO_DEMO=1 expo start   (QR + URLs)
+npm run preview:web          # preview the RN screens in a browser
+npm run preview:tunnel       # preview over a public tunnel (needs egress + Expo login)
+```
+The native app opens the passenger experience; the **Staff workspace** (Account →
+*Staff workspace*) offers Driver, Conductor, and Hub-attendant personas. Selecting a
+preview persona **only filters simulated data on the device — it grants no backend
+permission** (in connected mode the app instead shows only the workspaces the signed-in
+account is actually assigned to, resolved on the server).
+
+> Preview state is per platform: the native app (AsyncStorage) and the web app
+> (`localStorage`) each keep their own local dataset and do **not** sync with each
+> other without a backend. Reset from Account → *Reset preview* (native) or the
+> Operator/Account reset (web).
+
 ## Connected mode (default) vs demo
 
 **Connected mode is the normal entry point.** Create `apps/mobile/.env` (or
