@@ -41,6 +41,7 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="staff" />
+                <Stack.Screen name="preview-onboarding" options={{ presentation: 'card' }} />
                 <Stack.Screen name="book/[tripId]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="hub/[hubId]" />
                 <Stack.Screen name="trip/[bookingId]" />

@@ -171,21 +171,47 @@ export class SupabaseAdapter implements DataAdapter {
   async checkIn(bookingId: string): Promise<BookingView> {
     return mapBooking(await this.rpc('check_in_booking', { p_booking_id: bookingId }));
   }
-  // Preview persona switching is a local-only affordance. In connected mode the
-  // persona is the authenticated user; a persona directory is not exposed to
-  // clients. Staff assignment queries below are stubs until the driver/hub-staff
-  // assignment surface is verified against a live backend (see docs/MVP_READINESS).
+  // Staff workspaces in connected mode are the AUTHENTICATED user's own verified
+  // assignments — never a persona directory. `my_staff_workspaces` returns only the
+  // caller's roles, resolved server-side from trip_staff / hub_staff. The synthetic
+  // ids below carry the role (and hub) so staffTrips/attendantHubId can route; the
+  // actual authority is always re-checked server-side against auth.uid().
   async listStaff(): Promise<StaffView[]> {
-    return [];
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const rows = await this.rpc<any[]>('my_staff_workspaces', {});
+    return (rows ?? []).map((r) => {
+      const role = r.role as StaffView['role'];
+      const id = role === 'attendant' ? `self:attendant:${r.hub_id}` : `self:${role}`;
+      return {
+        id,
+        name: r.staff_name ?? 'Staff',
+        role,
+        operatorId: r.operator_id ?? undefined,
+        operatorName: r.operator_name ?? undefined,
+        assignedTripCount: r.assigned_trip_count ?? 0,
+        assignedHubId: r.hub_id ?? undefined,
+        assignedHubName: r.hub_name ?? undefined,
+      };
+    });
   }
-  async staffTrips(_staffId: string): Promise<TripView[]> {
-    // TODO(connected): resolve trips assigned to auth.uid() via verified
-    // conductor/driver assignment records once available. Not runtime-verified.
-    return [];
+  async staffTrips(staffId: string): Promise<TripView[]> {
+    // Resolve the caller's own assigned trips for the requested crew role.
+    const role = staffId.includes('driver') ? 'driver' : 'conductor';
+    const ids = await this.rpc<string[]>('my_assigned_trip_ids', { p_role: role });
+    if (!ids || ids.length === 0) return [];
+    const { data, error } = await this.sb
+      .from('trips_public').select('*').in('id', ids).order('origin_departure');
+    if (error) throw toAdapterError(error);
+    const rows = data ?? [];
+    const stops = await this.stopsFor(rows.map((r: { id: string }) => r.id));
+    return rows.map((r: unknown) => mapTrip(r, stops.get((r as { id: string }).id) ?? []));
   }
-  async attendantHubId(_staffId: string): Promise<string | null> {
-    // TODO(connected): resolve the authenticated attendant's hub from hub_staff.
-    return null;
+  async attendantHubId(staffId: string): Promise<string | null> {
+    // The workspace id carries the hub; fall back to the server if a bare id is passed.
+    const m = /^self:attendant:(.+)$/.exec(staffId);
+    if (m) return m[1];
+    const staff = await this.listStaff();
+    return staff.find((s) => s.role === 'attendant')?.assignedHubId ?? null;
   }
 
   async checkInByReference(reference: string): Promise<BookingView> {
@@ -209,14 +235,19 @@ export class SupabaseAdapter implements DataAdapter {
       seats: r.seats, status: r.status, tripId: r.trip_id, pickupTime: r.pickup_time,
     }));
   }
-  async hubIncidents(_hubId: string): Promise<HubExpectedRow[]> {
-    // TODO(connected): expose a hub-incidents query for attendants. Not runtime-verified.
-    return [];
+  async hubIncidents(hubId: string): Promise<HubExpectedRow[]> {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const rows = await this.rpc<any[]>('get_hub_incidents', { p_hub_id: hubId });
+    return (rows ?? []).map((r) => ({
+      bookingId: r.booking_id, reference: r.reference, passengerName: r.passenger_name,
+      seats: r.seats, status: r.status, tripId: r.trip_id, pickupTime: r.pickup_time,
+    }));
   }
-  async resolveBoarding(_tripId: string, _credential: string): Promise<BookingView> {
-    // No read-only resolve RPC exists yet; connected boarding confirms by code then
-    // calls board_booking (which validates server-side). Not runtime-verified.
-    throw new AdapterError('UNSUPPORTED', 'Resolve-before-board is not available in connected mode yet.');
+  async resolveBoarding(tripId: string, credential: string): Promise<BookingView> {
+    // Read-only resolve: validates the credential against the trip and returns the
+    // booking WITHOUT boarding it. Boarding happens only via boardByCredential.
+    const cred = credential.trim().replace(/^TOGO:/, '');
+    return mapBooking(await this.rpc('resolve_boarding', { p_trip_id: tripId, p_credential: cred }));
   }
   async boardByCredential(tripId: string, credential: string): Promise<BookingView> {
     return mapBooking(await this.rpc('board_booking', { p_trip_id: tripId, p_credential: credential }));

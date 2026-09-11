@@ -102,6 +102,14 @@ export default function Account() {
 
       {mode === 'demo' && (
         <>
+          <Pressable onPress={() => router.push('/preview-onboarding')} accessibilityRole="button" accessibilityLabel="Preview sign-up experience" style={({ pressed }) => [styles.staffRow, pressed && { opacity: 0.85 }]}>
+            <View style={styles.staffIcon}><Ionicons name="eye-outline" size={20} color={colors.forest700} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.staffTitle}>Preview sign-up experience</Text>
+              <Text style={styles.staffSub}>Inspect onboarding — local preview only, no real registration or saved password</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+          </Pressable>
           <Card style={{ gap: 6 }}>
             <H2>Preview profile</H2>
             <Muted>You are in local preview mode — no account needed. Bookings and staff actions persist on this device only and are not shared.</Muted>

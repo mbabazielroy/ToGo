@@ -98,6 +98,8 @@ export const management = {
   }),
   assignConductor: (tripId: string, userId: string) => rpc<void>('operator_assign_conductor', { p_trip_id: tripId, p_user_id: userId }),
   removeConductor: (tripId: string, userId: string) => rpc<void>('operator_remove_conductor', { p_trip_id: tripId, p_user_id: userId }),
+  assignDriver: (tripId: string, userId: string) => rpc<void>('operator_assign_driver', { p_trip_id: tripId, p_user_id: userId }),
+  removeDriver: (tripId: string, userId: string) => rpc<void>('operator_remove_driver', { p_trip_id: tripId, p_user_id: userId }),
 
   // ---- incidents ----
   reportIncident: (p: { kind: string; tripId?: string; hubId?: string; bookingId?: string; staffNotes?: string; passengerMessage?: string }) =>

@@ -8,6 +8,7 @@ import { Booking } from './pages/passenger/Booking';
 import { MyTrips } from './pages/passenger/MyTrips';
 import { TripDetail } from './pages/passenger/TripDetail';
 import { Account } from './pages/passenger/Account';
+import { PreviewOnboarding } from './pages/passenger/PreviewOnboarding';
 import { Attendant } from './pages/staff/Attendant';
 import { Conductor } from './pages/staff/Conductor';
 import { Operator } from './pages/staff/Operator';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/trips" element={<MyTrips />} />
         <Route path="/trips/:bookingId" element={<TripDetail />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/preview-onboarding" element={<PreviewOnboarding />} />
         {/* Staff */}
         <Route path="/staff/attendant" element={<Attendant />} />
         <Route path="/staff/conductor" element={<Conductor />} />

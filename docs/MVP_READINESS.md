@@ -17,8 +17,19 @@ Two runtime surfaces exist and share the same platform-neutral rules
   `VITE_TOGO_DEMO=1` (web) / `EXPO_PUBLIC_TOGO_DEMO=1` (mobile). A working app with no
   backend. Everything in section A is exercised here.
 - **Connected mode** — the default; real Supabase auth + shared data + secured RPCs.
-  Its code paths are present but **cannot be runtime-verified in this environment**
-  because no Supabase project is provisioned or reachable (section B).
+  Its code paths are present and the database layer is proven against real Postgres
+  locally, but the live hosted transport **cannot be runtime-verified in this
+  environment** because no Supabase project is provisioned or reachable (section B).
+
+> **Reconciliation correction (this phase).** An earlier report listed a "backend fare
+> snapshot" and "crew-assignment functions" as *missing*. Inspecting the migrations
+> shows that was inaccurate: `bookings.fare_ugx_snapshot` has existed since
+> `0005_bookings.sql` (set from the trip fare inside `reserve_booking`), and conductor
+> assignment has existed since `0013_management.sql` (`operator_assign_conductor`).
+> Neither was re-added. The genuine gaps — added in `0017_staff_workspace.sql` — were
+> **driver** crew assignment, a read-only **`resolve_boarding`**, a hub-incidents read,
+> and self-only staff-workspace resolution. No historical migration was rewritten and
+> no access control was weakened.
 
 ---
 
@@ -44,6 +55,12 @@ browser / the native web preview. Test counts below are current.
 - Web role switcher and native **Staff workspace** (Account → Staff workspace) share
   one local dataset, so a passenger reservation immediately appears in the attendant,
   conductor, and dispatcher views on the same device.
+- **Preview sign-up experience** (Account → *Preview sign-up experience*, web +
+  native): a faithful walkthrough of the connected sign-in / create-account / reset
+  flow so the founder can inspect onboarding. It is clearly labelled local preview,
+  **not** real registration: it authenticates nothing, creates no account, and never
+  collects or persists a password (the field clears on submit — verified in a headless
+  run). It states plainly that public sign-up yields a **passenger account only**.
 
 **Staff personas — native Expo (`apps/mobile/app/staff/*`)**
 - **Driver**: today's assigned trips; vehicle/route/departure/conductor; next pickup
@@ -97,41 +114,51 @@ preview the same lifecycle was verified against an existing assigned departure.
 
 ---
 
-## B. Implemented, awaiting a live backend to verify
+## B. Implemented, and verified against real Postgres locally (awaiting a hosted project)
 
-Code paths exist and typecheck/lint clean, but require a provisioned, reachable
-Supabase project to run — **not verifiable in this environment**.
+Code paths exist, typecheck/lint clean, and the database policies + functions are
+proven by the RLS/authorization suite against a **real PostgreSQL** locally
+(`npm run db:test` → **84/84 pass**, including the new staff cases). What still
+requires a *hosted* Supabase project is the live Auth/PostgREST/Realtime transport —
+**not verifiable in this environment**.
 
 - **Connected auth & passenger flow** (web + native): email/password auth, public
   browsing signed-out, reserve via secured RPCs, My Trips, in-app notifications,
   scoped Realtime, honest pending/failed/empty/stale states, and the setup /
-  connection-error screens.
+  connection-error screens. Public sign-up creates a **passenger profile only** —
+  proven by the `handle_new_user` trigger (forces `is_platform_admin=false`, ignores
+  client role metadata) and the escalation tests in the RLS suite.
 - **Connected dispatcher** (`src/pages/connected/workspaces/OperatorWorkspace.tsx` +
   `src/data/management.ts`): create departure, edit/cancel trip, fleet/vehicle
   management, route creation + **ordered route-stop editor**, operator-member
   assignment — all against Supabase RPCs/tables.
-- **Database policies**: the RLS/authorization suite under `supabase/tests` needs a
+- **Connected crew assignment**: conductor assignment (`operator_assign_conductor`,
+  pre-existing) **and** the new driver assignment (`operator_assign_driver` /
+  `operator_remove_driver`, migration 0017), both operator-scoped and RLS-tested
+  (cross-operator assignment is rejected).
+- **Connected staff workspaces** (`SupabaseAdapter.listStaff / staffTrips /
+  attendantHubId / hubIncidents / resolveBoarding`): now backed by real,
+  authority-checked functions (migration 0017 — `my_staff_workspaces`,
+  `my_assigned_trip_ids`, `get_hub_incidents`, `resolve_boarding`), plus the adapter
+  contract test (`src/data/supabaseAdapter.test.ts`). Each returns **only the
+  authenticated user's own verified assignments**; a preview persona is never
+  involved. `resolve_boarding` is read-only (`STABLE`) and **never boards** — proven
+  by an RLS case asserting the booking stays `reserved` after resolve.
+- **Database policies**: the RLS/authorization suite under `supabase/tests` runs on a
   running Postgres / live project (`npm run db:test`).
 
-> These connected actions are **not runtime-verifiable here**; they are written
-> against the existing schema and secured RPCs but have not been executed against a
-> live database in this phase.
+> These connected actions are proven against local Postgres but have **not** been
+> executed against a live hosted Supabase project (Auth + PostgREST + Realtime) in
+> this phase.
 
 ---
 
 ## C. Missing / not yet built (software)
 
-- **Connected staff data methods**: `SupabaseAdapter.listStaff / staffTrips /
-  attendantHubId / hubIncidents / resolveBoarding` currently return empty or throw
-  `UNSUPPORTED`. The native Staff workspace is therefore **preview-only** until these
-  are backed by real queries. Landing them needs **narrowly-scoped migrations** (e.g.
-  a per-trip driver/conductor assignment and hub-staff resolution) plus **RLS/authz
-  checks** — added without rewriting historical migrations or weakening existing
-  access controls.
-- **Per-trip crew assignment RPC** in connected mode (the demo models this on the
-  client via `assignStaff`; the backend equivalent is not yet present).
-- **Persisted fare snapshot** in the backend schema (currently a client-side field on
-  the demo booking model).
+- **Web dispatcher driver-assignment UI**: `management.assignDriver/removeDriver` and
+  the RPCs exist, but the web `OperatorWorkspace` currently exposes a conductor picker
+  only; a driver picker still needs wiring (the native/demo dispatcher already models
+  both roles).
 - **Real GPS / live location** and **background tracking** (native dev build only — not
   claimed in preview) and a **real map** (needs published hub coordinates + a dev
   build).
@@ -166,5 +193,11 @@ Independent of the code and **not** implied by sections A–C:
 - **Mobile preview**: from `apps/mobile/`, `npm run preview` (QR + URLs for Expo Go)
   or `npm run preview:web`. Open **Account → Staff workspace** for the Driver /
   Conductor / Hub-attendant personas.
+- **Inspect account creation**: open **Account → Preview sign-up experience** (web or
+  native) to walk through the onboarding UI safely (no real registration). The real
+  connected implementation lives in `src/auth/AuthProvider.tsx` +
+  `src/pages/connected/AuthScreen.tsx` (web) and `apps/mobile/src/auth/AuthProvider.tsx`
+  + `apps/mobile/app/auth.tsx` + `apps/mobile/app/reset.tsx` (native); the
+  passenger-only guarantee is enforced by `supabase/migrations/0002_profiles.sql`.
 
 See `docs/MOBILE.md` for the full preview/connected details and device-testing paths.

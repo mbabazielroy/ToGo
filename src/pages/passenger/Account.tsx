@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { UserCircle, Bell, RotateCcw, Info, Github } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { UserCircle, Bell, RotateCcw, Info, Github, Eye, ChevronRight } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { useToast } from '../../components/ToastProvider';
 import { DemoNote } from '../../components/ui';
@@ -45,6 +46,24 @@ export function Account() {
           />
         </div>
       </div>
+
+      {/* Preview sign-up experience */}
+      <Link
+        to="/preview-onboarding"
+        className="card flex items-center gap-3 p-4 transition hover:bg-forest-50"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-forest-100 text-forest-700">
+          <Eye size={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-forest-900">Preview sign-up experience</div>
+          <div className="text-xs text-forest-500">
+            Inspect the connected onboarding (create account, sign in, reset). Local preview only — no real
+            registration, and no password is saved.
+          </div>
+        </div>
+        <ChevronRight size={18} className="shrink-0 text-forest-300" />
+      </Link>
 
       {/* Notifications */}
       <div className="card p-4">
