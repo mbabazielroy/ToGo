@@ -15,6 +15,11 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:test": "bash supabase/tests/run.sh",
     "db:concurrency": "bash supabase/tests/concurrency.sh",
+    "backend:up": "bash scripts/local-backend.sh up",
+    "backend:reset": "bash scripts/local-backend.sh reset",
+    "backend:env": "bash scripts/local-backend.sh env",
+    "backend:status": "bash scripts/local-backend.sh status",
+    "backend:down": "bash scripts/local-backend.sh down",
     "dev:preview": "VITE_TOGO_DEMO=1 vite",
     "preview:local": "VITE_TOGO_DEMO=1 vite"
   },

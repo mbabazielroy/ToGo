@@ -68,11 +68,19 @@ npm run db:test        # apply migrations to a local Postgres and run the RLS/tx
 npm run db:concurrency # prove the capacity guard under two racing reservations
 ```
 
-**To run the prototype (demo mode):** `npm install && npm run dev`
+**To run the prototype (demo/preview mode):** `npm install && npm run preview:local`
+(opens the working local preview with a role switcher — no backend needed).
 
-**To run the connected pilot:** copy `.env.example` to `.env.local`, fill in your
-Supabase URL + anon key, apply `supabase/migrations`, then `npm run dev`. Full
+**To run the full app against a REAL local backend:** `npm run backend:up` boots a
+local Supabase stack (Docker), applies every migration + seed, and writes the app's
+`.env` — then `npm run dev` runs connected mode end to end. One-command setup and the
+staff-role grant steps are in [docs/LOCAL_BACKEND.md](docs/LOCAL_BACKEND.md).
+
+**To run against a hosted Supabase project:** copy `.env.example` to `.env.local`, fill
+in your Supabase URL + anon key, apply `supabase/migrations`, then `npm run dev`. Full
 steps in [docs/BACKEND.md](docs/BACKEND.md).
+
+**To deploy:** see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Docker image + Vercel).
 
 ---
 
