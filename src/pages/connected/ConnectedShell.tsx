@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Bus, Home, Bell, UserCircle, ClipboardCheck, LayoutDashboard, Shield } from 'lucide-react';
+import { Bus, Home, Bell, UserCircle, ClipboardCheck, LayoutDashboard, Shield, Navigation } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 
 /** Shell for the connected app: header with staff workspace links (by verified
@@ -13,6 +13,7 @@ export function ConnectedShell({ children }: { children: ReactNode }) {
 
   const staffLinks = [
     { to: '/staff/attendant', label: 'Attendant', icon: ClipboardCheck, show: assignments.hubIds.length > 0 },
+    { to: '/staff/driver', label: 'Driver', icon: Navigation, show: assignments.driverTripIds.length > 0 },
     { to: '/staff/conductor', label: 'Conductor', icon: Bus, show: assignments.conductorTripIds.length > 0 },
     { to: '/staff/operator', label: 'Operator', icon: LayoutDashboard, show: assignments.operatorIds.length > 0 },
     { to: '/staff/admin', label: 'Admin', icon: Shield, show: assignments.isAdmin },

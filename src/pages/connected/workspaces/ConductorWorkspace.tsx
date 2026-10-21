@@ -188,7 +188,7 @@ function TripConsole({ tripId }: { tripId: string }) {
 
 type ShareState = 'idle' | 'requesting' | 'active' | 'denied' | 'unavailable' | 'interrupted';
 
-function LocationSharing({ tripId, tripActive }: { tripId: string; tripActive: boolean }) {
+export function LocationSharing({ tripId, tripActive }: { tripId: string; tripActive: boolean }) {
   const adapter = useAdapter();
   const [state, setState] = useState<ShareState>('idle');
   const watchId = useRef<number | null>(null);

@@ -304,25 +304,70 @@ function Team({ operatorId }: { operatorId: string }) {
   const toast = useToast();
   const trips = useAsync(() => management.listOperatorTrips(operatorId), [operatorId]);
   const [tripId, setTripId] = useState('');
+  const [role, setRole] = useState<'conductor' | 'driver'>('conductor');
   const [userId, setUserId] = useState('');
+  const crew = useAsync(() => (tripId ? management.listTripStaff(tripId) : Promise.resolve([])), [tripId]);
+
   async function assign(e: React.FormEvent) {
     e.preventDefault();
-    try { await management.assignConductor(tripId, userId.trim()); toast('Conductor assigned.', 'ok'); setUserId(''); }
-    catch (e) { toast(humanError(e), 'error'); }
+    const id = userId.trim();
+    if (!tripId || !id) return;
+    try {
+      if (role === 'driver') await management.assignDriver(tripId, id);
+      else await management.assignConductor(tripId, id);
+      toast(`${role === 'driver' ? 'Driver' : 'Conductor'} assigned.`, 'ok');
+      setUserId('');
+      crew.reload();
+    } catch (e) { toast(humanError(e), 'error'); }
   }
+  async function remove(r: { user_id: string; role: string }) {
+    try {
+      if (r.role === 'driver') await management.removeDriver(tripId, r.user_id);
+      else await management.removeConductor(tripId, r.user_id);
+      toast('Crew removed.', 'ok');
+      crew.reload();
+    } catch (e) { toast(humanError(e), 'error'); }
+  }
+
   return (
     <div className="space-y-3">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-forest-600">Assign conductors</h2>
-      <StaffNote>Hub attendants are assigned by platform admins (hubs are platform records). Operators assign conductors to their own trips.</StaffNote>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-forest-600">Crew assignment</h2>
+      <StaffNote>Hub attendants are assigned by platform admins (hubs are platform records). Operators roster their own trips' drivers and conductors. A crew member must have an account; assign by their user id.</StaffNote>
       <form onSubmit={assign} className="card space-y-2 p-4">
         <label className="block"><span className="field-label">Trip</span>
           <select className="input" value={tripId} onChange={(e) => setTripId(e.target.value)}>
             <option value="">Select…</option>
             {(trips.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.direction} · {formatDate(t.service_date)} {formatTime(t.origin_departure)}</option>)}
           </select></label>
-        <label className="block"><span className="field-label">Conductor user id (UUID)</span>
-          <input className="input font-mono" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="00000000-…" /></label>
-        <button type="submit" disabled={!tripId} className="btn-primary w-full">Assign conductor</button>
+
+        {tripId && (
+          <div className="rounded-xl bg-sand-50 p-2.5">
+            <div className="field-label mb-1">Current crew</div>
+            {crew.loading ? <Loading /> : (crew.data ?? []).length === 0 ? (
+              <div className="text-xs text-forest-400">No crew assigned yet.</div>
+            ) : (
+              <ul className="space-y-1">
+                {(crew.data ?? []).map((r) => (
+                  <li key={r.user_id + r.role} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="truncate"><span className="font-semibold capitalize text-forest-700">{r.role}</span> <span className="font-mono text-forest-400">{r.user_id.slice(0, 8)}…</span></span>
+                    <button type="button" onClick={() => remove(r)} className="rounded-lg border border-red-200 px-2 py-0.5 font-semibold text-red-600">Remove</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-[auto_1fr] gap-2">
+          <label className="block"><span className="field-label">Role</span>
+            <select className="input" value={role} onChange={(e) => setRole(e.target.value as 'conductor' | 'driver')}>
+              <option value="conductor">Conductor</option>
+              <option value="driver">Driver</option>
+            </select></label>
+          <label className="block"><span className="field-label">Crew member user id (UUID)</span>
+            <input className="input font-mono" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="00000000-…" /></label>
+        </div>
+        <button type="submit" disabled={!tripId || !userId.trim()} className="btn-primary w-full disabled:opacity-50">Assign {role}</button>
       </form>
     </div>
   );

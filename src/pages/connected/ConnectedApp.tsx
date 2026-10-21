@@ -11,6 +11,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { AccountPage } from './pages/AccountPage';
 import { AttendantWorkspace } from './workspaces/AttendantWorkspace';
 import { ConductorWorkspace } from './workspaces/ConductorWorkspace';
+import { DriverWorkspace } from './workspaces/DriverWorkspace';
 import { OperatorWorkspace } from './workspaces/OperatorWorkspace';
 import { AdminWorkspace } from './workspaces/AdminWorkspace';
 
@@ -54,6 +55,8 @@ export function ConnectedApp() {
           element={guard(assignments.hubIds.length > 0, <AttendantWorkspace hubIds={assignments.hubIds} />)} />
         <Route path="/staff/conductor"
           element={guard(assignments.conductorTripIds.length > 0, <ConductorWorkspace tripIds={assignments.conductorTripIds} />)} />
+        <Route path="/staff/driver"
+          element={guard(assignments.driverTripIds.length > 0, <DriverWorkspace tripIds={assignments.driverTripIds} />)} />
         <Route path="/staff/operator"
           element={guard(assignments.operatorIds.length > 0, <OperatorWorkspace operatorIds={assignments.operatorIds} />)} />
         <Route path="/staff/admin"

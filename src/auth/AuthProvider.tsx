@@ -16,9 +16,10 @@ export interface Assignments {
   operatorIds: string[];   // operator staff
   hubIds: string[];        // hub attendant
   conductorTripIds: string[]; // conductor
+  driverTripIds: string[]; // driver
 }
 
-const EMPTY_ASSIGNMENTS: Assignments = { isAdmin: false, operatorIds: [], hubIds: [], conductorTripIds: [] };
+const EMPTY_ASSIGNMENTS: Assignments = { isAdmin: false, operatorIds: [], hubIds: [], conductorTripIds: [], driverTripIds: [] };
 
 interface AuthContextValue {
   loading: boolean;
@@ -55,15 +56,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
       supabase.from('operator_members').select('operator_id').eq('user_id', uid),
       supabase.from('hub_staff').select('hub_id').eq('user_id', uid),
-      supabase.from('trip_staff').select('trip_id').eq('user_id', uid),
+      supabase.from('trip_staff').select('trip_id, role').eq('user_id', uid),
     ]);
     const p = (prof.data as Profile | null) ?? null;
     setProfile(p);
+    const tripRows = (trips.data ?? []) as { trip_id: string; role: string }[];
     setAssignments({
       isAdmin: !!p?.is_platform_admin,
       operatorIds: (members.data ?? []).map((r: { operator_id: string }) => r.operator_id),
       hubIds: (hubs.data ?? []).map((r: { hub_id: string }) => r.hub_id),
-      conductorTripIds: (trips.data ?? []).map((r: { trip_id: string }) => r.trip_id),
+      conductorTripIds: tripRows.filter((r) => r.role === 'conductor').map((r) => r.trip_id),
+      driverTripIds: tripRows.filter((r) => r.role === 'driver').map((r) => r.trip_id),
     });
   }, []);
 
