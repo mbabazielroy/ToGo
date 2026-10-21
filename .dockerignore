@@ -1,0 +1,17 @@
+# Keep the web build context small and the image clean.
+.git
+node_modules
+apps/mobile/node_modules
+dist
+**/dist
+.expo
+apps/mobile/.expo
+*.local
+.env
+.env.*
+!.env.example
+coverage
+.vscode
+.idea
+/tmp
+scratchpad

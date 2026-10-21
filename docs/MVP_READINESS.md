@@ -155,16 +155,36 @@ requires a *hosted* Supabase project is the live Auth/PostgREST/Realtime transpo
 
 ## C. Missing / not yet built (software)
 
-- **Web dispatcher driver-assignment UI**: `management.assignDriver/removeDriver` and
-  the RPCs exist, but the web `OperatorWorkspace` currently exposes a conductor picker
-  only; a driver picker still needs wiring (the native/demo dispatcher already models
-  both roles).
+- **Operator crew directory**: the operator console now assigns BOTH drivers and
+  conductors (role picker + current-crew list + remove) and the web Driver workspace
+  exists — but a crew member is still assigned by pasting their user id. A searchable
+  user directory would need an operator-scoped "list my candidate staff" RPC (there is
+  intentionally no client-side listing of `auth.users`).
 - **Real GPS / live location** and **background tracking** (native dev build only — not
   claimed in preview) and a **real map** (needs published hub coordinates + a dev
-  build).
+  build). Foreground location sharing IS implemented (web conductor + driver consoles).
 - **Native auth deep links** (email confirm / password reset) need a **development
   build** with configured Supabase redirect URLs; email/password sign-in itself works
   in Expo Go.
+
+---
+
+## C2. Running it as a full application (added this phase)
+
+- **Local real backend, one command**: `npm run backend:up` boots the Supabase CLI
+  local stack (Postgres + Auth + PostgREST + Realtime + Studio), applies every
+  migration + seed, and writes the client `.env` — connected mode then runs end to end
+  with real accounts and RLS. `scripts/grant-staff.sh` grants roles to signed-up users.
+  Needs Docker on the developer machine (not available in this build container, so the
+  `supabase start` step is config-complete but exercised on a dev machine; the SQL
+  layer is proven by `npm run db:test`). See [LOCAL_BACKEND.md](LOCAL_BACKEND.md).
+- **Connected staff parity**: every backend role now has a web workspace —
+  passenger, **driver** (new), conductor, attendant, operator, admin — routed from the
+  signed-in user's verified assignments.
+- **Deployment config**: `Dockerfile` + `deploy/nginx.conf` + `docker-compose.yml`
+  (Node build → nginx, SPA fallback) and `vercel.json` for the web app;
+  [DEPLOYMENT.md](DEPLOYMENT.md) covers backend (`supabase db push`), web (Vercel /
+  Docker / any static host), and mobile (EAS). No live cloud resources were created.
 
 ---
 
