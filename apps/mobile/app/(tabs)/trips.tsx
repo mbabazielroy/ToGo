@@ -38,6 +38,20 @@ export default function MyTrips() {
   const notBoarded = all.filter((b) => b.status === 'missed_pickup' || b.status === 'not_boarded' || b.status === 'no_show');
   const cancelled = all.filter((b) => b.status === 'cancelled');
 
+  // Surface live service alerts (delays) on upcoming trips, like a real transit app.
+  const upcomingTripIds = [...new Set(upcoming.map((b) => b.tripId))];
+  const upcomingTrips = useAsync(
+    () => Promise.all(upcomingTripIds.map((id) => adapter.getTrip(id))),
+    [upcomingTripIds.join(','), epoch],
+  );
+  const delayByTrip = new Map<string, number>();
+  for (const t of upcomingTrips.data ?? []) {
+    if (t && t.delayMinutes > 0 && t.status !== 'completed' && t.status !== 'cancelled') {
+      delayByTrip.set(t.id, t.delayMinutes);
+    }
+  }
+  const delayedCount = new Set(upcoming.filter((b) => delayByTrip.has(b.tripId)).map((b) => b.tripId)).size;
+
   return (
     <Screen>
       <H1>My Trips</H1>
@@ -55,7 +69,7 @@ export default function MyTrips() {
           )}
         </>
       )}
-      <Group title="Upcoming" list={upcoming} onOpen={(id) => router.push(`/trip/${id}`)} />
+      <Group title="Upcoming" list={upcoming} onOpen={(id) => router.push(`/trip/${id}`)} delays={delayByTrip} />
       <Group title="Completed" list={completed} onOpen={(id) => router.push(`/trip/${id}`)} muted />
       <Group title="Not boarded" list={notBoarded} onOpen={(id) => router.push(`/trip/${id}`)} muted />
       <Group title="Cancelled" list={cancelled} onOpen={(id) => router.push(`/trip/${id}`)} muted />
@@ -63,19 +77,21 @@ export default function MyTrips() {
   );
 }
 
-function Group({ title, list, onOpen, muted }: { title: string; list: BookingView[]; onOpen: (id: string) => void; muted?: boolean }) {
+function Group({ title, list, onOpen, muted, delays }: { title: string; list: BookingView[]; onOpen: (id: string) => void; muted?: boolean; delays?: Map<string, number> }) {
   if (list.length === 0) return null;
   return (
     <View>
       <SectionHeading title={`${title} · ${list.length}`} />
       <View style={styles.list}>
-        {list.map((b, i) => (
+        {list.map((b, i) => {
+          const delay = delays?.get(b.tripId) ?? 0;
+          return (
           <View key={b.id}>
             {i > 0 && <Separator inset={70} />}
             <Pressable
               onPress={() => onOpen(b.id)}
               accessibilityRole="button"
-              accessibilityLabel={`Booking ${b.reference}, pickup ${formatTime(b.pickupTimeSnapshot)}, ${b.status}`}
+              accessibilityLabel={`Booking ${b.reference}, pickup ${formatTime(b.pickupTimeSnapshot)}, ${b.status}${delay > 0 ? `, delayed ${delay} minutes` : ''}`}
               style={({ pressed }) => [styles.row, muted && { opacity: 0.9 }, pressed && { backgroundColor: colors.forest50 }]}
             >
               <View style={styles.timeBlock}>
@@ -87,12 +103,21 @@ function Group({ title, list, onOpen, muted }: { title: string; list: BookingVie
                 <Muted style={{ fontSize: font.small }}>
                   {b.seats} seat{b.seats === 1 ? '' : 's'} · {formatUGX(b.fareUgxSnapshot * b.seats)}
                 </Muted>
-                <View style={{ marginTop: 6, alignSelf: 'flex-start' }}><BookingStatusPill status={b.status} /></View>
+                <View style={styles.pillRow}>
+                  <BookingStatusPill status={b.status} />
+                  {delay > 0 && (
+                    <View style={styles.delayChip}>
+                      <Ionicons name="time-outline" size={11} color={colors.amber800} />
+                      <Text style={styles.delayChipText}>Delayed +{delay}m</Text>
+                    </View>
+                  )}
+                </View>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.faint} />
             </Pressable>
           </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -105,4 +130,7 @@ const styles = StyleSheet.create({
   time: { fontSize: font.h2, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
   timeMeta: { fontSize: font.tiny, color: colors.muted, marginTop: 1 },
   ref: { fontWeight: '600', color: colors.ink, fontSize: font.body },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' },
+  delayChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.amber100, borderRadius: radius.sm, paddingHorizontal: 7, paddingVertical: 2 },
+  delayChipText: { color: colors.amber800, fontSize: font.tiny, fontWeight: '600' },
 });

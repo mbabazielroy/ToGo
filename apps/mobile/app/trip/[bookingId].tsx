@@ -96,6 +96,10 @@ export default function TripScreen() {
         {b && (
           <View style={{ gap: space.md }}>
             {cancelled && <Banner tone="red" text="This reservation was cancelled and the seats released." />}
+            {!cancelled && t && t.delayMinutes > 0 && t.status !== 'completed' &&
+              (b.status === 'reserved' || b.status === 'checked_in' || b.status === 'boarded') && (
+                <Banner tone="amber" text={`Service alert: this bus is running about ${t.delayMinutes} min late. Please allow for the delay at ${hubName}.`} />
+            )}
             {b.status === 'missed_pickup' && <Banner tone="amber" text="You checked in but were not boarded before the trip completed. Operations is investigating and will follow up." />}
             {(b.status === 'not_boarded' || b.status === 'no_show') && <Banner tone="grey" text="This trip has completed and you were not boarded, so you were not recorded as having travelled." />}
 
