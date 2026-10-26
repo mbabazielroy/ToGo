@@ -6,12 +6,7 @@
     "orientation": "portrait",
     "scheme": "togo",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "primaryColor": "#1f4d31",
-    "splash": {
-      "backgroundColor": "#1f4d31",
-      "resizeMode": "contain"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.togo.mobile"
@@ -20,8 +15,7 @@
       "package": "app.togo.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#1f4d31"
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "bundler": "metro",
@@ -30,6 +24,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1f4d31",
+          "resizeMode": "contain"
+        }
+      ],
       [
         "expo-camera",
         {
