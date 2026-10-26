@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../src/components/Screen';
-import { Card, Muted, PrimaryButton, ErrorRow } from '../src/components/ui';
-import { useAuth } from '../src/auth/AuthProvider';
-import { useToast } from '../src/components/ToastProvider';
-import { humanError } from '../src/hooks/useAsync';
-import { colors, radius, space, font } from '../src/theme';
+import { Screen } from '@/components/Screen';
+import { Card, Muted, PrimaryButton, ErrorRow } from '@/components/ui';
+import { useAuth } from '@/auth/AuthProvider';
+import { useToast } from '@/components/ToastProvider';
+import { humanError } from '@/hooks/useAsync';
+import { colors, radius, space, font } from '@/theme';
 
 // Reached after a password-recovery deep link sets recoveryMode (see
 // useAuthDeepLinks). If there is no recovery session the form explains the link is

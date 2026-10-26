@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, space, font, SCREEN } from '../theme';
 import { useAppMode } from '../data/AdapterProvider';
+import { ask } from '../lib/dialog';
 
 export const DEMO_EXPLANATION =
   'Preview mode uses simulated operators, hubs, fares, staff and tracking. Nothing here books a real seat or arranges a real pickup — everything is stored only on this device so you can explore the full workflow.';
@@ -13,7 +14,7 @@ export function ModeTag() {
   const demo = mode === 'demo';
   return (
     <Pressable
-      onPress={() => demo && Alert.alert('Preview mode', DEMO_EXPLANATION)}
+      onPress={() => demo && ask('Preview mode', DEMO_EXPLANATION)}
       accessibilityRole={demo ? 'button' : undefined}
       accessibilityLabel={demo ? 'Preview mode. Data is simulated. Tap to learn more.' : 'Connected pilot'}
       hitSlop={8}

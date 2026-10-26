@@ -545,6 +545,18 @@ export function createTrip(state: AppState, input: CreateTripInput): Result<Trip
 
   const originDeparture = new Date(kampalaDateTime(input.date, hh, mm)).toISOString();
   const destinationArrival = shiftMinutes(originDeparture, input.durationMin);
+
+  // A vehicle can only run one departure at a time.
+  const draftStart = new Date(originDeparture).getTime();
+  const draftEnd = new Date(destinationArrival).getTime();
+  const vehicleClash = state.trips.find((t) => {
+    if (t.vehicleId !== vehicle.id || t.status === 'cancelled' || t.status === 'completed') return false;
+    const [s0, e0] = tripWindow(t);
+    return draftStart < e0 && s0 < draftEnd;
+  });
+  if (vehicleClash) {
+    return fail(`${vehicle.label} is already running a departure at ${formatTime(vehicleClash.originDeparture)} that overlaps this time.`);
+  }
   const trip: Trip = {
     id: uid('trip'),
     routeId: route.id,

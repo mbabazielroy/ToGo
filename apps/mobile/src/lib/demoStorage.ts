@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AppState } from '@shared/types';
-import { buildSeedState, STORAGE_VERSION } from '@shared/data/seed';
+import { buildSeedState, rollForward, STORAGE_VERSION } from '@shared/data/seed';
 import { kampalaToday } from '@shared/lib/time';
 
 // Native demo persistence. This is ORDINARY app-sandbox storage (unencrypted) and
@@ -24,7 +24,8 @@ export async function loadDemoState(): Promise<AppState> {
     const parsed = JSON.parse(raw) as unknown;
     if (!isValid(parsed)) return buildSeedState(kampalaToday());
     if (parsed.version !== STORAGE_VERSION) return buildSeedState(kampalaToday());
-    return parsed;
+    // Add today's departures so a preview opened on a later day isn't empty.
+    return rollForward(parsed, kampalaToday());
   } catch {
     return buildSeedState(kampalaToday());
   }

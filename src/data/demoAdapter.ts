@@ -5,19 +5,23 @@
 
 import type { AppState } from '../types';
 import { buildSeedState } from '../data/seed';
-import { kampalaToday, shiftMinutes } from '../lib/time';
+import { formatTime, kampalaToday, shiftMinutes } from '../lib/time';
 import * as logic from '../state/logic';
 import { operatorById } from '../lib/lookup';
 import {
   AdapterError,
   type BookingView,
+  type CreateDepartureInput,
   type DataAdapter,
   type HubExpectedRow,
   type HubView,
+  type IncidentView,
   type LocationView,
   type ManifestRow,
   type NotificationView,
+  type OperatorView,
   type ReserveInput,
+  type VehicleView,
   type StaffView,
   type Subscription,
   type TripSearch,
@@ -27,6 +31,22 @@ import {
 } from './adapter';
 
 const NOOP: Subscription = { unsubscribe: () => {} };
+
+const NOTIFICATION_TITLE: Record<string, string> = {
+  reservation: 'Seat reserved',
+  cancellation: 'Reservation cancelled',
+  check_in: 'Checked in',
+  boarding: 'Boarded',
+  trip_start: 'Bus departed',
+  delay: 'Delay reported',
+  trip_completed: 'Trip completed',
+  trip_cancelled: 'Trip cancelled',
+  unresolved_pickup: 'Missed pickup',
+  reach_hub: 'Bus at hub',
+  schedule_edit: 'Schedule changed',
+  trip_created: 'Departure created',
+  assignment: 'Crew assignment',
+};
 
 function stopId(tripId: string, hubId: string): string {
   return `${tripId}::${hubId}`;
@@ -321,11 +341,89 @@ export class DemoAdapter implements DataAdapter {
   async latestLocation(): Promise<LocationView | null> {
     return null;
   }
+  async listTripsOn(date: string): Promise<TripView[]> {
+    return this.state.trips
+      .filter((t) => t.date === date)
+      .map((t) => this.tripView(t.id)!)
+      .sort((a, b) => a.originDeparture.localeCompare(b.originDeparture));
+  }
+  async listOperators(): Promise<OperatorView[]> {
+    return this.state.operators.map((o) => ({ id: o.id, name: o.name, rating: o.rating }));
+  }
+  async listVehicles(): Promise<VehicleView[]> {
+    return this.state.vehicles.map((v) => ({ id: v.id, operatorId: v.operatorId, label: v.label, plate: v.plate, seats: v.seats }));
+  }
+  async createDeparture(input: CreateDepartureInput): Promise<TripView> {
+    const route = this.state.routes.find((r) => r.direction === input.direction);
+    if (!route) throw new AdapterError('DEMO', 'No route exists for that direction.');
+    const trip = this.apply(
+      logic.createTrip(this.state, {
+        routeId: route.id,
+        operatorId: input.operatorId,
+        vehicleId: input.vehicleId,
+        date: input.date,
+        departHHMM: input.departHHMM,
+        durationMin: input.durationMin,
+        farePerSeat: input.fareUgx,
+        driverId: input.driverId ?? null,
+        conductorId: input.conductorId ?? null,
+      }),
+    );
+    return this.tripView(trip.id)!;
+  }
+  async assignCrew(tripId: string, role: 'driver' | 'conductor', staffId: string | null): Promise<TripView> {
+    this.apply(logic.assignStaff(this.state, tripId, role, staffId));
+    return this.tripView(tripId)!;
+  }
+  async listIncidents(): Promise<IncidentView[]> {
+    const hubName = (id?: string) => this.state.hubs.find((h) => h.id === id)?.name ?? 'a hub';
+    const missed: IncidentView[] = this.state.bookings
+      .filter((b) => b.unresolved || b.status === 'missed_pickup')
+      .map((b) => ({
+        id: `inc_${b.id}`,
+        kind: 'missed_pickup',
+        title: `Missed pickup · ${b.passengerName}`,
+        detail: `${b.reference} · ${b.seats} seat${b.seats === 1 ? '' : 's'} at ${hubName(b.pickupHubId)}`,
+        tripId: b.tripId,
+        hubId: b.pickupHubId,
+        at: b.checkedInAt ?? b.createdAt,
+        open: true,
+      }));
+    const trips: IncidentView[] = this.state.trips.flatMap((t): IncidentView[] => {
+      const label = `${t.direction === 'KLA_MBR' ? 'Kampala → Mbarara' : 'Mbarara → Kampala'} ${formatTime(t.originDeparture)}`;
+      if (t.status === 'cancelled') {
+        return [{ id: `inc_cx_${t.id}`, kind: 'trip_cancelled', title: `Cancelled · ${label}`, detail: t.cancelReason ?? 'No reason recorded.', tripId: t.id, at: t.lastUpdate, open: false }];
+      }
+      if (t.delayMinutes > 0 && t.status !== 'completed') {
+        return [{ id: `inc_dl_${t.id}`, kind: 'delay', title: `Delayed +${t.delayMinutes} min · ${label}`, detail: operatorById(this.state, t.operatorId)?.name ?? 'Operator', tripId: t.id, at: t.lastUpdate, open: true }];
+      }
+      return [];
+    });
+    return [...missed, ...trips].sort((a, b) => b.at.localeCompare(a.at));
+  }
+  async listActivity(): Promise<NotificationView[]> {
+    return this.state.activity.slice(0, 50).map((e) => this.toNotification(e));
+  }
+
+  // A passenger's own notifications: events about their bookings, or about trips
+  // they hold a booking on. Operations-only events (assignments, new departures)
+  // stay in the admin activity feed.
   async listNotifications(): Promise<NotificationView[]> {
-    return this.state.activity.slice(0, 30).map((e) => ({
-      id: e.id, kind: e.kind, title: e.kind.replace(/_/g, ' '), body: e.message,
+    const mine = new Set(this.state.bookings.map((b) => b.id));
+    const myTrips = new Set(this.state.bookings.filter((b) => b.status !== 'cancelled').map((b) => b.tripId));
+    const passengerKinds = new Set(['reservation', 'cancellation', 'check_in', 'boarding', 'trip_start', 'delay', 'trip_completed', 'trip_cancelled', 'reach_hub', 'schedule_edit']);
+    return this.state.activity
+      .filter((e) => passengerKinds.has(e.kind))
+      .filter((e) => (e.bookingId && mine.has(e.bookingId)) || (!e.bookingId && e.tripId && myTrips.has(e.tripId)))
+      .slice(0, 30)
+      .map((e) => this.toNotification(e));
+  }
+
+  private toNotification(e: AppState['activity'][number]): NotificationView {
+    return {
+      id: e.id, kind: e.kind, title: NOTIFICATION_TITLE[e.kind] ?? e.kind.replace(/_/g, ' '), body: e.message,
       tripId: e.tripId ?? null, bookingId: e.bookingId ?? null, readAt: null, createdAt: e.at,
-    }));
+    };
   }
   async markNotificationRead(): Promise<void> {
     /* no-op in demo */

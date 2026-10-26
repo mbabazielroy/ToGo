@@ -11,29 +11,54 @@ wrapper. The web app, backend, migrations, and tests are untouched.
 apps/mobile/
   app/                         # Expo Router (file-based routes)
     _layout.tsx                # providers + connected-mode auth gate + deep-link handling
-    (tabs)/                    # bottom tabs: Home, Hubs, My Trips, Account
-      _layout.tsx  index.tsx  hubs.tsx  trips.tsx  account.tsx
-    book/[tripId].tsx          # booking review + reserve (sticky total-fare action)
-    hub/[hubId].tsx            # hub details: instructions, facilities, departures
-    trip/[bookingId].tsx       # boarding pass (QR) + journey stages, check-in, cancel
-    notifications.tsx          # in-app inbox + unread state
+    index.tsx                  # sends each identity to its own space (or to welcome)
+    welcome.tsx                # first-run intro slides; "Continue as …" for returning users
+    onboarding.tsx             # passenger profile: name, phone, home city, in-app alerts
+    staff-signin.tsx           # entry to crew/admin spaces (preview personas or verified)
     auth.tsx  reset.tsx        # connected-mode sign in/up + password recovery
+    (passenger)/               # PASSENGER SPACE (SpaceGate: passenger)
+      (tabs)/ home  trips  hubs  account
+      book/[tripId]  trip/[bookingId]  hub/[hubId]  notifications
+    crew/                      # CREW SPACE (SpaceGate: driver/conductor/attendant)
+      index (Drive / Boarding / Hub by role)  shift  profile
+    admin/                     # OPERATIONS SPACE (SpaceGate: admin)
+      (tabs)/ index (overview)  departures  network  team
+      trip/[tripId]  new-departure
   src/
+    session/                   # SessionProvider (identity → space) + SpaceGate guard
+    crew/                      # Driver/Conductor/Attendant screens, crew header
+    admin/                     # admin list rows
     env.ts                     # EXPO_PUBLIC_* → demo vs connected mode
-    theme.ts                   # deep-green / warm-white / lime tokens
+    theme.ts                   # design tokens (Transit-style green brand)
     data/AdapterProvider.tsx   # picks demo or Supabase adapter
     auth/AuthProvider.tsx      # connected auth (email/password)
-    auth/useAuthDeepLinks.ts   # native auth callback handling (see limitations)
+    lib/lines.ts               # operator "line" colours + codes
+    lib/dialog.ts              # confirmations that also work on web
+    lib/alerts.ts              # in-app alert preferences
     lib/supabase.ts            # Supabase client (SecureStore session storage)
-    lib/secureSessionStore.ts  # chunked Keychain/Keystore session store
-    lib/demoStorage.ts         # AsyncStorage-backed demo persistence
-    lib/feedback.ts            # gentle haptics + reduce-motion hook
-    components/                # native UI kit: DepartureRow, SelectSheet,
-                               #   Screen (+ ModeTag), ui.tsx, …
-    hooks/  state/             # useAsync, search context
-  metro.config.js              # shares ../../src via @shared/*
+    lib/demoStorage.ts         # AsyncStorage-backed demo persistence (+ daily roll-forward)
+    components/                # native UI kit: DepartureRow, SelectSheet, ui.tsx, …
+    hooks/                     # useAsync, useNow (live countdowns)
+  metro.config.js              # shares ../../src via @shared/*; ignores macOS ._ files
   app.json                     # scheme "togo", plugins, bundle ids
 ```
+
+### Three separate spaces
+Who you are decides where you land, and each space is a separate route group guarded
+by `SpaceGate`, so a passenger can't open crew or admin screens (and vice versa) even
+by deep link:
+
+| Identity | Space | Tabs |
+| --- | --- | --- |
+| Passenger | `(passenger)` | Go · My trips · Hubs · Account |
+| Driver / Conductor / Hub attendant | `crew` | Drive / Boarding / Hub · Shift · Profile |
+| Operations admin | `admin` | Overview · Departures · Network · Team |
+
+In **preview**, crew and admin identities are fictional personas picked on the staff
+sign-in screen (Welcome → "Crew or operations?", or Account → Staff workspace). In
+**connected** mode they are only offered when the signed-in account is verified for
+them server-side (`my_staff_workspaces`, `is_platform_admin`); the database
+re-authorises every action regardless.
 
 ### Shared code (no duplication, no web coupling)
 The mobile app imports the repo's platform-neutral modules through the `@shared/*`
@@ -157,9 +182,10 @@ npm run preview              # = EXPO_PUBLIC_TOGO_DEMO=1 expo start   (QR + URLs
 npm run preview:web          # preview the RN screens in a browser
 npm run preview:tunnel       # preview over a public tunnel (needs egress + Expo login)
 ```
-The native app opens the passenger experience; the **Staff workspace** (Account →
-*Staff workspace*) offers Driver, Conductor, and Hub-attendant personas. Selecting a
-preview persona **only filters simulated data on the device — it grants no backend
+The native app opens on a welcome + onboarding flow, then the passenger app. Crew
+and operations use **Welcome → "Crew or operations?"** (or Account → *Staff
+workspace*) to pick a Driver, Conductor, Hub-attendant or Operations persona. Selecting
+a preview persona **only filters simulated data on the device — it grants no backend
 permission** (in connected mode the app instead shows only the workspaces the signed-in
 account is actually assigned to, resolved on the server).
 
@@ -307,22 +333,22 @@ than demo. To preview the visual design without a backend, start Metro with
 
 | Package | Locked version |
 | --- | --- |
-| expo | 57.0.21 |
-| react-native | 0.86.3 |
-| react / react-dom | 19.2.3 |
-| expo-router | 57.0.20 |
-| react-native-safe-area-context | 5.7.0 |
-| react-native-screens | 4.26.2 |
-| react-native-svg | 15.15.4 |
-| react-native-qrcode-svg | 6.3.24 |
-| expo-haptics | 57.0.2 |
+| expo | 58.0.19 |
+| react-native | 0.88.0 |
+| react / react-dom | 19.3.0 |
+| expo-router | 58.0.26 |
+| react-native-safe-area-context | 5.10.1 |
+| react-native-screens | 4.30.0 |
+| react-native-svg | 15.16.0 |
+| react-native-qrcode-svg | 6.3.33 |
+| expo-haptics | 58.0.7 |
 | @react-native-async-storage/async-storage | 2.2.0 |
-| expo-secure-store | 57.0.3 |
+| expo-secure-store | 58.0.2 |
 | @supabase/supabase-js | 2.116.0 |
 
-These are consistent with Expo SDK 57's bundled set (`expo/bundledNativeModules.json`
-pins react-native `0.86.3` and react `19.2.3`). **Expo Go from the App Store tracks
-the latest published SDK (57)**, so an up-to-date Expo Go matches this project. (This
+These are Expo SDK 58's bundled set (`npx expo install --check` and `expo-doctor`
+pass). **Expo Go from the App Store tracks the latest published SDK (58)**, so an
+up-to-date Expo Go matches this project. (This
 is Expo's stated Go policy; it was not confirmed against the live App Store listing
 from this network-restricted environment — update Expo Go before testing.)
 

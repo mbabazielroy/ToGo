@@ -2,13 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   AdapterError,
   type BookingView,
+  type CreateDepartureInput,
   type DataAdapter,
   type HubExpectedRow,
   type HubView,
+  type IncidentView,
   type LocationView,
   type ManifestRow,
   type NotificationView,
+  type OperatorView,
   type ReserveInput,
+  type VehicleView,
   type StaffView,
   type Subscription,
   type TripSearch,
@@ -298,6 +302,82 @@ export class SupabaseAdapter implements DataAdapter {
     if (!data) return null;
     return { lat: Number(data.lat), lng: Number(data.lng), accuracyM: data.accuracy_m,
       observedAt: data.observed_at, receivedAt: data.received_at };
+  }
+
+  // ---- Admin console. Each read/write is authorised by RLS / SECURITY DEFINER RPCs
+  // (platform admin or operator member); a non-admin simply gets an error or no rows.
+  async listTripsOn(date: string): Promise<TripView[]> {
+    const { data, error } = await this.sb
+      .from('trips_public').select('*').eq('service_date', date).order('origin_departure');
+    if (error) throw toAdapterError(error);
+    const rows = data ?? [];
+    const stops = await this.stopsFor(rows.map((r: { id: string }) => r.id));
+    return rows.map((r: unknown) => mapTrip(r, stops.get((r as { id: string }).id) ?? []));
+  }
+  async listOperators(): Promise<OperatorView[]> {
+    const { data, error } = await this.sb.from('operators').select('id,name,rating').order('name');
+    if (error) throw toAdapterError(error);
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    return (data ?? []).map((o: any) => ({ id: o.id, name: o.name, rating: Number(o.rating ?? 0) }));
+  }
+  async listVehicles(): Promise<VehicleView[]> {
+    const { data, error } = await this.sb.from('vehicles').select('id,operator_id,label,plate,capacity').order('label');
+    if (error) throw toAdapterError(error);
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    return (data ?? []).map((v: any) => ({ id: v.id, operatorId: v.operator_id, label: v.label, plate: v.plate, seats: v.capacity }));
+  }
+  async createDeparture(input: CreateDepartureInput): Promise<TripView> {
+    const { data: routes, error: rErr } = await this.sb
+      .from('routes').select('id').eq('operator_id', input.operatorId).eq('direction', input.direction).eq('is_active', true).limit(1);
+    if (rErr) throw toAdapterError(rErr);
+    const routeId = routes?.[0]?.id as string | undefined;
+    if (!routeId) throw new AdapterError('ROUTE_NOT_FOUND', 'This operator has no active route in that direction.');
+    const { data: stops, error: sErr } = await this.sb
+      .from('route_stops').select('stop_order').eq('route_id', routeId).order('stop_order');
+    if (sErr) throw toAdapterError(sErr);
+    const n = stops?.length ?? 0;
+    if (n < 2) throw new AdapterError('ROUTE_NEEDS_2_STOPS', 'That route needs at least two stops.');
+    const m = /^(\d{1,2}):(\d{2})$/.exec(input.departHHMM.trim());
+    if (!m) throw new AdapterError('INVALID_TIME', 'Enter a departure time as HH:MM.');
+    const depart = new Date(`${input.date}T${m[1].padStart(2, '0')}:${m[2]}:00+03:00`).getTime();
+    // Spread stop times evenly so the last stop is the arrival.
+    const pickupTimes = Array.from({ length: n }, (_, i) =>
+      new Date(depart + Math.round((input.durationMin * 60000 * i) / (n - 1))).toISOString());
+    const { data: vehicle } = await this.sb.from('vehicles').select('capacity').eq('id', input.vehicleId).maybeSingle();
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    const trip = await this.rpc<any>('operator_create_departure', {
+      p_operator_id: input.operatorId, p_route_id: routeId, p_vehicle_id: input.vehicleId,
+      p_service_date: input.date, p_origin_departure: pickupTimes[0], p_fare_ugx: input.fareUgx,
+      p_capacity: vehicle?.capacity ?? 1, p_cutoff_minutes: 0, p_pickup_times: pickupTimes,
+    });
+    const id = (trip?.id ?? trip) as string;
+    if (input.driverId) await this.rpc('operator_assign_driver', { p_trip_id: id, p_user_id: input.driverId });
+    if (input.conductorId) await this.rpc('operator_assign_conductor', { p_trip_id: id, p_user_id: input.conductorId });
+    const view = await this.getTrip(id);
+    if (!view) throw new AdapterError('ERROR', 'Departure created but could not be loaded.');
+    return view;
+  }
+  async assignCrew(tripId: string, role: 'driver' | 'conductor', staffId: string | null): Promise<TripView> {
+    if (!staffId) {
+      throw new AdapterError('NOT_AVAILABLE', 'Removing crew needs the crew member’s account; use the web operator console.');
+    }
+    await this.rpc(role === 'driver' ? 'operator_assign_driver' : 'operator_assign_conductor', { p_trip_id: tripId, p_user_id: staffId });
+    const view = await this.getTrip(tripId);
+    if (!view) throw new AdapterError('ERROR', 'Trip not found.');
+    return view;
+  }
+  async listIncidents(): Promise<IncidentView[]> {
+    const { data, error } = await this.sb.from('incidents').select('*').order('created_at', { ascending: false }).limit(50);
+    if (error) throw toAdapterError(error);
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    return (data ?? []).map((i: any) => ({
+      id: i.id, kind: i.kind, title: String(i.kind).replace(/_/g, ' '),
+      detail: i.staff_notes ?? i.passenger_message ?? '', tripId: i.trip_id, hubId: i.hub_id,
+      at: i.created_at, open: i.status !== 'resolved',
+    }));
+  }
+  async listActivity(): Promise<NotificationView[]> {
+    return this.listNotifications();
   }
 
   async listNotifications(): Promise<NotificationView[]> {

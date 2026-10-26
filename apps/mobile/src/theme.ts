@@ -1,9 +1,9 @@
-// ToGo mobile design tokens — a restrained, Apple-inspired system.
+// ToGo mobile design tokens.
 //
-// White and very light neutral surfaces, near-black primary text and readable grey
-// secondary text, native system typography, thin separators, and forest green used
-// only as an accent on primary actions and selected states. No lime fills, no tinted
-// backgrounds, no gradients, minimal elevation. Values are logical RN units.
+// Transit-inspired: calm light-grey canvas, white cards, bold tabular times, and a
+// vivid green brand used for primary actions, "live" signals and selected states.
+// Each operator gets its own line colour (see src/lib/lines.ts) the way transit
+// apps colour routes. Values are logical RN units.
 
 export const colors = {
   // Grouped-list system backgrounds
@@ -23,14 +23,17 @@ export const colors = {
   border: '#c9c9ce',
 
   // Forest accent (primary actions, tint, selected)
-  forest900: '#12351f',
-  forest800: '#173f26',
-  forest700: '#1f5c39', // primary / tint
-  forest600: '#256b43',
-  forest500: '#2f855a',
-  forest200: '#bcd9c6',
-  forest100: '#e3efe8', // subtle green tint (status only)
+  forest900: '#0b2e1c', // hero surfaces (next-trip card, crew header)
+  forest800: '#0f3d25',
+  forest700: '#0c7a43', // primary / tint (AA with white text)
+  forest600: '#0f8f4f',
+  forest500: '#13a85c', // live / bright accent
+  forest200: '#b6e3c8',
+  forest100: '#e1f4e8', // subtle green tint (status only)
   forest50: '#eeeef1',  // neutral pressed highlight
+  live: '#13a85c',
+  onDark: '#ffffff',
+  onDarkSoft: 'rgba(255,255,255,0.72)',
 
   // Legacy lime tokens retained for back-compat but no longer used as fills
   lime600: '#5f8f10', lime500: '#6f9f14', lime400: '#89b93a', lime300: '#a9cf6a',

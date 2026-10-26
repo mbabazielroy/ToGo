@@ -11,5 +11,13 @@ const repoRoot = path.resolve(projectRoot, '../..');
 const config = getDefaultConfig(projectRoot);
 config.watchFolders = [repoRoot, path.resolve(repoRoot, 'src')];
 config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules')];
+// Ignore macOS AppleDouble files ("._name"). On non-Apple filesystems such as an
+// exFAT external drive, macOS writes one beside every file; Expo Router would
+// otherwise try to load e.g. app/._auth.tsx as a screen and the bundle fails.
+const appleDouble = /(^|[\\/])\._[^\\/]*$/;
+const existing = config.resolver.blockList;
+config.resolver.blockList = existing
+  ? [].concat(existing, appleDouble)
+  : appleDouble;
 
 module.exports = config;

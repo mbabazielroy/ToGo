@@ -33,3 +33,6 @@ if (isSupabaseConfigured && /service_role/i.test(anonKey)) {
   // eslint-disable-next-line no-console
   console.error('[ToGo] Refusing a service_role key in EXPO_PUBLIC_*. Use the publishable/anon key only.');
 }
+
+/** Support contact shown in Account → Help. Set per deployment; hidden when empty. */
+export const SUPPORT_EMAIL: string = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '').trim();

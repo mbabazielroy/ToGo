@@ -3,12 +3,12 @@ import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen } from '../src/components/Screen';
-import { Card, Muted, PrimaryButton, ErrorRow } from '../src/components/ui';
-import { useAuth } from '../src/auth/AuthProvider';
-import { useToast } from '../src/components/ToastProvider';
-import { humanError } from '../src/hooks/useAsync';
-import { colors, radius, space, font } from '../src/theme';
+import { Screen } from '@/components/Screen';
+import { Card, Muted, PrimaryButton, ErrorRow } from '@/components/ui';
+import { useAuth } from '@/auth/AuthProvider';
+import { useToast } from '@/components/ToastProvider';
+import { humanError } from '@/hooks/useAsync';
+import { colors, radius, space, font } from '@/theme';
 
 type Tab = 'signin' | 'signup' | 'reset';
 
@@ -16,7 +16,7 @@ export default function AuthScreen() {
   const { signIn, signUp, resetPassword, session, recoveryMode } = useAuth();
   const toast = useToast();
   const router = useRouter();
-  const { next } = useLocalSearchParams<{ next?: string }>();
+  const { next, staff } = useLocalSearchParams<{ next?: string; staff?: string }>();
   const returnTo = (typeof next === 'string' && next.startsWith('/') ? next : '/') as Href;
   const [tab, setTab] = useState<Tab>('signin');
 
@@ -32,7 +32,10 @@ export default function AuthScreen() {
   const [err, setErr] = useState<string | null>(null);
 
   async function submit() {
-    setErr(null); setBusy(true);
+    setErr(null);
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) { setErr('Enter a valid email address.'); return; }
+    if (tab === 'signup' && password.length < 8) { setErr('Use at least 8 characters for your password.'); return; }
+    setBusy(true);
     try {
       if (tab === 'signin') {
         await signIn(email.trim(), password);
@@ -52,13 +55,13 @@ export default function AuthScreen() {
 
   return (
     <Screen showHeader={false}>
-      <Pressable onPress={() => router.replace('/')} accessibilityRole="button" accessibilityLabel="Continue browsing" style={styles.back}>
-        <Ionicons name="chevron-back" size={22} color={colors.forest700} />
-        <Text style={styles.backText}>Browse</Text>
+      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} accessibilityRole="button" accessibilityLabel="Not now" style={styles.back}>
+        <Ionicons name="close" size={24} color={colors.forest700} />
+        <Text style={styles.backText}>Not now</Text>
       </Pressable>
       <View style={{ alignItems: 'center', marginTop: space.sm, marginBottom: space.lg }}>
         <View style={styles.logo}><Text style={styles.logoText}>ToGo</Text></View>
-        <Muted>{next ? 'Sign in to reserve your seat.' : 'Your bus. Your stop. — Connected pilot sign in.'}</Muted>
+        <Muted>{staff ? 'Sign in with your staff account.' : next?.startsWith('/book') ? 'Sign in to reserve your seat.' : 'Your bus. Your stop.'}</Muted>
       </View>
       <Card style={{ gap: 12 }}>
         <View style={styles.tabs}>
@@ -74,10 +77,10 @@ export default function AuthScreen() {
             <TextInput style={styles.input} value={fullName} onChangeText={setFullName} placeholder="Amina N." placeholderTextColor={colors.muted} /></View>
         )}
         <View><Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address" placeholderTextColor={colors.muted} /></View>
+          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address" textContentType="emailAddress" autoComplete="email" placeholderTextColor={colors.muted} accessibilityLabel="Email" /></View>
         {tab !== 'reset' && (
           <View><Text style={styles.label}>Password</Text>
-            <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry placeholderTextColor={colors.muted} /></View>
+            <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="At least 8 characters" secureTextEntry textContentType={tab === 'signup' ? 'newPassword' : 'password'} autoComplete={tab === 'signup' ? 'new-password' : 'current-password'} placeholderTextColor={colors.muted} accessibilityLabel="Password" /></View>
         )}
 
         {err && <ErrorRow message={err} onRetry={submit} />}
@@ -103,9 +106,9 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', backgroundColor: colors.sand100, borderRadius: radius.md, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.white },
-  tabText: { color: colors.forest500, fontWeight: '700' },
+  tabText: { color: colors.inkSoft, fontWeight: '600' },
   tabTextActive: { color: colors.forest800 },
-  label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600, marginBottom: 6 },
+  label: { fontSize: font.tiny, fontWeight: '600', color: colors.muted, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
-  forgot: { textAlign: 'center', color: colors.forest500, fontWeight: '600', fontSize: font.small },
+  forgot: { textAlign: 'center', color: colors.forest700, fontWeight: '600', fontSize: font.small },
 });

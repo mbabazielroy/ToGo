@@ -235,7 +235,36 @@ export function buildSeedState(todayISO: string = kampalaToday()): AppState {
     bookings: [],
     activity: [],
     staff: buildSeedStaff(trips, todayISO),
+    crewSeededFor: todayISO,
   };
+}
+
+/**
+ * Keep a persisted preview dataset current: add any seeded departures for today and
+ * the next two days that don't exist yet, and give the seeded crew today's new
+ * departures. Bookings, activity and edits are kept. Without this, a preview opened
+ * on a later day would show no departures for "today".
+ */
+export function rollForward(state: AppState, todayISO: string = kampalaToday()): AppState {
+  const have = new Set(state.trips.map((t) => t.id));
+  const seeded = buildSeedTrips(todayISO);
+  const added = seeded.filter((t) => !have.has(t.id));
+  const trips = added.length ? [...state.trips, ...added] : state.trips;
+  // Once per new day, seeded crew pick up their operator's seeded departures. Later
+  // edits by the admin (e.g. removing someone) are not undone on the next launch.
+  const newDay = (state.crewSeededFor ?? '') < todayISO;
+  const todaySeeded = newDay ? seeded.filter((t) => t.date === todayISO).map((t) => t.id) : [];
+  let crewChanged = false;
+  const staff = (state.staff ?? buildSeedStaff(trips, todayISO)).map((s) => {
+    if (s.role === 'attendant' || !s.operatorId) return s;
+    const missing = todaySeeded.filter((id) => !s.assignedTripIds.includes(id)
+      && trips.find((t) => t.id === id)?.operatorId === s.operatorId);
+    if (!missing.length) return s;
+    crewChanged = true;
+    return { ...s, assignedTripIds: [...s.assignedTripIds, ...missing] };
+  });
+  if (!added.length && !crewChanged && !newDay) return state;
+  return { ...state, trips, staff, crewSeededFor: todayISO };
 }
 
 // Helper used by the tracking simulation to keep arrival estimates coherent.

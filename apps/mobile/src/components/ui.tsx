@@ -56,9 +56,13 @@ export function NavBar({ title, onBack, right }: { title: string; onBack?: () =>
 }
 
 export function PrimaryButton({
-  title, onPress, disabled, loading, accent,
-}: { title: string; onPress: () => void; disabled?: boolean; loading?: boolean; accent?: boolean }) {
-  // `accent` renders a secondary (tinted) emphasis; default is the filled primary.
+  title, onPress, disabled, loading, accent, icon, danger,
+}: {
+  title: string; onPress: () => void; disabled?: boolean; loading?: boolean; accent?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap; danger?: boolean;
+}) {
+  // `accent` renders a secondary (grey) emphasis; `danger` a red fill; default is the filled primary.
+  const fg = accent ? colors.forest700 : colors.white;
   return (
     <Pressable
       onPress={onPress}
@@ -67,12 +71,13 @@ export function PrimaryButton({
       accessibilityState={{ disabled: !!(disabled || loading) }}
       style={({ pressed }) => [
         styles.btn,
-        accent ? styles.btnSecondary : styles.btnPrimary,
+        accent ? styles.btnSecondary : danger ? styles.btnDanger : styles.btnPrimary,
         (disabled || loading) && styles.btnDisabled,
         pressed && { opacity: 0.85 },
       ]}
     >
-      {loading && <ActivityIndicator color={accent ? colors.forest700 : colors.white} style={{ marginRight: 8 }} />}
+      {loading && <ActivityIndicator color={fg} style={{ marginRight: 8 }} />}
+      {!loading && icon && <Ionicons name={icon} size={19} color={fg} style={{ marginRight: 8 }} />}
       <Text style={[styles.btnText, accent && { color: colors.forest700 }]}>{title}</Text>
     </Pressable>
   );
@@ -179,6 +184,114 @@ export function IconButton({
   );
 }
 
+
+/** Large screen title for tab roots, with an optional trailing action. */
+export function PageHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  return (
+    <View style={styles.pageHeader}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.pageTitle} accessibilityRole="header">{title}</Text>
+        {subtitle ? <Text style={styles.pageSubtitle}>{subtitle}</Text> : null}
+      </View>
+      {right}
+    </View>
+  );
+}
+
+/** Standard tappable list row: leading icon, title/subtitle, trailing value + chevron. */
+export function ListRow({
+  icon, iconColor, title, subtitle, value, onPress, danger, chevron = true, right,
+}: {
+  icon?: keyof typeof Ionicons.glyphMap; iconColor?: string; title: string; subtitle?: string; value?: string;
+  onPress?: () => void; danger?: boolean; chevron?: boolean; right?: ReactNode;
+}) {
+  const body = (
+    <>
+      {icon && (
+        <View style={[styles.rowIcon, { backgroundColor: (iconColor ?? colors.forest700) + '1A' }]}>
+          <Ionicons name={icon} size={18} color={danger ? colors.red700 : iconColor ?? colors.forest700} />
+        </View>
+      )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.rowTitle, danger && { color: colors.red700 }]} numberOfLines={1}>{title}</Text>
+        {subtitle ? <Text style={styles.rowSub} numberOfLines={2}>{subtitle}</Text> : null}
+      </View>
+      {value ? <Text style={styles.rowValue} numberOfLines={1}>{value}</Text> : null}
+      {right}
+      {onPress && chevron && <Ionicons name="chevron-forward" size={18} color={colors.faint} />}
+    </>
+  );
+  if (!onPress) return <View style={styles.listRow}>{body}</View>;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+      style={({ pressed }) => [styles.listRow, pressed && { backgroundColor: colors.forest50 }]}>
+      {body}
+    </Pressable>
+  );
+}
+
+/** Label/value pair inside a Group. */
+export function KeyValue({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <View style={styles.kv}>
+      <Text style={styles.kvLabel}>{label}</Text>
+      <Text style={[styles.kvValue, tone ? { color: tone } : null]} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
+
+/** Inline status banner. */
+export function Banner({ tone = 'info', icon, title, children }: {
+  tone?: 'info' | 'warn' | 'error' | 'ok'; icon?: keyof typeof Ionicons.glyphMap; title?: string; children?: ReactNode;
+}) {
+  const map = {
+    info: { bg: colors.blue100, fg: colors.blue800, icon: 'information-circle' as const },
+    warn: { bg: colors.amber100, fg: colors.amber800, icon: 'warning' as const },
+    error: { bg: colors.red100, fg: colors.red700, icon: 'alert-circle' as const },
+    ok: { bg: colors.forest100, fg: colors.forest800, icon: 'checkmark-circle' as const },
+  }[tone];
+  return (
+    <View style={[styles.banner, { backgroundColor: map.bg }]} accessibilityRole="alert">
+      <Ionicons name={icon ?? map.icon} size={18} color={map.fg} style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        {title ? <Text style={[styles.bannerTitle, { color: map.fg }]}>{title}</Text> : null}
+        {children ? <Text style={[styles.bannerText, { color: map.fg }]}>{children}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/** Compact metric tile for dashboards. */
+export function StatTile({ label, value, hint, tone }: { label: string; value: string | number; hint?: string; tone?: string }) {
+  return (
+    <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}${hint ? `, ${hint}` : ''}`}>
+      <Text style={[styles.statValue, tone ? { color: tone } : null]} numberOfLines={1}>{value}</Text>
+      <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+      {hint ? <Text style={styles.statHint} numberOfLines={1}>{hint}</Text> : null}
+    </View>
+  );
+}
+
+/** Operator line badge (coloured code), like a route bullet in a transit app. */
+export function LineBadge({ code, color, text = colors.white, size = 'md' }: { code: string; color: string; text?: string; size?: 'sm' | 'md' | 'lg' }) {
+  const dims = size === 'lg' ? { minWidth: 52, height: 30, fontSize: 15 } : size === 'sm' ? { minWidth: 36, height: 20, fontSize: 11 } : { minWidth: 44, height: 24, fontSize: 13 };
+  return (
+    <View style={[styles.line, { backgroundColor: color, minWidth: dims.minWidth, height: dims.height }]}>
+      <Text style={[styles.lineText, { color: text, fontSize: dims.fontSize }]}>{code}</Text>
+    </View>
+  );
+}
+
+/** Initials avatar. */
+export function Avatar({ name, color = colors.forest700, size = 40 }: { name: string; color?: string; size?: number }) {
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: colors.white, fontWeight: '700', fontSize: size * 0.38 }}>{initials}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   group: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.lg },
@@ -198,6 +311,7 @@ const styles = StyleSheet.create({
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg, paddingHorizontal: 20, minHeight: control.height },
   btnPrimary: { backgroundColor: colors.forest700 },
   btnSecondary: { backgroundColor: colors.surfaceAlt },
+  btnDanger: { backgroundColor: colors.red600 },
   btnDisabled: { opacity: 0.4 },
   btnText: { color: colors.white, fontWeight: '600', fontSize: font.body },
   ghost: { alignItems: 'center', justifyContent: 'center', minHeight: control.small, paddingHorizontal: 16 },
@@ -222,4 +336,30 @@ const styles = StyleSheet.create({
   segTextOn: { color: colors.ink, fontWeight: '600' },
 
   iconBtn: { width: control.small, height: control.small, alignItems: 'center', justifyContent: 'center' },
+
+  pageHeader: { flexDirection: 'row', alignItems: 'flex-end', gap: space.md, paddingTop: space.sm, paddingBottom: space.sm },
+  pageTitle: { fontSize: 32, fontWeight: '800', color: colors.ink, letterSpacing: -0.6 },
+  pageSubtitle: { fontSize: font.small, color: colors.muted, marginTop: 2 },
+
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: space.lg, paddingVertical: 11, minHeight: control.row + 8 },
+  rowIcon: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { fontSize: font.body, color: colors.ink, fontWeight: '500' },
+  rowSub: { fontSize: font.tiny, color: colors.muted, marginTop: 2, lineHeight: 17 },
+  rowValue: { fontSize: font.small, color: colors.muted, maxWidth: '45%' },
+
+  kv: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44, paddingVertical: 8 },
+  kvLabel: { fontSize: font.small, color: colors.muted },
+  kvValue: { fontSize: font.small, color: colors.ink, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+
+  banner: { flexDirection: 'row', gap: 10, borderRadius: radius.lg, padding: space.md },
+  bannerTitle: { fontSize: font.small, fontWeight: '700' },
+  bannerText: { fontSize: font.small, lineHeight: 20 },
+
+  stat: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: space.md, paddingHorizontal: space.md, minWidth: 96 },
+  statValue: { fontSize: 26, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
+  statLabel: { fontSize: font.tiny, color: colors.inkSoft, marginTop: 2, fontWeight: '600' },
+  statHint: { fontSize: 12, color: colors.muted, marginTop: 1 },
+
+  line: { borderRadius: 6, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
+  lineText: { fontWeight: '900', letterSpacing: 0.5 },
 });

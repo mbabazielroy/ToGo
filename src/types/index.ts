@@ -184,4 +184,6 @@ export interface AppState {
   activity: ActivityEvent[];
   /** Fictional staff for preview persona switching (optional for back-compat). */
   staff?: StaffMember[];
+  /** Preview only: the day seeded crew were last given that day's departures. */
+  crewSeededFor?: string;
 }

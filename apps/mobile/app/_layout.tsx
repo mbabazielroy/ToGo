@@ -2,13 +2,14 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AdapterProvider } from '../src/data/AdapterProvider';
-import { AuthProvider, useAuth } from '../src/auth/AuthProvider';
-import { SearchProvider } from '../src/state/search';
-import { ToastProvider } from '../src/components/ToastProvider';
-import { useAuthDeepLinks } from '../src/auth/useAuthDeepLinks';
-import { APP_MODE } from '../src/env';
-import { colors } from '../src/theme';
+import { AdapterProvider } from '@/data/AdapterProvider';
+import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { SessionProvider } from '@/session/SessionProvider';
+import { SearchProvider } from '@/state/search';
+import { ToastProvider } from '@/components/ToastProvider';
+import { useAuthDeepLinks } from '@/auth/useAuthDeepLinks';
+import { APP_MODE } from '@/env';
+import { colors } from '@/theme';
 
 // Connected-mode auth routing. Public browsing is allowed (hubs/departures are
 // public); authentication is required only for protected actions (reserving, My
@@ -29,28 +30,36 @@ function AuthGate() {
   return null;
 }
 
+// Route map:
+//   index          → redirects to the signed-in identity's space (or welcome)
+//   welcome, onboarding, staff-signin, auth, reset → entry flows
+//   (passenger)/…  → passenger app        (SpaceGate: passenger)
+//   crew/…         → crew workspace       (SpaceGate: driver / conductor / attendant)
+//   admin/…        → operations console   (SpaceGate: admin)
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <AdapterProvider>
         <AuthProvider>
-          <SearchProvider>
-            <ToastProvider>
-              <AuthGate />
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="staff" />
-                <Stack.Screen name="preview-onboarding" options={{ presentation: 'card' }} />
-                <Stack.Screen name="book/[tripId]" options={{ presentation: 'card' }} />
-                <Stack.Screen name="hub/[hubId]" />
-                <Stack.Screen name="trip/[bookingId]" />
-                <Stack.Screen name="notifications" />
-                <Stack.Screen name="auth" />
-                <Stack.Screen name="reset" />
-              </Stack>
-            </ToastProvider>
-          </SearchProvider>
+          <SessionProvider>
+            <SearchProvider>
+              <ToastProvider>
+                <AuthGate />
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="onboarding" />
+                  <Stack.Screen name="staff-signin" />
+                  <Stack.Screen name="(passenger)" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="crew" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="admin" options={{ animation: 'fade' }} />
+                  <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                  <Stack.Screen name="reset" />
+                </Stack>
+              </ToastProvider>
+            </SearchProvider>
+          </SessionProvider>
         </AuthProvider>
       </AdapterProvider>
     </SafeAreaProvider>

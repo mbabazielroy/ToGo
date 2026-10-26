@@ -140,6 +140,46 @@ export interface StaffView {
   assignedHubName?: string;
 }
 
+/** An operator (bus company) for the admin console. */
+export interface OperatorView {
+  id: string;
+  name: string;
+  rating: number;
+}
+
+/** A vehicle in an operator's fleet. */
+export interface VehicleView {
+  id: string;
+  operatorId: string;
+  label: string;
+  plate: string;
+  seats: number;
+}
+
+/** Something operations needs to look at: a missed pickup, a cancelled trip, a delay. */
+export interface IncidentView {
+  id: string;
+  kind: 'missed_pickup' | 'trip_cancelled' | 'delay' | string;
+  title: string;
+  detail: string;
+  tripId?: string | null;
+  hubId?: string | null;
+  at: string;
+  open: boolean;
+}
+
+export interface CreateDepartureInput {
+  operatorId: string;
+  vehicleId: string;
+  direction: DirectionCode;
+  date: string; // YYYY-MM-DD (Kampala)
+  departHHMM: string; // "07:00"
+  durationMin: number;
+  fareUgx: number;
+  driverId?: string | null;
+  conductorId?: string | null;
+}
+
 /** A subscription handle the UI can clean up. */
 export interface Subscription {
   unsubscribe: () => void;
@@ -190,6 +230,19 @@ export interface DataAdapter {
   // Location
   reportLocation(tripId: string, lat: number, lng: number, accuracy: number | null, observedAt: string): Promise<void>;
   latestLocation(tripId: string): Promise<LocationView | null>;
+
+  // Admin console — authority is enforced by the backend (platform admin / operator
+  // member). In preview these run against the on-device simulated network.
+  /** Every departure on a service date, both directions, including cancelled ones. */
+  listTripsOn(date: string): Promise<TripView[]>;
+  listOperators(): Promise<OperatorView[]>;
+  listVehicles(): Promise<VehicleView[]>;
+  createDeparture(input: CreateDepartureInput): Promise<TripView>;
+  /** Assign (or with staffId null, clear) a trip's driver or conductor. */
+  assignCrew(tripId: string, role: 'driver' | 'conductor', staffId: string | null): Promise<TripView>;
+  listIncidents(): Promise<IncidentView[]>;
+  /** Operations-wide activity feed (admin), as opposed to a passenger's own notifications. */
+  listActivity(): Promise<NotificationView[]>;
 
   // Notifications
   listNotifications(): Promise<NotificationView[]>;

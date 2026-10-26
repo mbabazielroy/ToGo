@@ -57,6 +57,22 @@ describe('dispatcher: createTrip', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('rejects a vehicle that is already running an overlapping departure', () => {
+    // veh_sav1 runs the seeded 07:00 → 11:00 Savannah departure.
+    const r = createTrip(state, {
+      operatorId: 'op_savannah',
+      routeId: 'route_kla_mbr',
+      vehicleId: 'veh_sav1',
+      date: TODAY,
+      departHHMM: '09:00',
+      durationMin: 240,
+      farePerSeat: 26000,
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error).toMatch(/already running/);
+  });
+
   it('rejects a non-positive journey duration (arrival must be after departure)', () => {
     const r = createTrip(state, {
       operatorId: 'op_savannah',
@@ -95,11 +111,11 @@ describe('dispatcher: assignStaff', () => {
     state = fresh();
   });
 
-  function newPearlTrip(s: AppState, time: string) {
+  function newPearlTrip(s: AppState, time: string, vehicleId = 'veh_pearl1') {
     const r = createTrip(s, {
       operatorId: 'op_pearl',
       routeId: 'route_kla_mbr',
-      vehicleId: 'veh_pearl1',
+      vehicleId,
       date: TODAY,
       departHHMM: time,
       durationMin: 240,
@@ -135,12 +151,14 @@ describe('dispatcher: assignStaff', () => {
   });
 
   it('rejects a crew member already on an overlapping trip', () => {
-    // Two Pearl departures that overlap in time.
+    // Two Pearl departures that overlap in time, on two different vehicles (one
+    // vehicle can't run overlapping departures at all).
+    state = { ...state, vehicles: [...state.vehicles, { id: 'veh_pearl2', operatorId: 'op_pearl', label: 'Coach 45-seat B', plate: 'UBG 306T (demo)', seats: 45 }] };
     const first = newPearlTrip(state, '20:00');
     const a1 = assignStaff(first.state, first.value.id, 'driver', 'staff_drv_pearl');
     expect(a1.ok).toBe(true);
     if (!a1.ok) return;
-    const second = newPearlTrip(a1.state, '21:00'); // 21:00–01:00 overlaps 20:00–00:00
+    const second = newPearlTrip(a1.state, '21:00', 'veh_pearl2'); // 21:00–01:00 overlaps 20:00–00:00
     const a2 = assignStaff(second.state, second.value.id, 'driver', 'staff_drv_pearl');
     expect(a2.ok).toBe(false);
   });

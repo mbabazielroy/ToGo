@@ -52,17 +52,17 @@ browser / the native web preview. Test counts below are current.
 - Preview opens a *working* app (not a setup screen); explicit opt-in flag; a discreet
   **Preview** indicator; connected mode + its honest setup/connection-error screens are
   intact; a configured connected app is **never** silently switched to local data.
-- Web role switcher and native **Staff workspace** (Account → Staff workspace) share
-  one local dataset, so a passenger reservation immediately appears in the attendant,
-  conductor, and dispatcher views on the same device.
-- **Preview sign-up experience** (Account → *Preview sign-up experience*, web +
-  native): a faithful walkthrough of the connected sign-in / create-account / reset
-  flow so the founder can inspect onboarding. It is clearly labelled local preview,
-  **not** real registration: it authenticates nothing, creates no account, and never
-  collects or persists a password (the field clears on submit — verified in a headless
-  run). It states plainly that public sign-up yields a **passenger account only**.
+- Web role switcher and native **staff sign-in** (Welcome → "Crew or operations?")
+  share one local dataset, so a passenger reservation immediately appears in the
+  attendant, conductor, driver and operations views on the same device.
+- **Native onboarding**: welcome slides → passenger profile (name, phone, home city,
+  in-app alert preferences) → passenger app; returning users continue in one tap.
+  (The web app keeps its Account → *Preview sign-up experience* walkthrough.)
+- **Separate spaces (native)**: passenger, crew and operations are separate route
+  groups guarded by identity (`apps/mobile/src/session/SpaceGate.tsx`); deep links into
+  another space redirect to your own.
 
-**Staff personas — native Expo (`apps/mobile/app/staff/*`)**
+**Crew workspace — native Expo (`apps/mobile/app/crew/*`, `src/crew/*`)**
 - **Driver**: today's assigned trips; vehicle/route/departure/conductor; next pickup
   hub + time; expected / checked-in / boarded seat counts; start trip, reach hub,
   report delay, report breakdown, complete trip (destructive actions confirmed);
@@ -78,6 +78,17 @@ browser / the native web preview. Test counts below are current.
   **seat** counts; check-in by reference; unresolved incidents.
 - Preview persona selection **only filters simulated data on the device — it grants no
   backend permission** (and is not treated as proof of backend authorization).
+
+**Operations console — native Expo (`apps/mobile/app/admin/*`)**
+- Overview: today's departures, seats booked/load, delays, cancellations, open issues,
+  departures missing crew, recent activity.
+- Departures by day/direction; departure detail with crew assignment, fare edit (new
+  bookings only), delay, cancel, pickups and passenger list; schedule a new departure
+  (operator → vehicle, time, fare, optional crew). A vehicle can't run two overlapping
+  departures; a crew member can't crew two overlapping trips.
+- Network (hubs + facilities, operators + fleet) and Team (crew directory).
+- Connected mode: the same screens call operator/admin RPCs; the crew picker needs a
+  staff directory RPC that doesn't exist yet (see section C).
 
 **Dispatcher console — web preview (`src/pages/staff/Operator.tsx`)**
 - Today's departures with actionable status and KPIs.
@@ -211,10 +222,10 @@ Independent of the code and **not** implied by sections A–C:
   `http://localhost:5173`. Use the top-right role switcher for Passenger / Hub
   attendant / Conductor / Dispatcher console.
 - **Mobile preview**: from `apps/mobile/`, `npm run preview` (QR + URLs for Expo Go)
-  or `npm run preview:web`. Open **Account → Staff workspace** for the Driver /
-  Conductor / Hub-attendant personas.
-- **Inspect account creation**: open **Account → Preview sign-up experience** (web or
-  native) to walk through the onboarding UI safely (no real registration). The real
+  or `npm run preview:web`. Use **Welcome → "Crew or operations?"** for the Driver /
+  Conductor / Hub-attendant / Operations personas.
+- **Inspect account creation**: the native welcome + onboarding flow runs on first
+  launch (no real registration in preview). The real
   connected implementation lives in `src/auth/AuthProvider.tsx` +
   `src/pages/connected/AuthScreen.tsx` (web) and `apps/mobile/src/auth/AuthProvider.tsx`
   + `apps/mobile/app/auth.tsx` + `apps/mobile/app/reset.tsx` (native); the
