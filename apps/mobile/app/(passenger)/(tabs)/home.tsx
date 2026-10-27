@@ -77,6 +77,9 @@ export default function Home() {
             <ModeTag />
           </View>
         </View>
+        <Pressable onPress={() => router.push('/map')} accessibilityRole="button" accessibilityLabel="Live map" hitSlop={8} style={[styles.bell, { marginRight: 8 }]}>
+          <Ionicons name="map-outline" size={22} color={colors.ink} />
+        </Pressable>
         <Pressable onPress={() => router.push('/notifications')} accessibilityRole="button"
           accessibilityLabel={unread > 0 ? `Notifications, ${unread} new` : 'Notifications'} hitSlop={8} style={styles.bell}>
           <Ionicons name="notifications-outline" size={23} color={colors.ink} />

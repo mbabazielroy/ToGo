@@ -29,6 +29,7 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
   const [tripId, setTripId] = useState<string | undefined>(tripParam);
   const [busy, setBusy] = useState(false);
   const [tick, setTick] = useState(0);
+  const [selStop, setSelStop] = useState<string | null>(null);
 
   const trips = useAsync(() => adapter.staffTrips(staffId), [staffId, tick, epoch]);
   const list = trips.data ?? [];
@@ -142,7 +143,29 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
             <SectionHeading title="Route & pickups" />
             {hubs.data && (() => {
               const m = tripMapData(active, hubs.data, now, { pickups, demo: mode === 'demo' });
-              return <TransitMap height={230} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.caption} />;
+              return <TransitMap height={230} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={selStop ? 'Tap the map to clear' : `${m.caption} · tap a stop`}
+                selectedId={selStop} onStopPress={(id) => { haptics.select(); setSelStop(id); }} onMapPress={() => setSelStop(null)} />;
+            })()}
+            {selStop && (() => {
+              const st = stops.find((x) => x.hubId === selStop);
+              const rows = (manifest.data ?? []).filter((r) => r.pickupHubId === selStop && r.status !== 'cancelled');
+              return (
+                <Group style={{ padding: space.lg, gap: space.sm }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[styles.stopName, { flex: 1 }]}>{st?.hubName ?? 'Stop'} · {formatTime(st?.pickupTime ?? active.originDeparture)}</Text>
+                    <Pressable onPress={() => setSelStop(null)} accessibilityRole="button" accessibilityLabel="Close stop" hitSlop={8}><Ionicons name="close" size={18} color={colors.muted} /></Pressable>
+                  </View>
+                  {rows.length === 0 && <Text style={styles.pickNone}>Nobody booked from this stop.</Text>}
+                  {rows.map((r) => (
+                    <View key={r.bookingId} style={styles.paxLine}>
+                      <Ionicons name={r.status === 'boarded' || r.status === 'completed' ? 'checkmark-circle' : r.status === 'checked_in' ? 'person' : 'person-outline'} size={16}
+                        color={r.status === 'boarded' || r.status === 'completed' ? colors.forest600 : r.status === 'checked_in' ? colors.forest700 : colors.muted} />
+                      <Text style={styles.paxName} numberOfLines={1}>{r.passengerName}</Text>
+                      <Text style={styles.paxMeta}>{r.seats} seat{r.seats === 1 ? '' : 's'} · {r.status === 'checked_in' ? 'waiting at hub' : r.status === 'reserved' ? 'not checked in' : r.status === 'boarded' || r.status === 'completed' ? 'on board' : r.status.replace('_', ' ')}</Text>
+                    </View>
+                  ))}
+                </Group>
+              );
             })()}
             <Group style={{ padding: space.lg }}>
               {stops.map((s, i) => {
@@ -154,13 +177,13 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
                       <View style={[styles.stopDot, s.reached && { backgroundColor: line.color, borderColor: line.color }, isNext && { borderColor: colors.live, borderWidth: 3 }]} />
                       <View style={[styles.stopLine, { backgroundColor: s.reached ? line.color : colors.separator }]} />
                     </View>
-                    <View style={{ flex: 1, paddingBottom: space.md }}>
-                      <Text style={[styles.stopName, s.reached && { color: colors.muted }]}>{s.hubName}</Text>
+                    <Pressable style={{ flex: 1, paddingBottom: space.md }} onPress={() => setSelStop(s.hubId)} accessibilityRole="button" accessibilityLabel={`${s.hubName}, show passengers`}>
+                      <Text style={[styles.stopName, s.reached && { color: colors.muted }, selStop === s.hubId && { color: line.color }]}>{s.hubName}</Text>
                       <Text style={styles.stopMeta}>{formatTime(s.pickupTime)}{s.reached ? ' · departed' : isNext ? ' · next' : ''}{i === 0 ? ' · start' : ''}</Text>
                       {!s.reached && <PickupLine p={p} />}
                       {s.reached && p && p.boarded > 0 && <Text style={styles.stopMeta}>{p.boarded} boarded here</Text>}
                       {s.reached && p && p.toPickUp > 0 && <Text style={styles.leftBehind}>{p.toPickUp} booked here but not boarded — tell your conductor</Text>}
-                    </View>
+                    </Pressable>
                     {!s.reached && (
                       <View style={[styles.countPill, !(p?.toPickUp) && styles.countPillZero]} accessibilityLabel={`${p?.toPickUp ?? 0} to pick up`}>
                         <Text style={[styles.countPillText, !(p?.toPickUp) && { color: colors.muted }]}>{p?.toPickUp ?? 0}</Text>
@@ -244,6 +267,9 @@ const styles = StyleSheet.create({
   pickBig: { fontSize: font.body, color: colors.ink, marginTop: 6 },
   pickSmall: { fontSize: font.small, color: colors.ink, marginTop: 2 },
   pickChecked: { color: colors.muted, fontWeight: '400' },
+  paxLine: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 32 },
+  paxName: { flex: 1, fontSize: font.body, fontWeight: '600', color: colors.ink },
+  paxMeta: { fontSize: font.tiny, color: colors.muted },
   leftBehind: { fontSize: font.small, color: colors.amber800, fontWeight: '600', marginTop: 2 },
   ahead: { fontSize: font.small, color: colors.inkSoft, marginTop: 4 },
   pickNone: { fontSize: font.small, color: colors.muted, marginTop: 2 },

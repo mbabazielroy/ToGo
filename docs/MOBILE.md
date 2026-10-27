@@ -65,6 +65,16 @@ draws each trip's route in the operator's line colour, its stops, and the bus:
   list; stops with nobody booked show 0 so drivers can pass straight through.
 - **Hub attendant**: where the next bus is. **Admin**: live network + per-departure map.
 
+**Live map** (`app/(passenger)/map.tsx`, from the map button on Home/Hubs or by
+tapping any embedded map): full-screen map with a bottom sheet, like Transit —
+- default: buses on the road + next departures; the camera frames the hubs near you;
+- tap a **hub** → its next departures with countdowns, Directions, hub info;
+- tap a **bus** → where it's heading, upcoming stops with times, "your bus reaches X in
+  N min" when you're booked, **Follow bus** (camera tracks it), Book a seat;
+- **locate me** (location permission, stays on the phone) selects your nearest hub;
+  **show everything** resets the view; swap direction from the top pill.
+Drivers can tap any stop (map or list) to see who is booked there and their status.
+
 Bus position is a real GPS fix when one exists (connected mode), otherwise an estimate
 from the schedule and delay that never runs past a hub the crew hasn't marked reached
 (`src/data/geo.ts`). Hub and road coordinates are approximate. Web uses a drawn

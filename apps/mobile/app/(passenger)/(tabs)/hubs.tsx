@@ -17,7 +17,13 @@ export default function Hubs() {
 
   return (
     <Screen showHeader={false}>
-      <PageHeader title="Hubs" subtitle="Where your bus picks you up. Tap a hub for directions and facilities." />
+      <PageHeader title="Hubs" subtitle="Where your bus picks you up. Tap a hub for directions and facilities."
+        right={
+          <Pressable onPress={() => router.push('/map')} accessibilityRole="button" accessibilityLabel="Open live map" style={styles.mapBtn}>
+            <Ionicons name="map" size={16} color={colors.white} />
+            <Text style={styles.mapBtnText}>Map</Text>
+          </Pressable>
+        } />
 
       {hubs.loading && <Loading />}
       {hubs.error && <ErrorRow message={hubs.error} onRetry={hubs.reload} />}
@@ -63,6 +69,8 @@ export default function Hubs() {
 }
 
 const styles = StyleSheet.create({
+  mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.forest700, borderRadius: 999, paddingHorizontal: 14, height: 36, marginBottom: 6 },
+  mapBtnText: { color: colors.white, fontWeight: '700', fontSize: font.small },
   list: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space.md, overflow: 'hidden' },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: space.md },
   pin: { width: 30, alignItems: 'center' },

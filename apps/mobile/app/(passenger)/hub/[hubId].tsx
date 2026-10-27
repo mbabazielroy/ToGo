@@ -80,7 +80,8 @@ export default function HubDetail() {
 
             {hubPoint(hub) && (
               <View style={{ marginTop: space.md, gap: space.sm }}>
-                <TransitMap height={170} stops={[{ id: hub.id, coord: hubPoint(hub)!, label: hub.name, highlight: true }]} focus={[hubPoint(hub)!]} caption={mode === 'demo' ? 'Approximate location' : undefined} />
+                <TransitMap height={170} stops={[{ id: hub.id, coord: hubPoint(hub)!, label: hub.name, highlight: true }]} focus={[hubPoint(hub)!]} caption={mode === 'demo' ? 'Approximate location' : undefined}
+                  onPress={() => router.push(`/map?hub=${hub.id}`)} />
                 <Pressable
                   onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${hub.lat},${hub.lng}`).catch(() => {})}
                   accessibilityRole="button" accessibilityLabel={`Directions to ${hub.name}`}

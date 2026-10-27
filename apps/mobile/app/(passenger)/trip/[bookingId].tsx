@@ -165,7 +165,8 @@ export default function TripScreen() {
             {/* Map — route, your stop, and the bus once it's moving */}
             {t && !cancelled && hubs.data && (() => {
               const m = tripMapData(t, hubs.data, now, { highlightHubId: b.pickupHubId, fix: location.data, demo: mode === 'demo' });
-              return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.caption} />;
+              return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.live ? `${m.caption} · tap to track` : m.caption}
+                onPress={() => router.push(m.live ? `/map?trip=${t.id}&follow=1` : `/map?trip=${t.id}&hub=${b.pickupHubId}`)} />;
             })()}
 
             {/* Current step */}

@@ -13,6 +13,7 @@ export default function PassengerLayout() {
         <Stack.Screen name="trip/[bookingId]" />
         <Stack.Screen name="hub/[hubId]" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="map" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
       </Stack>
     </SpaceGate>
   );
