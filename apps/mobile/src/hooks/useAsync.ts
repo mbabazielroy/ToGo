@@ -15,6 +15,8 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const mounted = useRef(true);
+  // Background refreshes keep showing the current data instead of a spinner.
+  const hasData = useRef(false);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
@@ -22,10 +24,10 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    if (!hasData.current) setLoading(true);
     setError(null);
     fn()
-      .then((d) => { if (active && mounted.current) setData(d); })
+      .then((d) => { if (active && mounted.current) { hasData.current = true; setData(d); } })
       .catch((e) => { if (active && mounted.current) setError(humanError(e)); })
       .finally(() => { if (active && mounted.current) setLoading(false); });
     return () => { active = false; };
@@ -50,6 +52,7 @@ export function humanError(e: unknown): string {
       case 'ALREADY_BOARDED': return 'That passenger is already boarded.';
       case 'CANCELLED': return 'That booking was cancelled.';
       case 'CAPACITY_TOO_LOW': return e.message;
+      case 'CHECKIN_CLOSED': return 'The bus has already left this hub, so check-in is closed.';
       default: return e.message || 'Something went wrong.';
     }
   }

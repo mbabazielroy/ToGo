@@ -7,6 +7,7 @@ import { BookingStatusPill } from '@/components/StatusPill';
 import { QrScanner } from '@/staff/QrScanner';
 import { useAdapter, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync, humanError } from '@/hooks/useAsync';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { colors, radius, space, font, SCREEN, control } from '@/theme';
@@ -37,9 +38,10 @@ export function ConductorToday({ staffId, tripParam }: { staffId: string; tripPa
   const [pending, setPending] = useState<BookingView | null>(null);
 
   const trips = useAsync(() => adapter.staffTrips(staffId), [staffId, tick, epoch]);
+  useLiveRefresh(() => setTick((n) => n + 1));
   const list = trips.data ?? [];
   const active = pickActiveTrip(list, tripId ?? tripParam);
-  const manifest = useAsync(() => (active ? adapter.getTripManifest(active.id) : Promise.resolve([])), [active?.id, tick]);
+  const manifest = useAsync(() => (active ? adapter.getTripManifest(active.id) : Promise.resolve([])), [active?.id, tick, epoch]);
   const rows = manifest.data ?? [];
   const counts = useMemo(() => manifestCounts(rows), [rows]);
 

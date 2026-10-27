@@ -30,15 +30,22 @@ export function AdapterProvider({ children }: { children: ReactNode }) {
   const [retrying, setRetrying] = useState(false);
   const supaAdapter = useRef<SupabaseAdapter | null>(null);
 
+  // Every preview change (a booking, a crew action) bumps the epoch so every open
+  // screen refetches — the on-device stand-in for a backend's realtime push.
+  const persistAndNotify = useCallback((s: Parameters<typeof saveDemoState>[0]) => {
+    saveDemoState(s);
+    setEpoch((e) => e + 1);
+  }, []);
+
   // Demo mode: back the shared rules with AsyncStorage. (Explicit dev/test flag only.)
   useEffect(() => {
     if (connected) return;
     let active = true;
     loadDemoState().then((initial) => {
-      if (active) setAdapter(new DemoAdapter(initial, saveDemoState));
+      if (active) setAdapter(new DemoAdapter(initial, persistAndNotify));
     });
     return () => { active = false; };
-  }, [connected]);
+  }, [connected, persistAndNotify]);
 
   const check = useCallback(async () => {
     if (!connected) return;
@@ -63,9 +70,9 @@ export function AdapterProvider({ children }: { children: ReactNode }) {
     await clearDemoState();
     const fresh = buildSeedState(kampalaToday());
     saveDemoState(fresh);
-    setAdapter(new DemoAdapter(fresh, saveDemoState));
+    setAdapter(new DemoAdapter(fresh, persistAndNotify));
     setEpoch((e) => e + 1);
-  }, [connected]);
+  }, [connected, persistAndNotify]);
 
   const value = useMemo<AdapterCtx | null>(
     () => (adapter ? { adapter, mode: connected ? 'connected' : 'demo', resetDemo, epoch } : null),

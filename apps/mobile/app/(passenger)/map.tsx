@@ -89,7 +89,20 @@ export default function LiveMap() {
   const myTripIds = new Set((bookings.data ?? []).filter((b) => ['reserved', 'checked_in', 'boarded'].includes(b.status)).map((b) => b.tripId));
   const myHubByTrip = new Map((bookings.data ?? []).filter((b) => ['reserved', 'checked_in', 'boarded'].includes(b.status)).map((b) => [b.tripId, b.pickupHubId]));
 
-  const data = useMemo(() => list.map((t) => ({ t, m: tripMapData(t, allHubs, now, { demo: mode === 'demo' }) })), [list, allHubs, now, mode]);
+  // Real GPS fixes for buses on the road (connected mode); preview estimates instead.
+  const liveIds = list.filter((t) => t.status === 'en_route' || t.status === 'boarding').map((t) => t.id);
+  const fixes = useAsync(
+    async () => (mode === 'connected'
+      ? new Map(await Promise.all(liveIds.map(async (id) => [id, await adapter.latestLocation(id).catch(() => null)] as const)))
+      : new Map()),
+    [liveIds.join(','), tick, mode],
+  );
+  const data = useMemo(() => list.map((t) => {
+    const fix = fixes.data?.get(t.id) ?? null;
+    // Ignore fixes older than 5 minutes — fall back to the schedule estimate.
+    const fresh = fix && now.getTime() - new Date(fix.receivedAt).getTime() < 5 * 60000 ? fix : null;
+    return { t, m: tripMapData(t, allHubs, now, { demo: mode === 'demo', fix: fresh }) };
+  }), [list, allHubs, now, mode, fixes.data]);
   const running = data.filter(({ t }) => t.status === 'en_route' || t.status === 'boarding');
   const originHubs = allHubs.filter((h) => h.city === cities.origin && hubPoint(h));
 

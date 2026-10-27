@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { NavBar, Group, PrimaryButton, GhostButton, Loading, ErrorRow, Separator } from '@/components/ui';
 import { BookingStatusPill } from '@/components/StatusPill';
 import { QRCode } from '@/components/QRCode';
-import { useAdapter, useAppMode } from '@/data/AdapterProvider';
+import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
@@ -47,10 +48,12 @@ export default function TripScreen() {
   const [showSteps, setShowSteps] = useState(false);
   const now = useNow(30000);
 
-  const booking = useAsync(() => adapter.getBooking(String(bookingId)), [bookingId]);
+  const epoch = useDataEpoch();
+  const booking = useAsync(() => adapter.getBooking(String(bookingId)), [bookingId, epoch]);
   const b = booking.data;
-  const trip = useAsync(() => (b ? adapter.getTrip(b.tripId) : Promise.resolve(null)), [b?.tripId]);
-  const location = useAsync(() => (b ? adapter.latestLocation(b.tripId) : Promise.resolve(null)), [b?.tripId]);
+  const trip = useAsync(() => (b ? adapter.getTrip(b.tripId) : Promise.resolve(null)), [b?.tripId, epoch]);
+  const location = useAsync(() => (b ? adapter.latestLocation(b.tripId) : Promise.resolve(null)), [b?.tripId, epoch]);
+  useLiveRefresh(() => { booking.reload(); trip.reload(); location.reload(); });
   const hubs = useAsync(() => adapter.listHubs(), []);
   const t = trip.data;
 
@@ -92,7 +95,10 @@ export default function TripScreen() {
 
   const { reached, stalled } = b ? stageProgress(b.status, t?.status) : { reached: 0, stalled: false };
   const cancelled = b?.status === 'cancelled';
-  const currentStage = !cancelled && !stalled && reached < stages.length ? stages[reached] : undefined;
+  const myStop = t?.stops.find((s) => s.hubId === b?.pickupHubId);
+  // The bus has passed the passenger's hub without them on board.
+  const leftWithout = !!myStop?.reached && (b?.status === 'reserved' || b?.status === 'checked_in');
+  const currentStage = !cancelled && !stalled && !leftWithout && reached < stages.length ? stages[reached] : undefined;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -108,6 +114,7 @@ export default function TripScreen() {
               (b.status === 'reserved' || b.status === 'checked_in' || b.status === 'boarded') && (
                 <Banner tone="amber" text={`Service alert: this bus is running about ${t.delayMinutes} min late. Please allow for the delay at ${hubName}.`} />
             )}
+            {leftWithout && <Banner tone="amber" text={`The bus has left ${hubName} and you're not marked as on board. If you're on it, show your pass to the conductor; otherwise you can cancel to free your seat.`} />}
             {b.status === 'missed_pickup' && <Banner tone="amber" text="You checked in but were not boarded before the trip completed. Operations is investigating and will follow up." />}
             {(b.status === 'not_boarded' || b.status === 'no_show') && <Banner tone="grey" text="This trip has completed and you were not boarded, so you were not recorded as having travelled." />}
 
@@ -130,7 +137,7 @@ export default function TripScreen() {
                 <View>
                   <Text style={styles.pickupTime}>{formatTime(b.pickupTimeSnapshot)}</Text>
                   <Text style={styles.pickupCaption} numberOfLines={1}>Pickup · {hubName}</Text>
-                  {(b.status === 'reserved' || b.status === 'checked_in') && (
+                  {(b.status === 'reserved' || b.status === 'checked_in') && !leftWithout && (
                     <Text style={styles.lead}>{leadTime(b.pickupTimeSnapshot, now)}</Text>
                   )}
                 </View>
@@ -164,7 +171,7 @@ export default function TripScreen() {
 
             {/* Map — route, your stop, and the bus once it's moving */}
             {t && !cancelled && hubs.data && (() => {
-              const m = tripMapData(t, hubs.data, now, { highlightHubId: b.pickupHubId, fix: location.data, demo: mode === 'demo' });
+              const m = tripMapData(t, hubs.data, now, { highlightHubId: b.pickupHubId, fix: stale ? null : location.data, demo: mode === 'demo' });
               return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.live ? `${m.caption} · tap to track` : m.caption}
                 onPress={() => router.push(m.live ? `/map?trip=${t.id}&follow=1` : `/map?trip=${t.id}&hub=${b.pickupHubId}`)} />;
             })()}

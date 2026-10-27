@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NavBar, Group, Muted, PrimaryButton, Loading, ErrorRow, Separator, SectionHeading } from '@/components/ui';
-import { useAdapter, useAppMode } from '@/data/AdapterProvider';
+import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useSession } from '@/session/SessionProvider';
 import { LineBadge } from '@/components/ui';
@@ -14,6 +14,7 @@ import { lineFor } from '@/lib/lines';
 import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
+import { useNow } from '@/hooks/useNow';
 import { colors, radius, space, font, SCREEN, control } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import { tripJourney, dropoffStopFor } from '@shared/data/journey';
@@ -31,7 +32,8 @@ export default function BookScreen() {
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
-  const trip = useAsync(() => adapter.getTrip(String(tripId)), [tripId]);
+  const epoch = useDataEpoch();
+  const trip = useAsync(() => adapter.getTrip(String(tripId)), [tripId, epoch]);
   // Connected mode reserves against real accounts — require sign-in first.
   const needsAuth = mode === 'connected' && !session;
 
@@ -47,9 +49,14 @@ export default function BookScreen() {
   const dropoff = t ? dropoffStopFor(t) : undefined;
   const total = t ? t.fareUgx * seats : 0;
   const soldOut = !!t && t.seatsAvailable < 1;
+  const now = useNow(30000);
+  // The bus has left (or is long overdue at) this pickup hub — don't let people book it.
+  const left = !!journey?.pickup && (journey.pickup.reached
+    || (t?.status === 'scheduled' && new Date(journey.pickupTimeISO).getTime() < now.getTime() - 10 * 60000)
+    || t?.status === 'completed' || t?.status === 'cancelled');
 
   async function confirm() {
-    if (busy || !t || !journey?.pickup || !dropoff) return;
+    if (busy || !t || !journey?.pickup || !dropoff || left) return;
     // Never reserve before authentication — send the passenger to sign in and
     // return to this exact journey (trip + hub + passengers preserved in the URL).
     if (needsAuth) {
@@ -152,7 +159,8 @@ export default function BookScreen() {
               <Text style={styles.totalLabel}>Total{seats > 1 ? ` · ${seats} passengers` : ''}</Text>
               <Text style={styles.totalR}>{formatUGX(total)}</Text>
             </View>
-            <PrimaryButton title={soldOut ? 'Sold out' : needsAuth ? 'Sign in to reserve' : 'Confirm reservation'} onPress={confirm} loading={busy} disabled={soldOut} />
+            {left && <Text style={styles.leftNote}>{t?.status === 'cancelled' ? 'This departure was cancelled.' : `This bus has already left ${journey?.pickup?.hubName ?? 'this hub'}. Pick a later departure.`}</Text>}
+            <PrimaryButton title={left ? 'Departure closed' : soldOut ? 'Sold out' : needsAuth ? 'Sign in to reserve' : 'Confirm reservation'} onPress={confirm} loading={busy} disabled={soldOut || left} />
             {mode === 'demo' && <Text style={styles.demoNote}>Preview reservation — no real seat booked.</Text>}
           </View>
         )}
@@ -191,5 +199,6 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalLabel: { fontWeight: '400', fontSize: font.body, color: colors.inkSoft },
   totalR: { fontWeight: '700', fontSize: font.h2, color: colors.ink, fontVariant: ['tabular-nums'] },
+  leftNote: { color: colors.red700, fontSize: font.small, fontWeight: '600', textAlign: 'center' },
   demoNote: { textAlign: 'center', color: colors.muted, fontSize: font.tiny },
 });

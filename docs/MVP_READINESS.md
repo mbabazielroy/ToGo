@@ -164,6 +164,18 @@ requires a *hosted* Supabase project is the live Auth/PostgREST/Realtime transpo
 
 ---
 
+**Added since (native app)**
+- Booking and check-in close once the bus has left the passenger's pickup hub
+  (shared rule + tests; `supabase/migrations/0018_checkin_after_departure.sql` adds the
+  same check-in guard server-side — **written, not yet run against Postgres**; run
+  `npm run db:test` on a machine with Docker before deploying).
+- Driver foreground GPS sharing in connected mode (`apps/mobile/src/crew/useLocationSharing.ts`,
+  `report_location` every ~30 s / 50 m while the trip runs and the screen is open; the
+  banner shows the true state). Passenger maps use fixes newer than 5 minutes, otherwise
+  a schedule estimate. Not exercised against a hosted project.
+- Live refresh: preview screens update instantly on any change; connected screens
+  refresh on focus, on foreground and every 30 s.
+
 ## C. Missing / not yet built (software)
 
 - **Operator crew directory**: the operator console now assigns BOTH drivers and

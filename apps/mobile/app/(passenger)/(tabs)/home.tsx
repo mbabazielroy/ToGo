@@ -11,6 +11,7 @@ import { useAdapter, useDataEpoch } from '@/data/AdapterProvider';
 import { useSession } from '@/session/SessionProvider';
 import { useSearch } from '@/state/search';
 import { useAsync } from '@/hooks/useAsync';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { useNow, countdown, greeting, leadTime } from '@/hooks/useNow';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
@@ -47,6 +48,7 @@ export default function Home() {
     .filter((b) => ACTIVE.includes(b.status))
     .sort((a, b) => a.pickupTimeSnapshot.localeCompare(b.pickupTimeSnapshot))[0], [bookings.data]);
   const nextTrip = useAsync(() => (next ? adapter.getTrip(next.tripId) : Promise.resolve(null)), [next?.tripId, epoch]);
+  useLiveRefresh(() => { trips.reload(); bookings.reload(); notifs.reload(); nextTrip.reload(); });
 
   const originHubs = useMemo(() => (hubs.data ?? []).filter((h) => h.city === cities.origin), [hubs.data, cities.origin]);
   const selectedHub = originHubs.find((h) => h.id === criteria.hubId);

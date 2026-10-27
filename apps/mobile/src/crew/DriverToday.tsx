@@ -5,17 +5,19 @@ import { Group, PrimaryButton, Loading, ErrorRow, EmptyState, Separator, Section
 import { TripStatusPill } from '@/components/StatusPill';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync, humanError } from '@/hooks/useAsync';
+import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { useNow, leadTime } from '@/hooks/useNow';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
 import { colors, radius, space, font, SCREEN } from '@/theme';
-import { formatTime } from '@shared/lib/time';
+import { formatTime, timeAgo } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { manifestCounts } from '@/staff/counts';
 import { CrewHeader, HeaderStat } from './CrewHeader';
 import { TripPicker } from './TripPicker';
 import { pickActiveTrip } from './activeTrip';
+import { useLocationSharing, type SharingState } from './useLocationSharing';
 import { TransitMap } from '@/components/map/TransitMap';
 import { tripMapData, pickupsByStop } from '@/components/map/tripMap';
 import { ask } from '@/lib/dialog';
@@ -32,9 +34,10 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
   const [selStop, setSelStop] = useState<string | null>(null);
 
   const trips = useAsync(() => adapter.staffTrips(staffId), [staffId, tick, epoch]);
+  useLiveRefresh(() => setTick((n) => n + 1));
   const list = trips.data ?? [];
   const active = pickActiveTrip(list, tripId ?? tripParam);
-  const manifest = useAsync(() => (active ? adapter.getTripManifest(active.id) : Promise.resolve([])), [active?.id, tick]);
+  const manifest = useAsync(() => (active ? adapter.getTripManifest(active.id) : Promise.resolve([])), [active?.id, tick, epoch]);
   const counts = useMemo(() => manifestCounts(manifest.data ?? []), [manifest.data]);
   const pickups = useMemo(() => pickupsByStop(manifest.data ?? []), [manifest.data]);
   const hubs = useAsync(() => adapter.listHubs(), [epoch]);
@@ -63,6 +66,7 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
   const running = !!active && (active.status === 'en_route' || active.status === 'boarding');
   const finished = !!active && (active.status === 'completed' || active.status === 'cancelled');
   const line = active ? lineFor(active.operatorId, active.operatorName) : null;
+  const sharing = useLocationSharing(active?.id, running);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -215,15 +219,34 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
               <KeyValue label="Seats booked" value={`${active.seatsReserved} of ${active.capacity}`} />
             </Group>
 
-            <Banner tone="info" icon={mode === 'demo' ? 'navigate-circle-outline' : 'navigate'} title={mode === 'demo' ? 'Location is simulated in preview' : running ? 'Sharing location while this screen is open' : 'Location sharing starts with the trip'}>
-              {mode === 'demo' ? 'No GPS is used. Passengers see progress as you mark hubs reached.' : 'There is no background tracking. Keep the app open while driving with the phone mounted.'}
-            </Banner>
+            <SharingBanner state={sharing} />
             <Text style={styles.safety}>Use controls only while the bus is stopped.</Text>
           </>
         )}
       </ScrollView>
     </View>
   );
+}
+
+function SharingBanner({ state }: { state: SharingState }) {
+  switch (state.kind) {
+    case 'simulated':
+      return <Banner tone="info" icon="navigate-circle-outline" title="Location is simulated in preview">No GPS is used. Passengers see the bus move as you mark hubs reached.</Banner>;
+    case 'off':
+      return <Banner tone="info" icon="navigate-outline" title="Location sharing starts with the trip">While the trip runs and this screen is open, your phone shares the bus position with passengers. There is no background tracking.</Banner>;
+    case 'asking':
+      return <Banner tone="info" icon="navigate-outline" title="Turning on location…">Allow location so passengers can see where the bus is.</Banner>;
+    case 'denied':
+      return <Banner tone="warn" title="Location is off">Passengers only see an estimate from the timetable. Allow location for ToGo Staff in Settings to share the bus position.</Banner>;
+    case 'error':
+      return <Banner tone="warn" title="Couldn’t send location">{state.message}. It will retry with the next position.</Banner>;
+    case 'sharing':
+      return (
+        <Banner tone="ok" icon="navigate" title="Sharing bus location">
+          {state.lastSentAt ? `Last sent ${timeAgo(state.lastSentAt.toISOString())}${state.accuracyM ? ` · ±${Math.round(state.accuracyM)} m` : ''}.` : 'Waiting for the first GPS fix…'} Keep this screen open while driving.
+        </Banner>
+      );
+  }
 }
 
 function PickupLine({ p, big }: { p?: { toPickUp: number; checkedIn: number }; big?: boolean }) {

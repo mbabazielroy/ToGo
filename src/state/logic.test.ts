@@ -263,6 +263,33 @@ describe('check-in guards', () => {
   });
 });
 
+describe('departed hubs', () => {
+  it('cannot reserve from a hub the bus has already left', () => {
+    const state = fresh();
+    const { trip, hubId } = pickTrip(state);
+    const started = startTrip(state, trip.id); // marks the first hub reached
+    expect(started.ok).toBe(true);
+    if (!started.ok) return;
+    const r = reserve(started.state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Late', seats: 1 });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.error).toMatch(/already left/);
+    // A later hub on the same trip can still be booked.
+    const later = reserve(started.state, { tripId: trip.id, pickupHubId: trip.stops[1].hubId, passengerName: 'On time', seats: 1 });
+    expect(later.ok).toBe(true);
+  });
+
+  it('closes check-in once the bus has left the passenger’s hub', () => {
+    const state = fresh();
+    const { trip, hubId } = pickTrip(state);
+    const r = reserve(state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Amina', seats: 1 });
+    if (!r.ok) throw new Error(r.error);
+    const started = startTrip(r.state, trip.id);
+    if (!started.ok) throw new Error(started.error);
+    expect(checkIn(started.state, r.value.id).ok).toBe(false);
+  });
+});
+
 describe('trip management', () => {
   it('capacity cannot drop below active reservations', () => {
     let state = fresh();

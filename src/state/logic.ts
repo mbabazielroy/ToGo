@@ -110,6 +110,9 @@ export function reserve(state: AppState, input: ReserveInput): Result<Booking> {
   if (!trip.stops.some((s) => s.hubId === input.pickupHubId)) {
     return fail('That pickup hub is not served by this trip.');
   }
+  if (trip.stops.find((s) => s.hubId === input.pickupHubId)?.reached) {
+    return fail('This bus has already left that pickup hub. Choose a later departure.');
+  }
   const name = input.passengerName.trim();
   if (!name) return fail('Please enter a passenger name.');
   if (input.seats < 1) return fail('At least one passenger is required.');
@@ -202,6 +205,9 @@ export function checkIn(state: AppState, bookingId: string): Result<Booking> {
   if (!trip) return fail('Trip not found.');
   if (trip.status === 'cancelled') return fail('This trip has been cancelled.');
   if (trip.status === 'completed') return fail('This trip is already completed.');
+  if (trip.stops.find((s) => s.hubId === booking.pickupHubId)?.reached) {
+    return fail('The bus has already left this hub, so check-in is closed.');
+  }
 
   const updated: Booking = {
     ...booking,
