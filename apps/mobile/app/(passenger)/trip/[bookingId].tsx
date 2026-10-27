@@ -17,6 +17,8 @@ import { tripJourney } from '@shared/data/journey';
 import { useNow, leadTime } from '@/hooks/useNow';
 import { lineFor } from '@/lib/lines';
 import { LineBadge } from '@/components/ui';
+import { TransitMap } from '@/components/map/TransitMap';
+import { tripMapData } from '@/components/map/tripMap';
 import { ask } from '@/lib/dialog';
 
 interface Stage { key: string; label: string; hint: string }
@@ -49,6 +51,7 @@ export default function TripScreen() {
   const b = booking.data;
   const trip = useAsync(() => (b ? adapter.getTrip(b.tripId) : Promise.resolve(null)), [b?.tripId]);
   const location = useAsync(() => (b ? adapter.latestLocation(b.tripId) : Promise.resolve(null)), [b?.tripId]);
+  const hubs = useAsync(() => adapter.listHubs(), []);
   const t = trip.data;
 
   useEffect(() => {
@@ -159,6 +162,12 @@ export default function TripScreen() {
               </View>
             </Group>
 
+            {/* Map — route, your stop, and the bus once it's moving */}
+            {t && !cancelled && hubs.data && (() => {
+              const m = tripMapData(t, hubs.data, now, { highlightHubId: b.pickupHubId, fix: location.data, demo: mode === 'demo' });
+              return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.caption} />;
+            })()}
+
             {/* Current step */}
             {currentStage && (
               <Group style={{ padding: space.lg }}>
@@ -223,7 +232,7 @@ export default function TripScreen() {
             )}
 
             {mode === 'demo' && t && t.status !== 'completed' && t.status !== 'cancelled' && !cancelled && (
-              <Text style={styles.previewHint}>Preview tip: the bus moves when crew act on it. Sign out and open the staff workspace as this trip's driver or conductor to start it, report a delay or board you.</Text>
+              <Text style={styles.previewHint}>Preview tip: the bus moves when crew act on it. Open the staff workspace (or the ToGo Staff app) as this trip's driver or conductor to start it, report a delay or board you.</Text>
             )}
 
             {(b.status === 'reserved' || b.status === 'checked_in') && (

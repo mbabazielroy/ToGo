@@ -1,5 +1,5 @@
 {
-  "//": "Documented EAS starting point. Running `eas build` requires a (free) Expo account, and iOS builds require Apple Developer signing. Neither is provisioned by this repo — no installable build exists yet. See docs/MOBILE.md.",
+  "//": "Documented EAS starting point. Running `eas build` requires a (free) Expo account, and iOS builds require Apple Developer signing. Neither is provisioned by this repo \u2014 no installable build exists yet. See docs/MOBILE.md. Two apps from one codebase: the default profiles build the passenger app \"ToGo\"; the *-staff profiles build \"ToGo Staff\" (see app.config.js).",
   "cli": {
     "version": ">= 12.0.0",
     "appVersionSource": "local"
@@ -8,14 +8,36 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": { "simulator": true }
+      "ios": {
+        "simulator": true
+      }
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "passenger"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "passenger"
+      }
+    },
+    "preview-staff": {
+      "extends": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "staff"
+      }
+    },
+    "production-staff": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "staff"
+      }
     }
   },
   "submit": {

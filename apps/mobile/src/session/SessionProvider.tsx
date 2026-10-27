@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Href } from 'expo-router';
 import { useAdapter, useAppMode, useDataEpoch } from '../data/AdapterProvider';
 import { useAuth } from '../auth/AuthProvider';
+import { APP_VARIANT } from '../env';
 
 // Who is using the app, and therefore which space they get:
 //   passenger            → the passenger app (Home / Trips / Hubs / Account)
@@ -55,9 +56,19 @@ export function spaceOf(role: Role): Space {
   return 'crew';
 }
 
+/** Which spaces this build contains: the passenger app has only the passenger
+ *  space; ToGo Staff has only crew + operations; the dev build has all three. */
+export function spaceAllowed(space: Space): boolean {
+  if (APP_VARIANT === 'passenger') return space === 'passenger';
+  if (APP_VARIANT === 'staff') return space !== 'passenger';
+  return true;
+}
+
 export function homeFor(identity: Identity | null): Href {
-  if (!identity) return '/welcome';
+  const entry: Href = APP_VARIANT === 'staff' ? '/staff-signin' : '/welcome';
+  if (!identity) return entry;
   const space = spaceOf(identity.role);
+  if (!spaceAllowed(space)) return entry;
   return space === 'admin' ? '/admin' : space === 'crew' ? '/crew' : '/home';
 }
 

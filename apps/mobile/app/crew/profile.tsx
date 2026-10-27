@@ -38,7 +38,7 @@ export default function CrewProfile() {
   function confirmSignOut() {
     ask('Sign out of the workspace?', 'You’ll return to the welcome screen.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace('/welcome'); } },
+      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace(homeFor(null)); } },
     ]);
   }
 

@@ -15,6 +15,9 @@ import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { hubCounts } from '@/staff/counts';
 import type { HubExpectedRow, TripView } from '@shared/data/adapter';
 import { CrewHeader, HeaderStat } from './CrewHeader';
+import { TransitMap } from '@/components/map/TransitMap';
+import { tripMapData } from '@/components/map/tripMap';
+import { useAppMode } from '@/data/AdapterProvider';
 
 export interface HubBus { trip: TripView; rows: HubExpectedRow[]; pickupTime: string }
 
@@ -41,13 +44,14 @@ export function useHubBoard(staffId: string, tick: number) {
     const buses: HubBus[] = trips
       .map((t) => ({ trip: t, rows: expected.filter((r) => r.tripId === t.id), pickupTime: t.stops.find((s) => s.hubId === hubId)?.pickupTime ?? t.originDeparture }))
       .sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
-    return { hubId, hub, buses, incidents, totals: hubCounts(expected) };
+    return { hubId, hub, hubs, buses, incidents, totals: hubCounts(expected) };
   }, [staffId, tick, epoch]);
 }
 
 export function AttendantToday({ staffId }: { staffId: string }) {
   const adapter = useAdapter();
   const toast = useToast();
+  const mode = useAppMode();
   const now = useNow(30000);
   const [ref, setRef] = useState('');
   const [busy, setBusy] = useState(false);
@@ -112,6 +116,10 @@ export function AttendantToday({ staffId }: { staffId: string }) {
                 <Text style={styles.nextMeta}>
                   {nextBus.trip.operatorName} · {leadTime(nextBus.pickupTime, now)}{nextBus.trip.delayMinutes > 0 ? ` · running ${nextBus.trip.delayMinutes} min late` : ''}
                 </Text>
+                {(() => {
+                  const m = tripMapData(nextBus.trip, d.hubs, now, { highlightHubId: d.hubId, demo: mode === 'demo' });
+                  return <View style={{ marginTop: space.md }}><TransitMap height={180} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.stops.map((x) => x.coord).concat(m.buses.map((x) => x.coord))} caption={m.caption} /></View>;
+                })()}
               </View>
             )}
 

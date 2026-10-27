@@ -15,7 +15,9 @@
     "test": "vitest run",
     "preview": "EXPO_PUBLIC_TOGO_DEMO=1 expo start",
     "preview:tunnel": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --tunnel",
-    "preview:web": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --web"
+    "preview:web": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --web",
+    "preview:passenger": "EXPO_PUBLIC_APP_VARIANT=passenger EXPO_PUBLIC_TOGO_DEMO=1 expo start",
+    "preview:staff": "EXPO_PUBLIC_APP_VARIANT=staff EXPO_PUBLIC_TOGO_DEMO=1 expo start --port 8082"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -35,6 +37,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
+    "react-native-maps": "1.29.11",
     "react-native-qrcode-svg": "^6.3.15",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",

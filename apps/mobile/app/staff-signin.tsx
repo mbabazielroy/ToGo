@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
+import { APP_VARIANT } from '@/env';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NavBar, Group, Separator, SectionHeading, PrimaryButton, Loading, EmptyState, Banner, ListRow } from '@/components/ui';
@@ -32,12 +33,21 @@ export default function StaffSignIn() {
   }
 
   const needsAuth = mode === 'connected' && !session;
+  if (APP_VARIANT === 'passenger') return <Redirect href="/welcome" />;
+  const standalone = APP_VARIANT === 'staff';
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <NavBar title="" onBack={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />
+      {standalone ? (
+        <View style={styles.brandRow}>
+          <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
+          <Text style={styles.brand}>ToGo Staff</Text>
+        </View>
+      ) : (
+        <NavBar title="" onBack={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />
+      )}
       <ScrollView contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: insets.bottom + space.xxl }}>
-        <Text style={styles.title} accessibilityRole="header">Staff workspace</Text>
+        <Text style={styles.title} accessibilityRole="header">{standalone ? 'Sign in to your shift' : 'Staff workspace'}</Text>
         <Text style={styles.lead}>
           Drivers, conductors and hub attendants run today's trips here. Operations admins manage departures, crew and the network.
         </Text>
@@ -85,7 +95,7 @@ export default function StaffSignIn() {
           })
         )}
 
-        <Text style={styles.foot}>Travelling instead? Go back and choose “Get started”.</Text>
+        <Text style={styles.foot}>{standalone ? 'Travelling? Use the ToGo passenger app.' : 'Travelling instead? Go back and choose “Get started”.'}</Text>
       </ScrollView>
     </View>
   );
@@ -95,5 +105,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   title: { fontSize: 30, fontWeight: '800', color: colors.ink, letterSpacing: -0.6 },
   lead: { fontSize: font.body, color: colors.inkSoft, marginTop: space.sm, lineHeight: 24 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 52, paddingHorizontal: SCREEN },
+  logo: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.forest900, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: colors.live, fontWeight: '900', fontSize: 16 },
+  brand: { color: colors.ink, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
   foot: { textAlign: 'center', color: colors.muted, fontSize: font.tiny, marginTop: space.xl },
 });

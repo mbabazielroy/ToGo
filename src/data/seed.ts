@@ -19,6 +19,8 @@ export const STORAGE_VERSION = 4;
 export const HUBS: Hub[] = [
   {
     id: 'hub_kla_nakawa',
+    lat: 0.329,
+    lng: 32.615,
     name: 'Nakawa Green Hub',
     city: 'Kampala',
     area: 'Near Nakawa, off Jinja Road (demo location)',
@@ -29,6 +31,8 @@ export const HUBS: Hub[] = [
   },
   {
     id: 'hub_kla_ndeeba',
+    lat: 0.293,
+    lng: 32.553,
     name: 'Ndeeba Roadside Point',
     city: 'Kampala',
     area: 'Ndeeba, along Masaka Road (demo location)',
@@ -39,6 +43,8 @@ export const HUBS: Hub[] = [
   },
   {
     id: 'hub_kla_natete',
+    lat: 0.2985,
+    lng: 32.5385,
     name: 'Natete Junction Stop',
     city: 'Kampala',
     area: 'Natete, near the taxi junction (demo location)',
@@ -48,6 +54,8 @@ export const HUBS: Hub[] = [
   },
   {
     id: 'hub_mbr_central',
+    lat: -0.6075,
+    lng: 30.656,
     name: 'Mbarara Central Hub',
     city: 'Mbarara',
     area: 'Central Mbarara, near High Street (demo location)',
@@ -58,6 +66,8 @@ export const HUBS: Hub[] = [
   },
   {
     id: 'hub_mbr_kakoba',
+    lat: -0.618,
+    lng: 30.662,
     name: 'Kakoba Roadside Point',
     city: 'Mbarara',
     area: 'Kakoba, along the Kabale Road (demo location)',
@@ -263,8 +273,17 @@ export function rollForward(state: AppState, todayISO: string = kampalaToday()):
     crewChanged = true;
     return { ...s, assignedTripIds: [...s.assignedTripIds, ...missing] };
   });
-  if (!added.length && !crewChanged && !newDay) return state;
-  return { ...state, trips, staff, crewSeededFor: todayISO };
+  // Datasets saved before hubs had map positions pick them up from the seed.
+  let hubsChanged = false;
+  const hubs = state.hubs.map((h) => {
+    if (h.lat != null && h.lng != null) return h;
+    const seed = HUBS.find((x) => x.id === h.id);
+    if (seed?.lat == null || seed.lng == null) return h;
+    hubsChanged = true;
+    return { ...h, lat: seed.lat, lng: seed.lng };
+  });
+  if (!added.length && !crewChanged && !newDay && !hubsChanged) return state;
+  return { ...state, trips, staff, hubs, crewSeededFor: todayISO };
 }
 
 // Helper used by the tracking simulation to keep arrival estimates coherent.

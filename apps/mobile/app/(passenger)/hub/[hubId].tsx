@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useSearch } from '@/state/search';
 import { useAsync } from '@/hooks/useAsync';
 import { useNow } from '@/hooks/useNow';
+import { TransitMap } from '@/components/map/TransitMap';
+import { hubPoint } from '@shared/data/geo';
 import { haptics } from '@/lib/feedback';
 import { colors, radius, space, font, SCREEN } from '@/theme';
 import { kampalaToday } from '@shared/lib/time';
@@ -76,6 +78,19 @@ export default function HubDetail() {
               </View>
             </View>
 
+            {hubPoint(hub) && (
+              <View style={{ marginTop: space.md, gap: space.sm }}>
+                <TransitMap height={170} stops={[{ id: hub.id, coord: hubPoint(hub)!, label: hub.name, highlight: true }]} focus={[hubPoint(hub)!]} caption={mode === 'demo' ? 'Approximate location' : undefined} />
+                <Pressable
+                  onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${hub.lat},${hub.lng}`).catch(() => {})}
+                  accessibilityRole="button" accessibilityLabel={`Directions to ${hub.name}`}
+                  style={({ pressed }) => [styles.directions, pressed && { opacity: 0.8 }]}>
+                  <Ionicons name="navigate" size={18} color={colors.white} />
+                  <Text style={styles.directionsText}>Directions</Text>
+                </Pressable>
+              </View>
+            )}
+
             {hub.arrivalInstructions ? (
               <>
                 <SectionHeading title="Where to wait" />
@@ -133,6 +148,8 @@ export default function HubDetail() {
 }
 
 const styles = StyleSheet.create({
+  directions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.forest700, borderRadius: radius.lg, minHeight: 46 },
+  directionsText: { color: colors.white, fontWeight: '700', fontSize: font.body },
   root: { flex: 1, backgroundColor: colors.bg },
   hero: { paddingHorizontal: space.xs, paddingTop: space.sm },
   name: { fontSize: font.h1, fontWeight: '700', color: colors.ink },

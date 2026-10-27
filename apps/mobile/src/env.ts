@@ -36,3 +36,13 @@ if (isSupabaseConfigured && /service_role/i.test(anonKey)) {
 
 /** Support contact shown in Account → Help. Set per deployment; hidden when empty. */
 export const SUPPORT_EMAIL: string = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '').trim();
+
+/**
+ * Which app this build is (see app.config.js):
+ *   'passenger' — the public ToGo app: passenger space only.
+ *   'staff'     — ToGo Staff: crew and operations spaces only.
+ *   'combined'  — development build with every space (default), for demos.
+ */
+export type AppVariant = 'passenger' | 'staff' | 'combined';
+const variantFlag = (process.env.EXPO_PUBLIC_APP_VARIANT ?? '').trim().toLowerCase();
+export const APP_VARIANT: AppVariant = variantFlag === 'passenger' || variantFlag === 'staff' ? variantFlag : 'combined';

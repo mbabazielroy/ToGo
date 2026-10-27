@@ -15,6 +15,9 @@ import { manifestCounts } from '@/staff/counts';
 import { colors, space, font, SCREEN, radius, control } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
+import { TransitMap } from '@/components/map/TransitMap';
+import { tripMapData, pickupsByStop } from '@/components/map/tripMap';
+import { useNow } from '@/hooks/useNow';
 import { ask } from '@/lib/dialog';
 
 type CrewRole = 'driver' | 'conductor';
@@ -37,6 +40,8 @@ export default function AdminTrip() {
   const trip = useAsync(() => adapter.getTrip(String(tripId)), [tripId, epoch, tick]);
   const manifest = useAsync(() => adapter.getTripManifest(String(tripId)), [tripId, epoch, tick]);
   const staff = useAsync(() => adapter.listStaff(), [epoch, tick]);
+  const hubs = useAsync(() => adapter.listHubs(), [epoch]);
+  const now = useNow(30000);
   const t = trip.data;
   const counts = useMemo(() => manifestCounts(manifest.data ?? []), [manifest.data]);
 
@@ -101,6 +106,10 @@ export default function AdminTrip() {
           </View>
         </View>
         <TripStatusPill status={t.status} delayed={t.delayMinutes > 0} />
+        {hubs.data && (() => {
+          const m = tripMapData(t, hubs.data, now, { pickups: pickupsByStop(manifest.data ?? []), demo: mode === 'demo' });
+          return <TransitMap height={200} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.caption} />;
+        })()}
 
         <View style={styles.grid}>
           <StatTile label="Booked" value={`${t.seatsReserved}/${t.capacity}`} />

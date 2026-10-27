@@ -7,9 +7,9 @@ import { Screen } from '@/components/Screen';
 import { Group, Separator, SectionHeading, PrimaryButton, ListRow, Avatar, Segmented, Banner } from '@/components/ui';
 import { useAppMode, useResetDemo } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
-import { useSession, type PassengerProfile } from '@/session/SessionProvider';
+import { homeFor, useSession, type PassengerProfile } from '@/session/SessionProvider';
 import { useToast } from '@/components/ToastProvider';
-import { SUPPORT_EMAIL } from '@/env';
+import { SUPPORT_EMAIL, APP_VARIANT } from '@/env';
 import { humanError } from '@/hooks/useAsync';
 import { haptics } from '@/lib/feedback';
 import { colors, space, font, SCREEN, control, radius } from '@/theme';
@@ -60,7 +60,7 @@ export default function Account() {
   function confirmSignOut() {
     ask('Sign out?', mode === 'connected' ? 'You’ll need to sign in again to see your trips.' : 'You’ll return to the welcome screen. Preview data stays on this device.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace('/welcome'); } },
+      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace(homeFor(null)); } },
     ]);
   }
   function confirmReset() {
@@ -145,12 +145,14 @@ export default function Account() {
         </Group>
       </View>
 
-      <View>
-        <SectionHeading title="Work with ToGo" />
-        <Group>
-          <ListRow icon="briefcase-outline" title="Staff workspace" subtitle={staffSpaces > 0 ? `Drivers, conductors, hub attendants and operations${mode === 'demo' ? ' (preview personas)' : ''}` : 'Sign in with a staff account'} onPress={() => router.push('/staff-signin')} />
-        </Group>
-      </View>
+      {APP_VARIANT === 'combined' && (
+        <View>
+          <SectionHeading title="Work with ToGo" />
+          <Group>
+            <ListRow icon="briefcase-outline" title="Staff workspace" subtitle={staffSpaces > 0 ? `Drivers, conductors, hub attendants and operations${mode === 'demo' ? ' (preview personas)' : ''}` : 'Sign in with a staff account'} onPress={() => router.push('/staff-signin')} />
+          </Group>
+        </View>
+      )}
 
       {mode === 'demo' && (
         <View>

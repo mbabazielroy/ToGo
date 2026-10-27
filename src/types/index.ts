@@ -23,6 +23,9 @@ export interface Hub {
   arrivalInstructions: string;
   openingHours: string;
   facilities: HubFacilities;
+  /** Approximate map position (preview hubs are illustrative, not surveyed sites). */
+  lat?: number;
+  lng?: number;
 }
 
 export interface Operator {

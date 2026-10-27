@@ -106,6 +106,7 @@ export class SupabaseAdapter implements DataAdapter {
       id: h.id, name: h.name, city: h.city, area: h.area,
       arrivalInstructions: h.arrival_instructions, openingHours: h.opening_hours,
       facilities: h.facilities, isDemo: h.is_demo,
+      lat: h.lat == null ? null : Number(h.lat), lng: h.lng == null ? null : Number(h.lng),
     }));
   }
 

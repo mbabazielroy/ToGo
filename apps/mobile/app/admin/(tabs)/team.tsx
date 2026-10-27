@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Group, Separator, SectionHeading, Loading, ErrorRow, PageHeader, Avatar, Banner, ListRow } from '@/components/ui';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
-import { useSession } from '@/session/SessionProvider';
+import { homeFor, useSession } from '@/session/SessionProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { colors, space, font, SCREEN, radius, control } from '@/theme';
 import { ask } from '@/lib/dialog';
@@ -27,7 +27,7 @@ export default function AdminTeam() {
   function confirmSignOut() {
     ask('Sign out of operations?', 'You’ll return to the welcome screen.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace('/welcome'); } },
+      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace(homeFor(null)); } },
     ]);
   }
 

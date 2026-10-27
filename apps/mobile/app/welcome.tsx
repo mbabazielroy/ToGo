@@ -7,6 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useAppMode } from '@/data/AdapterProvider';
 import { useSession } from '@/session/SessionProvider';
 import { colors, space, font, radius, control } from '@/theme';
+import { APP_VARIANT } from '@/env';
+import { Redirect } from 'expo-router';
 
 interface Slide { key: string; icon: keyof typeof Ionicons.glyphMap; title: string; body: string }
 
@@ -30,6 +32,7 @@ export default function Welcome() {
   }).current;
 
   const last = index === SLIDES.length - 1;
+  if (APP_VARIANT === 'staff') return <Redirect href="/staff-signin" />;
   async function continueAsReturning() {
     await startPassenger();
     router.replace('/home');
@@ -104,10 +107,14 @@ export default function Welcome() {
             <Text style={styles.secondaryText}>I already have an account</Text>
           </Pressable>
         )}
-        <Pressable onPress={() => router.push('/staff-signin')} accessibilityRole="button" style={styles.staffLink}>
-          <Ionicons name="briefcase-outline" size={16} color={colors.onDarkSoft} />
-          <Text style={styles.staffText}>Crew or operations? Sign in to your workspace</Text>
-        </Pressable>
+        {APP_VARIANT === 'combined' ? (
+          <Pressable onPress={() => router.push('/staff-signin')} accessibilityRole="button" style={styles.staffLink}>
+            <Ionicons name="briefcase-outline" size={16} color={colors.onDarkSoft} />
+            <Text style={styles.staffText}>Crew or operations? Sign in to your workspace</Text>
+          </Pressable>
+        ) : (
+          <Text style={[styles.staffText, { textAlign: 'center', paddingVertical: 12 }]}>Crew and operations use the ToGo Staff app.</Text>
+        )}
       </View>
     </View>
   );

@@ -17,6 +17,9 @@ export interface HubView {
   openingHours?: string;
   facilities?: Record<string, boolean>;
   isDemo: boolean;
+  /** Map position when known (hubs without coordinates simply aren't drawn). */
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface TripStopView {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Switch, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
+import { APP_VARIANT } from '@/env';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavBar, Group, Separator, SectionHeading, PrimaryButton, Segmented, Banner } from '@/components/ui';
 import { useAppMode } from '@/data/AdapterProvider';
@@ -35,6 +36,7 @@ export default function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authProfile?.full_name, authProfile?.phone]);
 
+  if (APP_VARIANT === 'staff') return <Redirect href="/staff-signin" />;
   const phoneOk = !phone.trim() || /^\+?[0-9 ]{9,15}$/.test(phone.trim());
 
   async function finish() {

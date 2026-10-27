@@ -43,6 +43,34 @@ apps/mobile/
   app.json                     # scheme "togo", plugins, bundle ids
 ```
 
+### Two apps from one codebase
+| Build | Name / bundle id | Contains | Run in preview | EAS profile |
+| --- | --- | --- | --- | --- |
+| Passenger | ToGo · `app.togo.mobile` | passenger space only | `npm run preview:passenger` | `preview`, `production` |
+| Staff | ToGo Staff · `app.togo.staff` | crew + operations only | `npm run preview:staff` (port 8082) | `preview-staff`, `production-staff` |
+| Development | ToGo | all three spaces | `npm run preview` | — |
+
+`app.config.js` sets the name, bundle id and URL scheme from `EXPO_PUBLIC_APP_VARIANT`;
+`src/env.ts` reads the same flag so the router only contains that build's spaces. The
+development build keeps everything on one device so the full passenger → crew →
+operations loop can be demoed with preview data. (Separate preview builds keep separate
+on-device data; they share data once connected to Supabase.)
+
+### Maps
+`react-native-maps` (Apple Maps on iOS, Google Maps on Android — both work in Expo Go)
+draws each trip's route in the operator's line colour, its stops, and the bus:
+- **Passenger boarding pass**: route, your stop highlighted, the bus once it's moving.
+- **Hub detail**: hub location + Directions.
+- **Driver**: route with **passengers to pick up per stop** on the map and in the stop
+  list; stops with nobody booked show 0 so drivers can pass straight through.
+- **Hub attendant**: where the next bus is. **Admin**: live network + per-departure map.
+
+Bus position is a real GPS fix when one exists (connected mode), otherwise an estimate
+from the schedule and delay that never runs past a hub the crew hasn't marked reached
+(`src/data/geo.ts`). Hub and road coordinates are approximate. Web uses a drawn
+schematic (`TransitMap.web.tsx`). A standalone Android build needs a Google Maps API key
+in `app.json` (`android.config.googleMaps.apiKey`); Expo Go doesn't.
+
 ### Three separate spaces
 Who you are decides where you land, and each space is a separate route group guarded
 by `SpaceGate`, so a passenger can't open crew or admin screens (and vice versa) even

@@ -165,6 +165,7 @@ export class DemoAdapter implements DataAdapter {
       id: h.id, name: h.name, city: h.city, area: h.area,
       arrivalInstructions: h.arrivalInstructions, openingHours: h.openingHours,
       facilities: h.facilities as unknown as Record<string, boolean>, isDemo: true,
+      lat: h.lat ?? null, lng: h.lng ?? null,
     }));
   }
 

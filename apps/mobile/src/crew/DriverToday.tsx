@@ -16,6 +16,8 @@ import { manifestCounts } from '@/staff/counts';
 import { CrewHeader, HeaderStat } from './CrewHeader';
 import { TripPicker } from './TripPicker';
 import { pickActiveTrip } from './activeTrip';
+import { TransitMap } from '@/components/map/TransitMap';
+import { tripMapData, pickupsByStop } from '@/components/map/tripMap';
 import { ask } from '@/lib/dialog';
 
 export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam?: string }) {
@@ -33,6 +35,8 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
   const active = pickActiveTrip(list, tripId ?? tripParam);
   const manifest = useAsync(() => (active ? adapter.getTripManifest(active.id) : Promise.resolve([])), [active?.id, tick]);
   const counts = useMemo(() => manifestCounts(manifest.data ?? []), [manifest.data]);
+  const pickups = useMemo(() => pickupsByStop(manifest.data ?? []), [manifest.data]);
+  const hubs = useAsync(() => adapter.listHubs(), [epoch]);
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     if (busy) return;
@@ -96,6 +100,13 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
                   <Text style={styles.nextKicker}>{running ? 'Next pickup' : 'First pickup'}</Text>
                   <Text style={styles.nextTitle}>{nextStop.hubName}</Text>
                   <Text style={styles.nextTime}>{formatTime(nextStop.pickupTime)} · {leadTime(nextStop.pickupTime, now)}</Text>
+                  <PickupLine p={pickups.get(nextStop.hubId)} big />
+                  {!(pickups.get(nextStop.hubId)?.toPickUp) && (() => {
+                    const ahead = stops.find((x) => !x.reached && x !== nextStop && (pickups.get(x.hubId)?.toPickUp ?? 0) > 0);
+                    return ahead ? (
+                      <Text style={styles.ahead}>Next passengers: <Text style={{ fontWeight: '800', color: colors.ink }}>{ahead.hubName}</Text> · {pickups.get(ahead.hubId)!.toPickUp} at {formatTime(ahead.pickupTime)}</Text>
+                    ) : null;
+                  })()}
                 </>
               ) : (
                 <>
@@ -128,21 +139,36 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
               </View>
             )}
 
-            <SectionHeading title="Route" />
+            <SectionHeading title="Route & pickups" />
+            {hubs.data && (() => {
+              const m = tripMapData(active, hubs.data, now, { pickups, demo: mode === 'demo' });
+              return <TransitMap height={230} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.caption} />;
+            })()}
             <Group style={{ padding: space.lg }}>
-              {stops.map((s, i) => (
-                <View key={s.id} style={styles.stopRow}>
-                  <View style={styles.rail}>
-                    <View style={[styles.stopDot, s.reached && { backgroundColor: line.color, borderColor: line.color }, s === nextStop && running && { borderColor: colors.live, borderWidth: 3 }]} />
-                    <View style={[styles.stopLine, { backgroundColor: s.reached ? line.color : colors.separator }]} />
+              {stops.map((s, i) => {
+                const p = pickups.get(s.hubId);
+                const isNext = s === nextStop && running;
+                return (
+                  <View key={s.id} style={styles.stopRow}>
+                    <View style={styles.rail}>
+                      <View style={[styles.stopDot, s.reached && { backgroundColor: line.color, borderColor: line.color }, isNext && { borderColor: colors.live, borderWidth: 3 }]} />
+                      <View style={[styles.stopLine, { backgroundColor: s.reached ? line.color : colors.separator }]} />
+                    </View>
+                    <View style={{ flex: 1, paddingBottom: space.md }}>
+                      <Text style={[styles.stopName, s.reached && { color: colors.muted }]}>{s.hubName}</Text>
+                      <Text style={styles.stopMeta}>{formatTime(s.pickupTime)}{s.reached ? ' · departed' : isNext ? ' · next' : ''}{i === 0 ? ' · start' : ''}</Text>
+                      {!s.reached && <PickupLine p={p} />}
+                      {s.reached && p && p.boarded > 0 && <Text style={styles.stopMeta}>{p.boarded} boarded here</Text>}
+                      {s.reached && p && p.toPickUp > 0 && <Text style={styles.leftBehind}>{p.toPickUp} booked here but not boarded — tell your conductor</Text>}
+                    </View>
+                    {!s.reached && (
+                      <View style={[styles.countPill, !(p?.toPickUp) && styles.countPillZero]} accessibilityLabel={`${p?.toPickUp ?? 0} to pick up`}>
+                        <Text style={[styles.countPillText, !(p?.toPickUp) && { color: colors.muted }]}>{p?.toPickUp ?? 0}</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={{ flex: 1, paddingBottom: space.md }}>
-                    <Text style={[styles.stopName, s.reached && { color: colors.muted }]}>{s.hubName}</Text>
-                    <Text style={styles.stopMeta}>{formatTime(s.pickupTime)}{s.reached ? ' · departed' : s === nextStop && running ? ' · next' : ''}</Text>
-                  </View>
-                  {i === 0 && <Text style={styles.stopTag}>Start</Text>}
-                </View>
-              ))}
+                );
+              })}
               <View style={styles.stopRow}>
                 <View style={styles.rail}><Ionicons name="flag" size={14} color={colors.red600} /></View>
                 <View style={{ flex: 1 }}>
@@ -151,6 +177,9 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
                 </View>
               </View>
             </Group>
+            {stops.some((s) => !s.reached && !(pickups.get(s.hubId)?.toPickUp)) && (
+              <Text style={styles.skipHint}>Stops showing 0 have no one booked — you can pass straight through unless someone flags you.</Text>
+            )}
 
             <SectionHeading title="Trip" />
             <Group style={{ paddingHorizontal: space.lg }}>
@@ -171,6 +200,17 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
         )}
       </ScrollView>
     </View>
+  );
+}
+
+function PickupLine({ p, big }: { p?: { toPickUp: number; checkedIn: number }; big?: boolean }) {
+  const n = p?.toPickUp ?? 0;
+  if (n === 0) return <Text style={[styles.pickNone, big && { marginTop: 6 }]}>No one to pick up here</Text>;
+  return (
+    <Text style={[big ? styles.pickBig : styles.pickSmall]}>
+      Pick up <Text style={{ fontWeight: '900' }}>{n}</Text> passenger{n === 1 ? '' : 's'}
+      <Text style={styles.pickChecked}>{`  ·  ${p!.checkedIn} checked in`}</Text>
+    </Text>
   );
 }
 
@@ -201,5 +241,15 @@ const styles = StyleSheet.create({
   stopName: { fontSize: font.body, fontWeight: '600', color: colors.ink },
   stopMeta: { fontSize: font.tiny, color: colors.muted, marginTop: 1 },
   stopTag: { fontSize: 11, color: colors.muted, fontWeight: '700' },
+  pickBig: { fontSize: font.body, color: colors.ink, marginTop: 6 },
+  pickSmall: { fontSize: font.small, color: colors.ink, marginTop: 2 },
+  pickChecked: { color: colors.muted, fontWeight: '400' },
+  leftBehind: { fontSize: font.small, color: colors.amber800, fontWeight: '600', marginTop: 2 },
+  ahead: { fontSize: font.small, color: colors.inkSoft, marginTop: 4 },
+  pickNone: { fontSize: font.small, color: colors.muted, marginTop: 2 },
+  countPill: { minWidth: 34, height: 30, borderRadius: 15, paddingHorizontal: 8, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center' },
+  countPillZero: { backgroundColor: colors.surfaceAlt },
+  countPillText: { color: colors.white, fontWeight: '900', fontSize: font.small, fontVariant: ['tabular-nums'] },
+  skipHint: { fontSize: font.tiny, color: colors.muted, paddingHorizontal: space.xs, lineHeight: 17 },
   safety: { textAlign: 'center', color: colors.muted, fontSize: font.tiny },
 });
