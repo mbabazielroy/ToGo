@@ -44,9 +44,15 @@ export default function Home() {
   const bookings = useAsync(() => adapter.myBookings(), [epoch]);
   const notifs = useAsync(() => adapter.listNotifications(), [epoch]);
 
+  // The trip to feature: still active, and not one whose pickup is long gone (a
+  // departure that never closed out shouldn't headline Home days later). Boarded
+  // passengers stay featured for the whole ride.
   const next: BookingView | undefined = useMemo(() => (bookings.data ?? [])
     .filter((b) => ACTIVE.includes(b.status))
-    .sort((a, b) => a.pickupTimeSnapshot.localeCompare(b.pickupTimeSnapshot))[0], [bookings.data]);
+    .filter((b) => b.status === 'boarded'
+      ? new Date(b.dropoffTimeSnapshot).getTime() > now.getTime() - 2 * 3600000
+      : new Date(b.pickupTimeSnapshot).getTime() > now.getTime() - 3 * 3600000)
+    .sort((a, b) => a.pickupTimeSnapshot.localeCompare(b.pickupTimeSnapshot))[0], [bookings.data, now]);
   const nextTrip = useAsync(() => (next ? adapter.getTrip(next.tripId) : Promise.resolve(null)), [next?.tripId, epoch]);
   useLiveRefresh(() => { trips.reload(); bookings.reload(); notifs.reload(); nextTrip.reload(); });
 

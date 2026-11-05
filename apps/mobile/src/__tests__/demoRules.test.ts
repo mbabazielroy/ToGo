@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DemoAdapter } from '@shared/data/demoAdapter';
 import { buildSeedState } from '@shared/data/seed';
 import { kampalaToday } from '@shared/lib/time';
@@ -20,6 +20,11 @@ async function firstTrip(a: DemoAdapter) {
 }
 
 describe('mobile demo adapter — shared rules + native persistence sink', () => {
+  // Pin the clock to 06:00 Kampala time: before the first 07:00 departures, inside
+  // their 2-hour check-in window. Without this the result depends on the hour.
+  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-09-10T06:00:00+03:00')); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('reserve decreases availability and persists to the injected sink', async () => {
     const { adapter, persist } = makeAdapter();
     const t = await firstTrip(adapter);

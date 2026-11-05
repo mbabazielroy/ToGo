@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useRouter, Redirect } from 'expo-router';
 import { APP_VARIANT } from '@/env';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +24,7 @@ export default function StaffSignIn() {
   const insets = useSafeAreaInsets();
   const mode = useAppMode();
   const { session } = useAuth();
-  const { available, availableLoading, signInAs } = useSession();
+  const { available, availableLoading, signInAs, refreshAvailable } = useSession();
 
   async function enter(identity: Identity) {
     haptics.success();
@@ -46,7 +46,10 @@ export default function StaffSignIn() {
       ) : (
         <NavBar title="" onBack={() => (router.canGoBack() ? router.back() : router.replace('/welcome'))} />
       )}
-      <ScrollView contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: insets.bottom + space.xxl }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: insets.bottom + space.xxl }}
+        refreshControl={needsAuth ? undefined : <RefreshControl refreshing={false} onRefresh={refreshAvailable} tintColor={colors.forest700} />}
+      >
         <Text style={styles.title} accessibilityRole="header">{standalone ? 'Sign in to your shift' : 'Staff workspace'}</Text>
         <Text style={styles.lead}>
           Drivers, conductors and hub attendants run today's trips here. Operations admins manage departures, crew and the network.
@@ -96,6 +99,11 @@ export default function StaffSignIn() {
         )}
 
         <Text style={styles.foot}>{standalone ? 'Travelling? Use the ToGo passenger app.' : 'Travelling instead? Go back and choose “Get started”.'}</Text>
+        <Text style={styles.legal}>
+          <Text onPress={() => router.push('/legal?doc=privacy')} accessibilityRole="link">Privacy policy</Text>
+          {'  ·  '}
+          <Text onPress={() => router.push('/legal?doc=terms')} accessibilityRole="link">Terms of use</Text>
+        </Text>
       </ScrollView>
     </View>
   );
@@ -109,5 +117,6 @@ const styles = StyleSheet.create({
   logo: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.forest900, alignItems: 'center', justifyContent: 'center' },
   logoText: { color: colors.live, fontWeight: '900', fontSize: 16 },
   brand: { color: colors.ink, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
+  legal: { textAlign: 'center', color: colors.forest700, fontSize: font.tiny, fontWeight: '600', marginTop: space.md },
   foot: { textAlign: 'center', color: colors.muted, fontSize: font.tiny, marginTop: space.xl },
 });

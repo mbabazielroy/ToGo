@@ -193,7 +193,16 @@ export function cancelBooking(state: AppState, bookingId: string): Result<Bookin
   return ok(next, updated);
 }
 
-export function checkIn(state: AppState, bookingId: string): Result<Booking> {
+/** Check-in opens this long before the passenger's scheduled pickup, so people
+ *  check in when they are actually at (or heading to) the hub. */
+export const CHECKIN_OPENS_MINUTES = 120;
+
+/** When check-in opens, given the scheduled pickup time at the passenger's hub. */
+export function checkInOpensAt(pickupTime: string): Date {
+  return new Date(new Date(pickupTime).getTime() - CHECKIN_OPENS_MINUTES * 60000);
+}
+
+export function checkIn(state: AppState, bookingId: string, now: Date = new Date()): Result<Booking> {
   const booking = state.bookings.find((b) => b.id === bookingId);
   if (!booking) return fail('Booking not found.');
   if (booking.status === 'cancelled') return fail('This booking was cancelled.');
@@ -207,6 +216,10 @@ export function checkIn(state: AppState, bookingId: string): Result<Booking> {
   if (trip.status === 'completed') return fail('This trip is already completed.');
   if (trip.stops.find((s) => s.hubId === booking.pickupHubId)?.reached) {
     return fail('The bus has already left this hub, so check-in is closed.');
+  }
+  const scheduledPickup = trip.stops.find((s) => s.hubId === booking.pickupHubId)?.pickupTime;
+  if (scheduledPickup && now < checkInOpensAt(scheduledPickup)) {
+    return fail(`Check-in opens ${CHECKIN_OPENS_MINUTES / 60} hours before your pickup.`);
   }
 
   const updated: Booking = {
@@ -227,11 +240,11 @@ export function checkIn(state: AppState, bookingId: string): Result<Booking> {
   return ok(next, updated);
 }
 
-export function checkInByReference(state: AppState, reference: string): Result<Booking> {
+export function checkInByReference(state: AppState, reference: string, now: Date = new Date()): Result<Booking> {
   const ref = reference.trim().toUpperCase();
   const booking = state.bookings.find((b) => b.reference.toUpperCase() === ref);
   if (!booking) return fail(`No booking found for reference "${reference}".`);
-  return checkIn(state, booking.id);
+  return checkIn(state, booking.id, now);
 }
 
 /** Board a booking (idempotent — will not double-board). */

@@ -12,6 +12,7 @@ import { useToast } from '@/components/ToastProvider';
 import { SUPPORT_EMAIL, APP_VARIANT } from '@/env';
 import { humanError } from '@/hooks/useAsync';
 import { haptics } from '@/lib/feedback';
+import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
 import { colors, space, font, SCREEN, control, radius } from '@/theme';
 import { ask } from '@/lib/dialog';
 
@@ -19,7 +20,7 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'How do I pay?', a: 'You pay the conductor when you board, using whatever the operator accepts. The app never asks for card details.' },
   { q: 'Can I cancel?', a: 'Yes. Open the trip in My trips and tap Cancel reservation any time before you board. Your seats are released straight away.' },
   { q: 'What if my bus is late?', a: 'You will see a delay on Home and on your boarding pass, and get an alert if you turned on delay notifications.' },
-  { q: 'When should I get to the hub?', a: 'Aim to arrive 15 minutes before your pickup time and check in. The bus may not wait for late passengers.' },
+  { q: 'When should I get to the hub?', a: 'Aim to arrive 15 minutes before your pickup time and check in. Check-in opens 2 hours before pickup, and the bus may not wait for late passengers.' },
 ];
 
 export default function Account() {
@@ -28,13 +29,13 @@ export default function Account() {
   const toast = useToast();
   const router = useRouter();
   const { session, user, updatePassword } = useAuth();
-  const { profile, updateProfile, signOut, available } = useSession();
+  const { profile, updateProfile, signOut, deleteAccount, available } = useSession();
 
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
   const [homeCity, setHomeCity] = useState<PassengerProfile['homeCity']>(profile.homeCity);
   const [pw, setPw] = useState('');
-  const [busy, setBusy] = useState<null | 'pw' | 'profile'>(null);
+  const [busy, setBusy] = useState<null | 'pw' | 'profile' | 'delete'>(null);
   const [open, setOpen] = useState<number | null>(null);
 
   useEffect(() => { setName(profile.name); setPhone(profile.phone); setHomeCity(profile.homeCity); }, [profile.name, profile.phone, profile.homeCity]);
@@ -45,6 +46,7 @@ export default function Account() {
 
   async function saveProfile() {
     if (!name.trim()) { toast('Your name can’t be empty.', 'error'); return; }
+    if (!phoneLooksValid(phone)) { toast(PHONE_HINT, 'error'); return; }
     setBusy('profile');
     try { await updateProfile({ name: name.trim(), phone: phone.trim(), homeCity }); haptics.success(); toast('Profile saved.', 'ok'); }
     catch (e) { toast(humanError(e), 'error'); }
@@ -61,6 +63,25 @@ export default function Account() {
     ask('Sign out?', mode === 'connected' ? 'You’ll need to sign in again to see your trips.' : 'You’ll return to the welcome screen. Preview data stays on this device.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); router.replace(homeFor(null)); } },
+    ]);
+  }
+  function confirmDelete() {
+    const connectedAccount = mode === 'connected' && !!session;
+    ask('Delete your account?', connectedAccount
+      ? 'This permanently deletes your ToGo account, profile, reservations and alerts. Upcoming seats are released. This can’t be undone.'
+      : 'This removes your profile, reservations and alerts from this device. This can’t be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete account', style: 'destructive', onPress: async () => {
+        setBusy('delete');
+        try {
+          await deleteAccount();
+          if (mode === 'demo') await resetDemo();
+          haptics.success();
+          toast('Your account was deleted.', 'ok');
+          router.replace(homeFor(null));
+        } catch (e) { toast(humanError(e), 'error'); }
+        finally { setBusy(null); }
+      } },
     ]);
   }
   function confirmReset() {
@@ -163,12 +184,26 @@ export default function Account() {
         </View>
       )}
 
+      <View>
+        <SectionHeading title="About" />
+        <Group>
+          <ListRow icon="shield-checkmark-outline" title="Privacy policy" onPress={() => router.push('/legal?doc=privacy')} />
+          <Separator inset={SCREEN + 44} />
+          <ListRow icon="document-text-outline" title="Terms of use" onPress={() => router.push('/legal?doc=terms')} />
+        </Group>
+      </View>
+
       <Pressable onPress={confirmSignOut} accessibilityRole="button" style={({ pressed }) => [styles.signOut, pressed && { opacity: 0.7 }]}>
         <Text style={styles.signOutText}>Sign out</Text>
       </Pressable>
+      {(mode === 'demo' || session) && (
+        <Pressable onPress={confirmDelete} disabled={busy === 'delete'} accessibilityRole="button" accessibilityHint="Permanently deletes your account" style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.7 }]}>
+          <Text style={styles.deleteText}>{busy === 'delete' ? 'Deleting…' : 'Delete account'}</Text>
+        </Pressable>
+      )}
 
       <Text style={styles.about}>
-        ToGo {Constants.expoConfig?.version ?? ''} · Kampala ⇄ Mbarara pilot. You pay the operator at boarding; ToGo never collects payment in the app.
+        ToGo {Constants.expoConfig?.version ?? ''} · Kampala ⇄ Mbarara. You pay the operator at boarding; ToGo never collects payment in the app.
       </Text>
     </Screen>
   );
@@ -205,5 +240,7 @@ const styles = StyleSheet.create({
   faqA: { fontSize: font.small, color: colors.inkSoft, lineHeight: 21, paddingHorizontal: SCREEN, paddingBottom: space.md },
   signOut: { backgroundColor: colors.surface, borderRadius: radius.lg, minHeight: control.height, alignItems: 'center', justifyContent: 'center', marginTop: space.sm },
   signOutText: { color: colors.red700, fontWeight: '600', fontSize: font.body },
+  deleteBtn: { minHeight: control.small, alignItems: 'center', justifyContent: 'center' },
+  deleteText: { color: colors.red700, fontSize: font.small, fontWeight: '500' },
   about: { color: colors.muted, fontSize: font.tiny, textAlign: 'center', lineHeight: 17, paddingHorizontal: space.lg },
 });

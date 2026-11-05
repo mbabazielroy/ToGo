@@ -123,7 +123,7 @@ export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam
 
               <View style={{ gap: space.sm, marginTop: space.md }}>
                 {active.status === 'scheduled' && (
-                  <PrimaryButton title="Start trip" icon="play" onPress={() => confirm('Start trip?', `Passengers at ${stops[0]?.hubName ?? 'the first hub'} will see the bus is on its way.`, () => act(() => adapter.updateTripStatus(active.id, 'en_route'), 'Trip started.'), false)} loading={busy} />
+                  <PrimaryButton title="Start trip" icon="play" onPress={() => confirm('Start trip?', `${earlyStartNote(active.originDeparture)}Passengers at ${stops[0]?.hubName ?? 'the first hub'} will see the bus is on its way.`, () => act(() => adapter.updateTripStatus(active.id, 'en_route'), 'Trip started.'), false)} loading={busy} />
                 )}
                 {running && nextStop && (
                   <PrimaryButton title={`Arrived at ${nextStop.hubName}`} icon="flag" onPress={() => act(() => adapter.reachHub(active.id, nextStop.hubId), `Arrived at ${nextStop.hubName}.`)} loading={busy} />
@@ -302,3 +302,11 @@ const styles = StyleSheet.create({
   skipHint: { fontSize: font.tiny, color: colors.muted, paddingHorizontal: space.xs, lineHeight: 17 },
   safety: { textAlign: 'center', color: colors.muted, fontSize: font.tiny },
 });
+
+/** Warn before starting a trip well ahead of its scheduled departure. */
+function earlyStartNote(departure: string): string {
+  const mins = Math.round((new Date(departure).getTime() - Date.now()) / 60000);
+  if (mins <= 30) return '';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `This departure is scheduled in ${h > 0 ? `${h} h ` : ''}${m} min. `;
+}

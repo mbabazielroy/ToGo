@@ -52,6 +52,7 @@ export function humanError(e: unknown): string {
       case 'ALREADY_BOARDED': return 'That passenger is already boarded.';
       case 'CANCELLED': return 'That booking was cancelled.';
       case 'CAPACITY_TOO_LOW': return e.message;
+      case 'CHECKIN_NOT_OPEN': return 'Check-in opens 2 hours before your pickup.';
       case 'CHECKIN_CLOSED': return 'The bus has already left this hub, so check-in is closed.';
       default: return e.message || 'Something went wrong.';
     }

@@ -25,6 +25,8 @@ interface AuthCtx {
   resetPassword: (email: string, redirectTo?: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   updateProfile: (patch: { full_name?: string; phone?: string | null }) => Promise<void>;
+  /** Permanently delete the signed-in account on the server, then sign out. */
+  deleteAccount: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -111,12 +113,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile(session.user.id);
   }, [session, loadProfile]);
 
+  const deleteAccount = useCallback(async () => {
+    if (!supabase || !session?.user) throw new Error('Not signed in');
+    const { error } = await supabase.rpc('delete_my_account');
+    if (error) throw error;
+    // The server session is gone with the user; clear the local copy too.
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    setProfile(null);
+    setSession(null);
+  }, [session]);
+
   const clearRecoveryMode = useCallback(() => setRecoveryMode(false), []);
 
   const value = useMemo<AuthCtx>(() => ({
     loading, session, user: session?.user ?? null, profile, error, recoveryMode,
-    clearRecoveryMode, setRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword, updateProfile,
-  }), [loading, session, profile, error, recoveryMode, clearRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword, updateProfile]);
+    clearRecoveryMode, setRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword, updateProfile, deleteAccount,
+  }), [loading, session, profile, error, recoveryMode, clearRecoveryMode, refresh, signUp, signIn, signOut, resetPassword, updatePassword, updateProfile, deleteAccount]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

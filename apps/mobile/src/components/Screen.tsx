@@ -12,6 +12,8 @@ export const DEMO_EXPLANATION =
 export function ModeTag() {
   const mode = useAppMode();
   const demo = mode === 'demo';
+  // The live app needs no badge; only the on-device preview is labelled.
+  if (!demo) return null;
   return (
     <Pressable
       onPress={() => demo && ask('Preview mode', DEMO_EXPLANATION)}

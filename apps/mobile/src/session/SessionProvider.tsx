@@ -96,6 +96,8 @@ interface SessionCtx {
   updateProfile: (patch: Partial<PassengerProfile>) => Promise<void>;
   /** Leave the current space (and, in connected mode, the account) → welcome. */
   signOut: () => Promise<void>;
+  /** Delete the account (connected: on the server) and wipe this device's profile. */
+  deleteAccount: () => Promise<void>;
 }
 
 const Ctx = createContext<SessionCtx | null>(null);
@@ -191,6 +193,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     persist({ ...stored, identity: null });
   }, [mode, auth, stored, persist]);
 
+  const deleteAccount = useCallback(async () => {
+    if (mode === 'connected' && auth.session) await auth.deleteAccount();
+    await AsyncStorage.removeItem(KEY).catch(() => {});
+    setStored(DEFAULT);
+  }, [mode, auth]);
+
   const value = useMemo<SessionCtx>(() => ({
     ready,
     onboarded: stored.onboarded,
@@ -203,7 +211,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     signInAs,
     updateProfile,
     signOut,
-  }), [ready, stored, available, availableLoading, startPassenger, signInAs, updateProfile, signOut]);
+    deleteAccount,
+  }), [ready, stored, available, availableLoading, startPassenger, signInAs, updateProfile, signOut, deleteAccount]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

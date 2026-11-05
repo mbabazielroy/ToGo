@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-na
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { NavBar, Group, Muted, PrimaryButton, Loading, ErrorRow, EmptyState, Separator, SectionHeading } from '@/components/ui';
+import { NavBar, Group, Muted, PrimaryButton, Loading, ErrorRow, EmptyState, SectionHeading } from '@/components/ui';
 import { DepartureRow } from '@/components/DepartureRow';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useSearch } from '@/state/search';

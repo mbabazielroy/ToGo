@@ -15,6 +15,7 @@ import { colors, radius, space, font, SCREEN, control } from '@/theme';
 import type { BookingStatusCode, TripStatusCode } from '@shared/data/adapter';
 import { formatTime, formatUGX, timeAgo } from '@shared/lib/time';
 import { tripJourney } from '@shared/data/journey';
+import { checkInOpensAt, CHECKIN_OPENS_MINUTES } from '@shared/state/logic';
 import { useNow, leadTime } from '@/hooks/useNow';
 import { lineFor } from '@/lib/lines';
 import { LineBadge } from '@/components/ui';
@@ -98,6 +99,9 @@ export default function TripScreen() {
   const myStop = t?.stops.find((s) => s.hubId === b?.pickupHubId);
   // The bus has passed the passenger's hub without them on board.
   const leftWithout = !!myStop?.reached && (b?.status === 'reserved' || b?.status === 'checked_in');
+  // Check-in opens a set time before pickup (the same rule the server enforces).
+  const checkInOpens = myStop ? checkInOpensAt(myStop.pickupTime) : null;
+  const checkInEarly = !!checkInOpens && now < checkInOpens;
   const currentStage = !cancelled && !stalled && !leftWithout && reached < stages.length ? stages[reached] : undefined;
 
   return (
@@ -182,11 +186,16 @@ export default function TripScreen() {
                 <Text style={styles.stepKicker}>Next · step {reached + 1} of {stages.length}</Text>
                 <Text style={styles.stepTitle}>{currentStage.label}</Text>
                 <Text style={styles.stepHint}>{currentStage.hint}</Text>
-                {b.status === 'reserved' && (
+                {b.status === 'reserved' && !leftWithout && (checkInEarly && checkInOpens ? (
+                  <View style={styles.opensRow} accessibilityRole="text">
+                    <Ionicons name="time-outline" size={16} color={colors.inkSoft} />
+                    <Text style={styles.opensText}>Check-in opens at {formatTime(checkInOpens.toISOString())}, {CHECKIN_OPENS_MINUTES / 60} hours before pickup.</Text>
+                  </View>
+                ) : (
                   <View style={{ marginTop: space.md }}>
                     <PrimaryButton title="Check in" onPress={() => act(() => adapter.checkIn(b.id), "You're checked in")} loading={busy} />
                   </View>
-                )}
+                ))}
               </Group>
             )}
 
@@ -267,6 +276,8 @@ function Banner({ tone, text }: { tone: 'red' | 'amber' | 'grey'; text: string }
 }
 
 const styles = StyleSheet.create({
+  opensRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: space.md, backgroundColor: colors.bg, borderRadius: radius.md, padding: space.md },
+  opensText: { flex: 1, fontSize: font.small, color: colors.inkSoft },
   root: { flex: 1, backgroundColor: colors.bg },
 
   ticketHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.sm },

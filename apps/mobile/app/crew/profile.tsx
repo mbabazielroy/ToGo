@@ -86,6 +86,15 @@ export default function CrewProfile() {
           <Banner tone="info" title="Preview workspace">Actions here change the simulated trips on this device. Passengers in the preview see them straight away.</Banner>
         )}
 
+        <View>
+          <SectionHeading title="About" />
+          <Group>
+            <ListRow icon="shield-checkmark-outline" title="Privacy policy" onPress={() => router.push('/legal?doc=privacy')} />
+            <Separator inset={SCREEN + 44} />
+            <ListRow icon="document-text-outline" title="Terms of use" onPress={() => router.push('/legal?doc=terms')} />
+          </Group>
+        </View>
+
         <Pressable onPress={confirmSignOut} accessibilityRole="button" style={({ pressed }) => [styles.signOut, pressed && { opacity: 0.7 }]}>
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>

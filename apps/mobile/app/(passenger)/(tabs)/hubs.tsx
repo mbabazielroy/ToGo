@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import { PageHeader, Muted, Loading, ErrorRow, SectionHeading, Separator, EmptyState } from '@/components/ui';
-import { useAdapter, useDataEpoch } from '@/data/AdapterProvider';
+import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { colors, radius, space, font } from '@/theme';
 import type { HubView } from '@shared/data/adapter';
@@ -13,6 +13,7 @@ export default function Hubs() {
   const router = useRouter();
   const epoch = useDataEpoch();
   const hubs = useAsync(() => adapter.listHubs(), [epoch]);
+  const mode = useAppMode();
   const cities = ['Kampala', 'Mbarara'];
 
   return (
@@ -63,7 +64,7 @@ export default function Hubs() {
           </View>
         );
       })}
-      <Muted style={{ fontSize: font.tiny }}>Illustrative demo locations — not officially approved sites or partnered businesses.</Muted>
+      {mode === 'demo' && <Muted style={{ fontSize: font.tiny }}>Preview locations — sample hubs for trying the app.</Muted>}
     </Screen>
   );
 }

@@ -56,6 +56,7 @@ export default function RootLayout() {
                   <Stack.Screen name="admin" options={{ animation: 'fade' }} />
                   <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                   <Stack.Screen name="reset" />
+                  <Stack.Screen name="legal" />
                 </Stack>
               </ToastProvider>
             </SearchProvider>

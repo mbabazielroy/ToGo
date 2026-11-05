@@ -46,3 +46,9 @@ export const SUPPORT_EMAIL: string = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '
 export type AppVariant = 'passenger' | 'staff' | 'combined';
 const variantFlag = (process.env.EXPO_PUBLIC_APP_VARIANT ?? '').trim().toLowerCase();
 export const APP_VARIANT: AppVariant = variantFlag === 'passenger' || variantFlag === 'staff' ? variantFlag : 'combined';
+
+/** Hosted privacy policy / terms (the URLs you give the App Store and Play Console).
+ *  The in-app Privacy and Terms screens always work; these add an "Open full
+ *  version" link when set. */
+export const PRIVACY_URL: string = (process.env.EXPO_PUBLIC_PRIVACY_URL ?? '').trim();
+export const TERMS_URL: string = (process.env.EXPO_PUBLIC_TERMS_URL ?? '').trim();

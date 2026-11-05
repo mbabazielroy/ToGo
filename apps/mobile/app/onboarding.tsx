@@ -9,6 +9,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useSession, type PassengerProfile } from '@/session/SessionProvider';
 import { useSearch } from '@/state/search';
 import { haptics } from '@/lib/feedback';
+import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
 import { colors, space, font, SCREEN, control } from '@/theme';
 
 /** Passenger setup: who you are, where you usually travel from, and which alerts you
@@ -37,11 +38,11 @@ export default function Onboarding() {
   }, [authProfile?.full_name, authProfile?.phone]);
 
   if (APP_VARIANT === 'staff') return <Redirect href="/staff-signin" />;
-  const phoneOk = !phone.trim() || /^\+?[0-9 ]{9,15}$/.test(phone.trim());
+  const phoneOk = phoneLooksValid(phone);
 
   async function finish() {
     if (!name.trim()) { setError('Add your name so crew can find you on the passenger list.'); return; }
-    if (!phoneOk) { setError('That phone number looks incomplete. Use a format like +256 700 123456.'); return; }
+    if (!phoneOk) { setError(PHONE_HINT); return; }
     setError(null); setBusy(true);
     await startPassenger({ name: name.trim(), phone: phone.trim(), homeCity, notifyDelays, notifyBoarding });
     set({ direction: homeCity === 'Kampala' ? 'KLA_MBR' : 'MBR_KLA', hubId: null });
@@ -96,6 +97,11 @@ export default function Onboarding() {
             </View>
           )}
           {error && <View style={{ marginTop: space.lg }}><Banner tone="error">{error}</Banner></View>}
+          <Text style={styles.agree}>
+            By continuing you agree to the{' '}
+            <Text style={styles.link} onPress={() => router.push('/legal?doc=terms')} accessibilityRole="link">Terms of use</Text> and{' '}
+            <Text style={styles.link} onPress={() => router.push('/legal?doc=privacy')} accessibilityRole="link">Privacy policy</Text>.
+          </Text>
         </ScrollView>
         <View style={[styles.footer, { paddingBottom: insets.bottom + space.md }]}>
           <PrimaryButton title="Start travelling" icon="arrow-forward" onPress={finish} loading={busy} />
@@ -129,5 +135,7 @@ const styles = StyleSheet.create({
   toggle: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: SCREEN, paddingVertical: 12 },
   toggleLabel: { fontSize: font.body, color: colors.ink, fontWeight: '500' },
   toggleHint: { fontSize: font.tiny, color: colors.muted, marginTop: 2 },
+  agree: { fontSize: font.tiny, color: colors.muted, lineHeight: 17, marginTop: space.lg, textAlign: 'center' },
+  link: { color: colors.forest700, fontWeight: '600' },
   footer: { paddingHorizontal: SCREEN, paddingTop: space.md, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
 });

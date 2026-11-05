@@ -24,7 +24,8 @@ export default function MyTrips() {
   const bookings = useAsync(() => (signedOut ? Promise.resolve([]) : adapter.myBookings()), [epoch, signedOut]);
 
   // Refetch when the tab regains focus (e.g. after booking/cancelling).
-  useFocusEffect(useCallback(() => { if (!signedOut) bookings.reload(); }, [signedOut]));
+  const reloadBookings = bookings.reload;
+  useFocusEffect(useCallback(() => { if (!signedOut) reloadBookings(); }, [signedOut, reloadBookings]));
   // Live refresh in connected mode (only while signed in).
   useEffect(() => {
     if (signedOut) return;
@@ -55,7 +56,6 @@ export default function MyTrips() {
       delayByTrip.set(t.id, t.delayMinutes);
     }
   }
-  const delayedCount = new Set(upcoming.filter((b) => delayByTrip.has(b.tripId)).map((b) => b.tripId)).size;
 
   return (
     <Screen showHeader={false}>

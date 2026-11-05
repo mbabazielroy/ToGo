@@ -1,4 +1,5 @@
--- 0018: close check-in once the bus has left the passenger's pickup hub.
+-- 0018: check-in window. Check-in opens 2 hours before the passenger's scheduled
+-- pickup and closes once the bus has left their pickup hub.
 --
 -- Mirrors the shared app rule (src/state/logic.ts → checkIn). Replaces only
 -- check_in_booking; its signature, SECURITY DEFINER settings and grants (0010) are
@@ -36,6 +37,12 @@ begin
   if exists (select 1 from public.trip_stops ts
              where ts.trip_id = v_b.trip_id and ts.hub_id = v_b.pickup_hub_id and ts.reached) then
     raise exception 'CHECKIN_CLOSED: the bus has already left this hub';
+  end if;
+  -- Check-in opens 2 hours before the scheduled pickup (CHECKIN_OPENS_MINUTES).
+  if exists (select 1 from public.trip_stops ts
+             where ts.trip_id = v_b.trip_id and ts.hub_id = v_b.pickup_hub_id
+               and now() < ts.pickup_time - interval '120 minutes') then
+    raise exception 'CHECKIN_NOT_OPEN: check-in opens 2 hours before pickup';
   end if;
 
   update public.bookings set status = 'checked_in', checked_in_at = now()

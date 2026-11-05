@@ -18,6 +18,8 @@ import {
   seatsReserved,
   waitingSeatsAtHub,
   getTrip,
+  checkInOpensAt,
+  CHECKIN_OPENS_MINUTES,
 } from './logic';
 
 const TODAY = '2026-09-10';
@@ -219,6 +221,35 @@ describe('boarding validation', () => {
     const second = boardBooking(first.state, r.value.id);
     expect(second.ok).toBe(false); // already boarded
     expect(first.state.bookings.filter((b) => b.status === 'boarded').length).toBe(1);
+  });
+});
+
+describe('check-in window', () => {
+  it('opens 2 hours before the scheduled pickup at the passenger’s hub', () => {
+    const state = fresh();
+    const { trip, hubId } = pickTrip(state);
+    const r = reserve(state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Early', seats: 1 });
+    if (!r.ok) throw new Error(r.error);
+    const pickup = trip.stops.find((s) => s.hubId === hubId)!.pickupTime;
+    const opens = checkInOpensAt(pickup);
+    expect(new Date(pickup).getTime() - opens.getTime()).toBe(CHECKIN_OPENS_MINUTES * 60000);
+
+    const tooEarly = checkIn(r.state, r.value.id, new Date(opens.getTime() - 60000));
+    expect(tooEarly.ok).toBe(false);
+    if (!tooEarly.ok) expect(tooEarly.error).toMatch(/opens 2 hours/);
+
+    const onTime = checkIn(r.state, r.value.id, opens);
+    expect(onTime.ok).toBe(true);
+  });
+
+  it('applies to hub check-in by reference too', () => {
+    const state = fresh();
+    const { trip, hubId } = pickTrip(state);
+    const r = reserve(state, { tripId: trip.id, pickupHubId: hubId, passengerName: 'Early', seats: 1 });
+    if (!r.ok) throw new Error(r.error);
+    const opens = checkInOpensAt(trip.stops.find((s) => s.hubId === hubId)!.pickupTime);
+    expect(checkInByReference(r.state, r.value.reference, new Date(opens.getTime() - 1)).ok).toBe(false);
+    expect(checkInByReference(r.state, r.value.reference, opens).ok).toBe(true);
   });
 });
 

@@ -9,6 +9,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 import { humanError } from '@/hooks/useAsync';
 import { colors, radius, space, font } from '@/theme';
+import { APP_VARIANT } from '@/env';
 
 type Tab = 'signin' | 'signup' | 'reset';
 
@@ -19,6 +20,8 @@ export default function AuthScreen() {
   const { next, staff } = useLocalSearchParams<{ next?: string; staff?: string }>();
   const returnTo = (typeof next === 'string' && next.startsWith('/') ? next : '/') as Href;
   const [tab, setTab] = useState<Tab>('signin');
+  // Staff accounts are issued by an operator, never created in the app.
+  const staffOnly = !!staff || APP_VARIANT === 'staff';
 
   // Once signed in, continue to the preserved journey (or Home). This keeps the
   // selected trip through sign-in without ever reserving before authentication.
@@ -65,7 +68,7 @@ export default function AuthScreen() {
       </View>
       <Card style={{ gap: 12 }}>
         <View style={styles.tabs}>
-          {(['signin', 'signup'] as const).map((k) => (
+          {(staffOnly ? ['signin'] as const : ['signin', 'signup'] as const).map((k) => (
             <Pressable key={k} onPress={() => { setTab(k); setErr(null); }} style={[styles.tab, tab === k && styles.tabActive]}>
               <Text style={[styles.tabText, tab === k && styles.tabTextActive]}>{k === 'signin' ? 'Sign in' : 'Create account'}</Text>
             </Pressable>
@@ -89,10 +92,16 @@ export default function AuthScreen() {
           onPress={submit} loading={busy}
         />
         {tab === 'signin' && <Pressable onPress={() => { setTab('reset'); setErr(null); }}><Text style={styles.forgot}>Forgot your password?</Text></Pressable>}
-        {tab === 'signup' && <Muted style={{ textAlign: 'center', fontSize: font.tiny }}>Public signup creates a passenger account only. Staff access is granted by an administrator.</Muted>}
+        {tab === 'signup' && (
+          <Text style={styles.agree}>
+            By creating an account you agree to the{' '}
+            <Text style={styles.link} onPress={() => router.push('/legal?doc=terms')} accessibilityRole="link">Terms of use</Text> and{' '}
+            <Text style={styles.link} onPress={() => router.push('/legal?doc=privacy')} accessibilityRole="link">Privacy policy</Text>.
+          </Text>
+        )}
       </Card>
       <Muted style={{ textAlign: 'center', fontSize: font.tiny, marginTop: space.md }}>
-        Connected pilot · Real accounts and shared data. Illustrative service — not a real transport launch.
+        {staffOnly ? 'Staff accounts are set up by your operator.' : 'Staff accounts are set up by an operator, not here.'}
       </Muted>
     </Screen>
   );
@@ -110,5 +119,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.forest800 },
   label: { fontSize: font.tiny, fontWeight: '600', color: colors.muted, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
+  agree: { textAlign: 'center', fontSize: font.tiny, color: colors.muted, lineHeight: 17 },
+  link: { color: colors.forest700, fontWeight: '600' },
   forgot: { textAlign: 'center', color: colors.forest700, fontWeight: '600', fontSize: font.small },
 });

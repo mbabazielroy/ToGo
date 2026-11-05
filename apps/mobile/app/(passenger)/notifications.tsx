@@ -48,7 +48,7 @@ export default function Notifications() {
         <Text style={styles.title}>Notifications</Text>
         {unread.length > 0 && <Pressable onPress={markAll}><Text style={styles.markAll}>Mark all read</Text></Pressable>}
       </View>
-      <Muted style={{ fontSize: font.tiny }}>In-app only — ToGo does not send real SMS, email, or push messages in this pilot.</Muted>
+      <Muted style={{ fontSize: font.tiny }}>Alerts about your trips appear here and on Home while the app is open.</Muted>
 
       {signedOut ? (
         <View style={{ gap: space.md, marginTop: space.sm }}>

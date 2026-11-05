@@ -42,7 +42,7 @@ export function ConductorToday({ staffId, tripParam }: { staffId: string; tripPa
   const list = trips.data ?? [];
   const active = pickActiveTrip(list, tripId ?? tripParam);
   const manifest = useAsync(() => (active ? adapter.getTripManifest(active.id) : Promise.resolve([])), [active?.id, tick, epoch]);
-  const rows = manifest.data ?? [];
+  const rows = useMemo(() => manifest.data ?? [], [manifest.data]);
   const counts = useMemo(() => manifestCounts(rows), [rows]);
 
   const stops = useMemo(() => (active ? [...active.stops].sort((a, b) => a.stopOrder - b.stopOrder) : []), [active]);

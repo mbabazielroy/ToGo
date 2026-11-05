@@ -80,7 +80,7 @@ export default function LiveMap() {
   }, [params.hub, hubs.data]);
 
   const cities = DIRECTION_CITIES[direction];
-  const allHubs = hubs.data ?? [];
+  const allHubs = useMemo(() => hubs.data ?? [], [hubs.data]);
   const list: TripView[] = useMemo(() => {
     const base = trips.data ?? [];
     const extra = paramTrip.data && paramTrip.data.direction === direction && !base.some((t) => t.id === paramTrip.data!.id) ? [paramTrip.data] : [];

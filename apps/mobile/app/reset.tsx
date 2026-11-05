@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
-import { Card, Muted, PrimaryButton, ErrorRow } from '@/components/ui';
+import { Card, PrimaryButton, ErrorRow } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 import { humanError } from '@/hooks/useAsync';

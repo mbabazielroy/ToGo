@@ -5,7 +5,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { NavBar, Group, Muted, PrimaryButton, Loading, ErrorRow, Separator, SectionHeading } from '@/components/ui';
+import { NavBar, Group, PrimaryButton, Loading, ErrorRow, Separator, SectionHeading } from '@/components/ui';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useSession } from '@/session/SessionProvider';
@@ -15,9 +15,10 @@ import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { useNow } from '@/hooks/useNow';
-import { colors, radius, space, font, SCREEN, control } from '@/theme';
+import { colors, space, font, SCREEN, control } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import { tripJourney, dropoffStopFor } from '@shared/data/journey';
+import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
 
 function makeIdemKey() {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -65,6 +66,7 @@ export default function BookScreen() {
       return;
     }
     if (!name.trim()) { setErr('Add the lead passenger’s name — the conductor checks it at boarding.'); return; }
+    if (!phoneLooksValid(phone)) { setErr(PHONE_HINT); return; }
     setErr(null); setBusy(true);
     try {
       const booking = await adapter.reserve({

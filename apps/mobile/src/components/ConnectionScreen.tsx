@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './ui';
-import { colors, radius, space, font, SCREEN } from '../theme';
+import { colors, space, font, SCREEN } from '../theme';
 
 export type ConnState = 'checking' | 'ready' | 'unconfigured' | 'unreachable';
 
