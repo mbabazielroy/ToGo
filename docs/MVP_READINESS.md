@@ -234,7 +234,7 @@ Independent of the code and **not** implied by sections A–C:
   `http://localhost:5173`. Use the top-right role switcher for Passenger / Hub
   attendant / Conductor / Dispatcher console.
 - **Mobile preview**: from `apps/mobile/`, `npm run preview` (QR + URLs for Expo Go)
-  or `npm run preview:web`. Use **Welcome → "Crew or operations?"** for the Driver /
+  or `npm run preview:web`. Crew and operations are in the separate ToGo Staff app (`npm run preview:staff`); `npm run preview:combined` puts every space in one app and keeps **Welcome → "Crew or operations?"** for the Driver /
   Conductor / Hub-attendant / Operations personas.
 - **Inspect account creation**: the native welcome + onboarding flow runs on first
   launch (no real registration in preview). The real

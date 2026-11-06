@@ -46,9 +46,9 @@ apps/mobile/
 ### Two apps from one codebase
 | Build | Name / bundle id | Contains | Run in preview | EAS profile |
 | --- | --- | --- | --- | --- |
-| Passenger | ToGo · `app.togo.mobile` | passenger space only | `npm run preview:passenger` | `preview`, `production` |
+| Passenger | ToGo · `app.togo.mobile` | passenger space only (the default) | `npm run preview` | `preview`, `production` |
 | Staff | ToGo Staff · `app.togo.staff` | crew + operations only | `npm run preview:staff` (port 8082) | `preview-staff`, `production-staff` |
-| Development | ToGo | all three spaces | `npm run preview` | — |
+| Demo only | ToGo | all three spaces on one phone | `npm run preview:combined` (port 8083) | — |
 
 `app.config.js` sets the name, bundle id and URL scheme from `EXPO_PUBLIC_APP_VARIANT`;
 `src/env.ts` reads the same flag so the router only contains that build's spaces. The
@@ -216,7 +216,9 @@ attendant, conductor, and dispatcher views on the same device.
 
 **Mobile preview** (from `apps/mobile/`):
 ```bash
-npm run preview              # = EXPO_PUBLIC_TOGO_DEMO=1 expo start   (QR + URLs)
+npm run preview              # ToGo (passengers), preview data   (QR + URLs)
+npm run preview:staff        # ToGo Staff (crew + operations), port 8082
+npm run preview:combined     # every space in one app, for demos, port 8083
 npm run preview:web          # preview the RN screens in a browser
 npm run preview:tunnel       # preview over a public tunnel (needs egress + Expo login)
 ```

@@ -39,13 +39,13 @@ export const SUPPORT_EMAIL: string = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '
 
 /**
  * Which app this build is (see app.config.js):
- *   'passenger' — the public ToGo app: passenger space only.
+ *   'passenger' — the public ToGo app: passenger space only (default).
  *   'staff'     — ToGo Staff: crew and operations spaces only.
- *   'combined'  — development build with every space (default), for demos.
+ *   'combined'  — demo-only build with every space; must be asked for explicitly.
  */
 export type AppVariant = 'passenger' | 'staff' | 'combined';
 const variantFlag = (process.env.EXPO_PUBLIC_APP_VARIANT ?? '').trim().toLowerCase();
-export const APP_VARIANT: AppVariant = variantFlag === 'passenger' || variantFlag === 'staff' ? variantFlag : 'combined';
+export const APP_VARIANT: AppVariant = variantFlag === 'staff' || variantFlag === 'combined' ? variantFlag : 'passenger';
 
 /** Hosted privacy policy / terms (the URLs you give the App Store and Play Console).
  *  The in-app Privacy and Terms screens always work; these add an "Open full

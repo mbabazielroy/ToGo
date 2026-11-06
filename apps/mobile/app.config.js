@@ -1,9 +1,10 @@
 // One codebase, two apps.
 //
-//   EXPO_PUBLIC_APP_VARIANT=passenger → "ToGo"        (app.togo.mobile)  passengers only
-//   EXPO_PUBLIC_APP_VARIANT=staff     → "ToGo Staff"  (app.togo.staff)   crew + operations only
-//   unset / "combined"                → development build with every space, so a
-//                                       single phone can demo the whole loop.
+//   unset / passenger → "ToGo"        (app.togo.mobile)  passengers only
+//   staff             → "ToGo Staff"  (app.togo.staff)   crew + operations only
+//   combined          → demo-only build with every space, so a single phone can
+//                       show the whole loop. Opt-in (npm run preview:combined);
+//                       never a store build.
 //
 // The variant is also read at runtime (src/env.ts) to decide which spaces exist.
 //
@@ -71,8 +72,8 @@ function assertStoreReady(variant) {
 }
 
 module.exports = ({ config }) => {
-  const raw = (process.env.EXPO_PUBLIC_APP_VARIANT || 'combined').trim().toLowerCase();
-  const variant = raw === 'passenger' || raw === 'staff' ? raw : 'combined';
+  const raw = (process.env.EXPO_PUBLIC_APP_VARIANT || 'passenger').trim().toLowerCase();
+  const variant = raw === 'staff' || raw === 'combined' ? raw : 'passenger';
   assertStoreReady(raw);
 
   const text = PERMISSION_TEXT[variant];

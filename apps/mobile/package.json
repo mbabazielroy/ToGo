@@ -13,11 +13,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "vitest run",
-    "preview": "EXPO_PUBLIC_TOGO_DEMO=1 expo start",
-    "preview:tunnel": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --tunnel",
-    "preview:web": "EXPO_PUBLIC_TOGO_DEMO=1 expo start --web",
-    "preview:passenger": "EXPO_PUBLIC_APP_VARIANT=passenger EXPO_PUBLIC_TOGO_DEMO=1 expo start",
-    "preview:staff": "EXPO_PUBLIC_APP_VARIANT=staff EXPO_PUBLIC_TOGO_DEMO=1 expo start --port 8082"
+    "preview": "EXPO_PUBLIC_APP_VARIANT=passenger EXPO_PUBLIC_TOGO_DEMO=1 expo start",
+    "preview:tunnel": "EXPO_PUBLIC_APP_VARIANT=passenger EXPO_PUBLIC_TOGO_DEMO=1 expo start --tunnel",
+    "preview:web": "EXPO_PUBLIC_APP_VARIANT=passenger EXPO_PUBLIC_TOGO_DEMO=1 expo start --web",
+    "preview:staff": "EXPO_PUBLIC_APP_VARIANT=staff EXPO_PUBLIC_TOGO_DEMO=1 expo start --port 8082",
+    "preview:combined": "EXPO_PUBLIC_APP_VARIANT=combined EXPO_PUBLIC_TOGO_DEMO=1 expo start --port 8083"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

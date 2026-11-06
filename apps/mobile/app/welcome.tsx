@@ -61,6 +61,10 @@ function Intro() {
 
   return (
     <>
+      {/* The slides fill the space above the buttons. A plain flex:1 wrapper is used
+          because a FlatList given both flex and flexGrow:0 collapses to zero height
+          on iOS and Android (it only looked right on the web). */}
+      <View style={styles.slides}>
       <FlatList
         data={SLIDES}
         keyExtractor={(s) => s.key}
@@ -71,7 +75,7 @@ function Intro() {
         getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
         viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-        style={{ flexGrow: 0, flex: 1 }}
+        style={styles.slides}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
             <View style={styles.art}>
@@ -86,6 +90,7 @@ function Intro() {
           </View>
         )}
       />
+      </View>
 
       <View style={styles.dots} accessibilityLabel={`Page ${index + 1} of ${SLIDES.length}. Swipe for more.`}>
         {SLIDES.map((s, i) => <View key={s.key} style={[styles.dot, i === index && styles.dotOn]} />)}
@@ -173,7 +178,8 @@ function StaffLine() {
       </Pressable>
     );
   }
-  return <Text style={[styles.staffText, { textAlign: 'center', paddingVertical: 12 }]}>Crew and operations use the ToGo Staff app.</Text>;
+  // The passenger app is passengers only; crews use the separate ToGo Staff app.
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -191,6 +197,7 @@ const styles = StyleSheet.create({
   title: { color: colors.white, fontSize: 30, fontWeight: '800', letterSpacing: -0.6, lineHeight: 36 },
   body: { color: colors.onDarkSoft, fontSize: font.body, lineHeight: 25, marginTop: space.md },
   center: { textAlign: 'center' },
+  slides: { flex: 1 },
   compact: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
 
   dots: { flexDirection: 'row', gap: 6, paddingHorizontal: 28, marginBottom: space.xl },
