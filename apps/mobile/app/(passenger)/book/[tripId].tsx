@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -28,8 +28,8 @@ export default function BookScreen() {
   const { tripId, hub, pax } = useLocalSearchParams<{ tripId: string; hub?: string; pax?: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
-  const { session } = useAuth();
-  const { profile } = useSession();
+  const { session, profile: account } = useAuth();
+  const { profile, updateProfile } = useSession();
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -38,8 +38,15 @@ export default function BookScreen() {
   // Connected mode reserves against real accounts — require sign-in first.
   const needsAuth = mode === 'connected' && !session;
 
-  const [name, setName] = useState(profile.name);
-  const [phone, setPhone] = useState(profile.phone);
+  const accountName = account?.full_name && account.full_name !== 'Traveller' ? account.full_name : '';
+  const [name, setName] = useState(profile.name || accountName);
+  const [phone, setPhone] = useState(profile.phone || account?.phone || '');
+  // The account may load after this screen opens (e.g. right after signing in).
+  useEffect(() => {
+    if (!name && accountName) setName(accountName);
+    if (!phone && account?.phone) setPhone(account.phone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountName, account?.phone]);
   const [seats, setSeats] = useState(Math.max(1, Math.min(5, Number(pax) || 1)));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -75,6 +82,8 @@ export default function BookScreen() {
         idempotencyKey: idemKey,
       });
       haptics.success();
+      // Remember the name for next time if the profile didn't have one yet.
+      if (!profile.name.trim()) updateProfile({ name: name.trim(), ...(profile.phone ? {} : { phone: phone.trim() }) }).catch(() => {});
       toast(`Reserved — ${booking.reference}`, 'ok');
       router.replace(`/trip/${booking.id}`);
     } catch (e) { haptics.warning(); setErr(humanError(e)); setBusy(false); }

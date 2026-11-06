@@ -42,11 +42,14 @@ interface Stored {
   onboarded: boolean;
   identity: Identity | null;
   profile: PassengerProfile;
+  /** Set when someone signs out of a real account, so the welcome screen offers
+   *  "Sign in" instead of continuing as them. Cleared on the next start. */
+  signedOut?: boolean;
 }
 
 const KEY = 'togo.mobile.session.v1';
 const DEFAULT_PROFILE: PassengerProfile = { name: '', phone: '', homeCity: 'Kampala', notifyDelays: true, notifyBoarding: true };
-const DEFAULT: Stored = { onboarded: false, identity: null, profile: DEFAULT_PROFILE };
+const DEFAULT: Stored = { onboarded: false, identity: null, profile: DEFAULT_PROFILE, signedOut: false };
 
 export const ADMIN_PREVIEW: Identity = { role: 'admin', name: 'Operations team', detail: 'All operators' };
 
@@ -83,6 +86,8 @@ export const ROLE_LABEL: Record<Role, string> = {
 interface SessionCtx {
   ready: boolean;
   onboarded: boolean;
+  /** The last account on this phone signed out (connected mode). */
+  signedOut: boolean;
   identity: Identity | null;
   profile: PassengerProfile;
   /** Identities this user may switch to (preview: every persona; connected: verified only). */
@@ -98,6 +103,8 @@ interface SessionCtx {
   signOut: () => Promise<void>;
   /** Delete the account (connected: on the server) and wipe this device's profile. */
   deleteAccount: () => Promise<void>;
+  /** "Not you?": forget this phone's profile and start again from the welcome slides. */
+  startFresh: () => Promise<void>;
 }
 
 const Ctx = createContext<SessionCtx | null>(null);
@@ -169,14 +176,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const startPassenger = useCallback(async (patch?: Partial<PassengerProfile>) => {
     const profile = { ...stored.profile, ...(patch ?? {}) };
-    persist({ onboarded: true, profile, identity: { role: 'passenger', name: profile.name || 'Traveller' } });
+    persist({ onboarded: true, profile, identity: { role: 'passenger', name: profile.name || 'Traveller' }, signedOut: false });
     if (mode === 'connected' && auth.session && patch?.name) {
       await auth.updateProfile({ full_name: patch.name, phone: patch.phone || null }).catch(() => {});
     }
   }, [stored, persist, mode, auth]);
 
   const signInAs = useCallback(async (identity: Identity) => {
-    persist({ ...stored, onboarded: true, identity });
+    persist({ ...stored, onboarded: true, identity, signedOut: false });
   }, [stored, persist]);
 
   const updateProfile = useCallback(async (patch: Partial<PassengerProfile>) => {
@@ -189,9 +196,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [stored, persist, mode, auth]);
 
   const signOut = useCallback(async () => {
-    if (mode === 'connected' && auth.session) await auth.signOut();
+    if (mode === 'connected' && auth.session) {
+      await auth.signOut();
+      // A signed-out phone must not keep the person's details: on a shared or
+      // borrowed phone the next user would otherwise "continue as" them. Keep only
+      // non-personal settings (home city, alert choices).
+      persist({ ...stored, identity: null, signedOut: true, profile: { ...stored.profile, name: '', phone: '' } });
+      return;
+    }
     persist({ ...stored, identity: null });
   }, [mode, auth, stored, persist]);
+
+  const startFresh = useCallback(async () => {
+    await AsyncStorage.removeItem(KEY).catch(() => {});
+    setStored(DEFAULT);
+  }, []);
 
   const deleteAccount = useCallback(async () => {
     if (mode === 'connected' && auth.session) await auth.deleteAccount();
@@ -202,6 +221,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SessionCtx>(() => ({
     ready,
     onboarded: stored.onboarded,
+    signedOut: !!stored.signedOut,
     identity: stored.identity,
     profile: stored.profile,
     available,
@@ -212,7 +232,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     updateProfile,
     signOut,
     deleteAccount,
-  }), [ready, stored, available, availableLoading, startPassenger, signInAs, updateProfile, signOut, deleteAccount]);
+    startFresh,
+  }), [ready, stored, available, availableLoading, startPassenger, signInAs, updateProfile, signOut, deleteAccount, startFresh]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

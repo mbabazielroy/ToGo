@@ -8,12 +8,15 @@ import { useAppMode } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useSession, type PassengerProfile } from '@/session/SessionProvider';
 import { useSearch } from '@/state/search';
+import { Splash } from '@/session/SpaceGate';
 import { haptics } from '@/lib/feedback';
 import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
 import { colors, space, font, SCREEN, control } from '@/theme';
 
-/** Passenger setup: who you are, where you usually travel from, and which alerts you
- *  want. Everything is optional except a name, and can be changed later in Account. */
+/** Passenger setup: where you usually travel from, which alerts you want and,
+ *  optionally, your name. Nothing personal is required to browse (App Store 5.1.1):
+ *  the lead passenger's name is asked for when you reserve. Signed-in accounts that
+ *  already have a name skip this screen. Everything can be changed later in Account. */
 export default function Onboarding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -37,11 +40,24 @@ export default function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authProfile?.full_name, authProfile?.phone]);
 
+  // An account that already has a name doesn't need to fill this in again.
+  const accountName = authProfile?.full_name?.trim() ?? '';
+  const skip = mode === 'connected' && !!session && !!accountName && accountName !== 'Traveller';
+  useEffect(() => {
+    if (!skip || APP_VARIANT === 'staff') return;
+    (async () => {
+      await startPassenger({ name: accountName, phone: authProfile?.phone ?? '' });
+      set({ direction: profile.homeCity === 'Kampala' ? 'KLA_MBR' : 'MBR_KLA', hubId: null });
+      router.replace('/home');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skip]);
+
   if (APP_VARIANT === 'staff') return <Redirect href="/staff-signin" />;
+  if (skip) return <Splash />;
   const phoneOk = phoneLooksValid(phone);
 
   async function finish() {
-    if (!name.trim()) { setError('Add your name so crew can find you on the passenger list.'); return; }
     if (!phoneOk) { setError(PHONE_HINT); return; }
     setError(null); setBusy(true);
     await startPassenger({ name: name.trim(), phone: phone.trim(), homeCity, notifyDelays, notifyBoarding });
@@ -56,23 +72,7 @@ export default function Onboarding() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
           <Text style={styles.title} accessibilityRole="header">Set up your travel profile</Text>
-          <Text style={styles.lead}>We use this to fill in your reservations and send the alerts you choose.</Text>
-
-          <SectionHeading title="About you" />
-          <Group>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Full name</Text>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Aisha Namuli" placeholderTextColor={colors.faint}
-                autoCapitalize="words" textContentType="name" autoComplete="name" accessibilityLabel="Full name" returnKeyType="next" />
-            </View>
-            <Separator inset={SCREEN} />
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Mobile number <Text style={styles.optional}>(optional)</Text></Text>
-              <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+256 700 123456" placeholderTextColor={colors.faint}
-                keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" accessibilityLabel="Mobile number, optional" />
-            </View>
-          </Group>
-          <Text style={styles.hint}>Saved to your profile so it's filled in when you book. It isn't shown on passenger lists.</Text>
+          <Text style={styles.lead}>Tell us where you travel from and which alerts you want. You can start browsing straight away.</Text>
 
           <SectionHeading title="You usually travel from" />
           <Segmented
@@ -88,6 +88,22 @@ export default function Onboarding() {
             <Separator inset={SCREEN} />
             <ToggleRow label="Boarding reminders" hint="A reminder on your phone when check-in opens and when it's time to head to your hub." value={notifyBoarding} onChange={setNotifyBoarding} />
           </Group>
+
+          <SectionHeading title="About you" />
+          <Group>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Your name <Text style={styles.optional}>(optional)</Text></Text>
+              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Aisha Namuli" placeholderTextColor={colors.faint}
+                autoCapitalize="words" textContentType="name" autoComplete="name" accessibilityLabel="Your name, optional" returnKeyType="next" />
+            </View>
+            <Separator inset={SCREEN} />
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Mobile number <Text style={styles.optional}>(optional)</Text></Text>
+              <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+256 700 123456" placeholderTextColor={colors.faint}
+                keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" accessibilityLabel="Mobile number, optional" />
+            </View>
+          </Group>
+          <Text style={styles.hint}>Saves typing when you reserve; the conductor sees the lead passenger's name. Your number isn't shown on passenger lists.</Text>
 
           {mode === 'connected' && !session && (
             <View style={{ marginTop: space.lg }}>

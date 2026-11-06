@@ -1,14 +1,14 @@
 import { useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useAppMode } from '@/data/AdapterProvider';
+import { useAuth } from '@/auth/AuthProvider';
 import { useSession } from '@/session/SessionProvider';
 import { colors, space, font, radius, control } from '@/theme';
 import { APP_VARIANT } from '@/env';
-import { Redirect } from 'expo-router';
 import { BrandMark } from '@/components/BrandMark';
 
 interface Slide { key: string; icon: keyof typeof Ionicons.glyphMap; title: string; body: string }
@@ -19,33 +19,21 @@ const SLIDES: Slide[] = [
   { key: 'board', icon: 'qr-code', title: 'Board with one scan', body: 'Check in at your hub and show your boarding pass. The conductor scans it and you are on your way.' },
 ];
 
+/**
+ * The entry screen: the first thing a new install shows, and where signing out
+ * lands. Three versions:
+ *   - first launch: the three intro slides, with "Get started" on every slide;
+ *   - welcome back: this phone has been set up before → one tap to continue;
+ *   - signed out: the last account signed out → sign in again, or browse.
+ */
 export default function Welcome() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const mode = useAppMode();
-  const { profile, startPassenger } = useSession();
-  const returning = !!profile.name.trim();
-  const [index, setIndex] = useState(0);
-  const list = useRef<FlatList<Slide>>(null);
-  const onViewable = useRef(({ viewableItems }: { viewableItems: { index?: number | null }[] }) => {
-    if (viewableItems[0]?.index != null) setIndex(viewableItems[0].index);
-  }).current;
+  const { session } = useAuth();
+  const { onboarded, signedOut } = useSession();
 
-  const last = index === SLIDES.length - 1;
   if (APP_VARIANT === 'staff') return <Redirect href="/staff-signin" />;
-  async function continueAsReturning() {
-    await startPassenger();
-    router.replace('/home');
-  }
-  function next() {
-    if (returning) { continueAsReturning(); return; }
-    if (last) router.push('/onboarding');
-    else {
-      list.current?.scrollToOffset({ offset: width * (index + 1), animated: true });
-      setIndex(index + 1);
-    }
-  }
+  const variant = mode === 'connected' && signedOut && !session ? 'signedOut' : onboarded ? 'returning' : 'intro';
 
   return (
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + space.lg }]}>
@@ -55,15 +43,25 @@ export default function Welcome() {
         <Text style={styles.brand}>ToGo</Text>
         <View style={{ flex: 1 }} />
         {mode === 'demo' && <View style={styles.previewTag}><Text style={styles.previewText}>Preview</Text></View>}
-        {!last && !returning && (
-          <Pressable onPress={() => router.push('/onboarding')} accessibilityRole="button" hitSlop={10}>
-            <Text style={styles.skip}>Skip</Text>
-          </Pressable>
-        )}
       </View>
+      {variant === 'intro' ? <Intro /> : <Compact variant={variant} />}
+    </View>
+  );
+}
 
+/** First launch: swipeable intro; "Get started" is available on every slide. */
+function Intro() {
+  const router = useRouter();
+  const mode = useAppMode();
+  const { width } = useWindowDimensions();
+  const [index, setIndex] = useState(0);
+  const onViewable = useRef(({ viewableItems }: { viewableItems: { index?: number | null }[] }) => {
+    if (viewableItems[0]?.index != null) setIndex(viewableItems[0].index);
+  }).current;
+
+  return (
+    <>
       <FlatList
-        ref={list}
         data={SLIDES}
         keyExtractor={(s) => s.key}
         horizontal
@@ -89,45 +87,101 @@ export default function Welcome() {
         )}
       />
 
-      <View style={styles.dots} accessibilityLabel={`Page ${index + 1} of ${SLIDES.length}`}>
+      <View style={styles.dots} accessibilityLabel={`Page ${index + 1} of ${SLIDES.length}. Swipe for more.`}>
         {SLIDES.map((s, i) => <View key={s.key} style={[styles.dot, i === index && styles.dotOn]} />)}
       </View>
 
       <View style={styles.actions}>
-        <Pressable onPress={next} accessibilityRole="button" style={({ pressed }) => [styles.primary, pressed && { opacity: 0.9 }]}>
-          <Text style={styles.primaryText}>{returning ? `Continue as ${profile.name.trim().split(/\s+/)[0]}` : last ? 'Get started' : 'Next'}</Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.forest900} />
-        </Pressable>
-        {returning && (
-          <Pressable onPress={() => router.push('/onboarding')} accessibilityRole="button" style={styles.secondary}>
-            <Text style={styles.secondaryText}>Not {profile.name.trim().split(/\s+/)[0]}? Set up a new profile</Text>
-          </Pressable>
+        <Primary title="Get started" onPress={() => router.push('/onboarding')} />
+        {mode === 'connected' && (
+          <Secondary title="I already have an account" onPress={() => router.push('/auth?next=/onboarding')} />
         )}
-        {mode === 'connected' && !returning && (
-          <Pressable onPress={() => router.push('/auth?next=/onboarding')} accessibilityRole="button" style={styles.secondary}>
-            <Text style={styles.secondaryText}>I already have an account</Text>
-          </Pressable>
-        )}
-        {APP_VARIANT === 'combined' ? (
-          <Pressable onPress={() => router.push('/staff-signin')} accessibilityRole="button" style={styles.staffLink}>
-            <Ionicons name="briefcase-outline" size={16} color={colors.onDarkSoft} />
-            <Text style={styles.staffText}>Crew or operations? Sign in to your workspace</Text>
-          </Pressable>
-        ) : (
-          <Text style={[styles.staffText, { textAlign: 'center', paddingVertical: 12 }]}>Crew and operations use the ToGo Staff app.</Text>
-        )}
+        <StaffLine />
       </View>
-    </View>
+    </>
   );
+}
+
+/** Returning phone or signed-out account: no sales pitch, just the way back in. */
+function Compact({ variant }: { variant: 'returning' | 'signedOut' }) {
+  const router = useRouter();
+  const { profile, startPassenger, startFresh } = useSession();
+  const first = profile.name.trim().split(/\s+/)[0];
+
+  async function browse() {
+    await startPassenger();
+    router.replace('/home');
+  }
+
+  const signedOut = variant === 'signedOut';
+  return (
+    <>
+      <View style={styles.compact}>
+        <BrandMark size={96} />
+        <Text style={[styles.title, styles.center, { marginTop: space.xl }]} accessibilityRole="header">
+          {signedOut ? 'You’re signed out' : first ? `Welcome back, ${first}` : 'Welcome back'}
+        </Text>
+        <Text style={[styles.body, styles.center]}>
+          {signedOut
+            ? 'Sign in to see your trips and boarding passes, or keep browsing departures without an account.'
+            : 'Pick up where you left off: your trips, boarding passes and alerts are waiting.'}
+        </Text>
+      </View>
+
+      <View style={styles.actions}>
+        {signedOut ? (
+          <>
+            <Primary title="Sign in" onPress={() => router.push('/auth?next=/onboarding')} />
+            <Secondary title="Browse without an account" onPress={browse} />
+          </>
+        ) : (
+          <>
+            <Primary title={first ? `Continue as ${first}` : 'Continue'} onPress={browse} />
+            <Secondary title={first ? `Not ${first}? Start fresh` : 'Start fresh'} onPress={startFresh} />
+          </>
+        )}
+        <StaffLine />
+      </View>
+    </>
+  );
+}
+
+function Primary({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.primary, pressed && { opacity: 0.9 }]}>
+      <Text style={styles.primaryText}>{title}</Text>
+      <Ionicons name="arrow-forward" size={20} color={colors.forest900} />
+    </Pressable>
+  );
+}
+
+function Secondary({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.secondary, pressed && { opacity: 0.8 }]}>
+      <Text style={styles.secondaryText}>{title}</Text>
+    </Pressable>
+  );
+}
+
+function StaffLine() {
+  const router = useRouter();
+  if (APP_VARIANT === 'combined') {
+    return (
+      <Pressable onPress={() => router.push('/staff-signin')} accessibilityRole="button" style={styles.staffLink}>
+        <Ionicons name="briefcase-outline" size={16} color={colors.onDarkSoft} />
+        <Text style={styles.staffText}>Crew or operations? Sign in to your workspace</Text>
+      </Pressable>
+    );
+  }
+  return <Text style={[styles.staffText, { textAlign: 'center', paddingVertical: 12 }]}>Crew and operations use the ToGo Staff app.</Text>;
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.forest900 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, height: 52 },
   brand: { color: colors.white, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
-  previewTag: { backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginRight: 12 },
+  previewTag: { backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   previewText: { color: colors.white, fontSize: 12, fontWeight: '700' },
-  skip: { color: colors.onDarkSoft, fontSize: font.body, fontWeight: '600' },
 
   slide: { paddingHorizontal: 28, justifyContent: 'center' },
   art: { height: 230, alignItems: 'center', justifyContent: 'center', marginBottom: space.xl },
@@ -136,6 +190,8 @@ const styles = StyleSheet.create({
   iconCircle: { width: 112, height: 112, borderRadius: 56, backgroundColor: colors.live, alignItems: 'center', justifyContent: 'center' },
   title: { color: colors.white, fontSize: 30, fontWeight: '800', letterSpacing: -0.6, lineHeight: 36 },
   body: { color: colors.onDarkSoft, fontSize: font.body, lineHeight: 25, marginTop: space.md },
+  center: { textAlign: 'center' },
+  compact: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
 
   dots: { flexDirection: 'row', gap: 6, paddingHorizontal: 28, marginBottom: space.xl },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' },
