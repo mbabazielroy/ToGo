@@ -51,10 +51,11 @@ insert into public.vehicles (id, operator_id, label, plate, capacity) values
 insert into public.trips (id, operator_id, vehicle_id, direction, service_date, origin_departure, destination_arrival, fare_ugx, capacity, status)
 values ('d0000000-0000-0000-0000-0000000000d1', 'a0000000-0000-0000-0000-0000000000a1',
         'c0000000-0000-0000-0000-0000000000c1', 'KLA_MBR', current_date,
-        now() + interval '3 hours', now() + interval '7 hours', 25000, 4, 'scheduled');
+        now() + interval '90 minutes', now() + interval '330 minutes', 25000, 4, 'scheduled');
+-- First pickup 90 min out: inside the 2-hour check-in window (0018), still bookable.
 insert into public.trip_stops (id, trip_id, hub_id, stop_order, pickup_time) values
-  ('e0000000-0000-0000-0000-0000000000e1', 'd0000000-0000-0000-0000-0000000000d1', 'b0000000-0000-0000-0000-0000000000b1', 0, now() + interval '3 hours'),
-  ('e0000000-0000-0000-0000-0000000000e2', 'd0000000-0000-0000-0000-0000000000d1', 'b0000000-0000-0000-0000-0000000000b2', 1, now() + interval '7 hours');
+  ('e0000000-0000-0000-0000-0000000000e1', 'd0000000-0000-0000-0000-0000000000d1', 'b0000000-0000-0000-0000-0000000000b1', 0, now() + interval '90 minutes'),
+  ('e0000000-0000-0000-0000-0000000000e2', 'd0000000-0000-0000-0000-0000000000d1', 'b0000000-0000-0000-0000-0000000000b2', 1, now() + interval '330 minutes');
 insert into public.trip_staff (trip_id, user_id, role) values
   ('d0000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-000000000004', 'conductor');
 
