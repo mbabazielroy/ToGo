@@ -2,10 +2,25 @@
 //
 // This text describes what the app actually does. Keep it in step with the code
 // and with the App Store "App Privacy" / Play "Data safety" answers in
-// docs/STORE_LAUNCH.md. Before launch, the operating company's legal name and
-// contact details must be filled in (see docs/STORE_LAUNCH.md → Legal).
+// docs/STORE_LAUNCH.md. The operating company's details come from
+// EXPO_PUBLIC_LEGAL_NAME, EXPO_PUBLIC_LEGAL_ADDRESS and EXPO_PUBLIC_SUPPORT_EMAIL.
 
 export interface LegalSection { heading: string; body: string[] }
+
+// Who runs ToGo. Set per deployment (EAS environment variables; the web build reads
+// the same names). Store builds refuse to build without them (app.config.js).
+// Written as direct process.env.EXPO_PUBLIC_* reads so Expo inlines them.
+const LEGAL_NAME = (process.env.EXPO_PUBLIC_LEGAL_NAME ?? '').trim();
+const LEGAL_ADDRESS = (process.env.EXPO_PUBLIC_LEGAL_ADDRESS ?? '').trim();
+const CONTACT = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '').trim();
+
+function whoWeAre(role: string): LegalSection {
+  const who = LEGAL_NAME ? `ToGo is provided by ${LEGAL_NAME}${LEGAL_ADDRESS ? `, ${LEGAL_ADDRESS}` : ''}` : 'ToGo is provided by the ToGo operations team';
+  return {
+    heading: 'Who we are',
+    body: [`${who}, ${role}.`, CONTACT ? `Contact: ${CONTACT}.` : 'Contact us through Account → Help in the app.'],
+  };
+}
 export interface LegalDoc { title: string; updated: string; intro: string; sections: LegalSection[] }
 
 export const PRIVACY: LegalDoc = {
@@ -13,13 +28,14 @@ export const PRIVACY: LegalDoc = {
   updated: '5 November 2026',
   intro: 'This explains what ToGo collects, why, and the choices you have. ToGo has no ads, sells no data and does not track you across other apps or websites.',
   sections: [
+    whoWeAre('which is responsible for your personal data in ToGo (the data controller)'),
     {
       heading: 'What we collect',
       body: [
         'Account: your email address and password (stored only as a secure hash by our hosting provider), your name and, if you add it, your mobile number.',
         'Trips: the departures you reserve, your pickup and drop-off hubs, seats, booking reference, and check-in and boarding status.',
         'Alerts: the in-app messages we show you about your trips (delays, boarding, changes).',
-        'Staff only: when a driver starts a trip, the ToGo Staff app sends the bus’s location about every 30 seconds while the trip screen is open, so passengers can see where the bus is. It stops when the trip ends or the driver leaves the screen. It never runs in the background.',
+        'Staff only: when a driver starts a trip, the ToGo Staff app sends the bus’s location about every 30 seconds while the app is open on the driver’s phone, so passengers can see where the bus is. It stops when the trip ends, the driver signs out or the app is closed. It never runs in the background.',
       ],
     },
     {
@@ -28,6 +44,7 @@ export const PRIVACY: LegalDoc = {
         'Your own location. If you allow it, the map uses it to show where you are and which hub is nearest. It is not sent to ToGo.',
         'The camera. Staff use it to scan boarding codes. Images are not saved or uploaded.',
         'Your sign-in session, kept in the phone’s secure storage, and app settings such as your home city.',
+        'Trip reminders. If you allow notifications, reminders for your reservations are scheduled on your phone; nothing is sent to us to do this.',
       ],
     },
     {
@@ -78,6 +95,7 @@ export const TERMS: LegalDoc = {
   updated: '5 November 2026',
   intro: 'These terms cover your use of the ToGo app. By creating an account or reserving a seat you agree to them.',
   sections: [
+    whoWeAre('which offers the app'),
     {
       heading: 'What ToGo does',
       body: [

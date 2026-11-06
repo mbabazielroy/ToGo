@@ -233,7 +233,7 @@ function SharingBanner({ state }: { state: SharingState }) {
     case 'simulated':
       return <Banner tone="info" icon="navigate-circle-outline" title="Location is simulated in preview">No GPS is used. Passengers see the bus move as you mark hubs reached.</Banner>;
     case 'off':
-      return <Banner tone="info" icon="navigate-outline" title="Location sharing starts with the trip">While the trip runs and this screen is open, your phone shares the bus position with passengers. There is no background tracking.</Banner>;
+      return <Banner tone="info" icon="navigate-outline" title="Location sharing starts with the trip">While the trip runs and ToGo Staff is open, your phone shares the bus position with passengers and stays awake. There is no background tracking.</Banner>;
     case 'asking':
       return <Banner tone="info" icon="navigate-outline" title="Turning on location…">Allow location so passengers can see where the bus is.</Banner>;
     case 'denied':
@@ -243,7 +243,7 @@ function SharingBanner({ state }: { state: SharingState }) {
     case 'sharing':
       return (
         <Banner tone="ok" icon="navigate" title="Sharing bus location">
-          {state.lastSentAt ? `Last sent ${timeAgo(state.lastSentAt.toISOString())}${state.accuracyM ? ` · ±${Math.round(state.accuracyM)} m` : ''}.` : 'Waiting for the first GPS fix…'} Keep this screen open while driving.
+          {state.lastSentAt ? `Last sent ${timeAgo(state.lastSentAt.toISOString())}${state.accuracyM ? ` · ±${Math.round(state.accuracyM)} m` : ''}.` : 'Waiting for the first GPS fix…'} The screen stays on; keep ToGo Staff open while driving.
         </Banner>
       );
   }

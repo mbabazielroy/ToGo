@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, space, font, SCREEN } from '../theme';
 import { useAppMode } from '../data/AdapterProvider';
 import { ask } from '../lib/dialog';
+import { BrandMark } from './BrandMark';
 
 export const DEMO_EXPLANATION =
   'Preview mode uses simulated operators, hubs, fares, staff and tracking. Nothing here books a real seat or arranges a real pickup — everything is stored only on this device so you can explore the full workflow.';
@@ -33,7 +34,7 @@ function BrandHeader({ subtitle }: { subtitle?: string }) {
   return (
     <View style={styles.header}>
       <View style={styles.brandRow}>
-        <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
+        <BrandMark size={26} />
         <Text style={styles.brand}>ToGo</Text>
         <View style={{ flex: 1 }} />
         <ModeTag />
@@ -69,8 +70,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.sm },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logo: { width: 24, height: 24, borderRadius: 7, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: colors.white, fontWeight: '900', fontSize: 14 },
   brand: { color: colors.ink, fontWeight: '900', fontSize: font.title, letterSpacing: -0.2 },
   subtitle: { color: colors.muted, fontSize: font.small, marginTop: 2 },
   modeTag: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },

@@ -71,6 +71,7 @@
       "package": "app.togo.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
         "monochromeImage": "./assets/adaptive-icon-mono.png",
         "backgroundColor": "#0b2e1c"
       },
@@ -107,9 +108,16 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "imageWidth": 120,
+          "imageWidth": 160,
           "backgroundColor": "#0b2e1c",
           "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0c7a43"
         }
       ],
       [

@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './ui';
 import { colors, space, font, SCREEN } from '../theme';
+import { BrandMark } from './BrandMark';
 
 export type ConnState = 'checking' | 'ready' | 'unconfigured' | 'unreachable';
 
@@ -24,7 +25,7 @@ export function ConnectionScreen({
   return (
     <View style={[styles.root, { paddingTop: insets.top + space.xxl, paddingBottom: insets.bottom + space.lg }]}>
       <View style={styles.center}>
-        <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
+        <View style={{ marginBottom: space.sm }}><BrandMark size={56} /></View>
         <View style={styles.icon}>
           <Ionicons name={unconfigured ? 'construct-outline' : 'cloud-offline-outline'} size={30} color={colors.forest700} />
         </View>
@@ -64,8 +65,6 @@ export function ConnectionChecking() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: SCREEN, justifyContent: 'space-between' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md },
-  logo: { width: 40, height: 40, borderRadius: 11, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center', marginBottom: space.sm },
-  logoText: { color: colors.white, fontWeight: '800', fontSize: 22 },
   icon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: font.h1, fontWeight: '700', color: colors.ink, marginTop: space.sm },
   body: { fontSize: font.body, color: colors.inkSoft, textAlign: 'center', lineHeight: 23, paddingHorizontal: space.sm },

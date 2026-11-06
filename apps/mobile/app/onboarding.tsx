@@ -82,11 +82,11 @@ export default function Onboarding() {
             accessibilityLabel="Home city"
           />
 
-          <SectionHeading title="In-app alerts" />
+          <SectionHeading title="Alerts" />
           <Group>
             <ToggleRow label="Delays and changes" hint="If your bus is late, rescheduled or cancelled." value={notifyDelays} onChange={setNotifyDelays} />
             <Separator inset={SCREEN} />
-            <ToggleRow label="Boarding reminders" hint="When it's time to head to your hub and when your bus arrives." value={notifyBoarding} onChange={setNotifyBoarding} />
+            <ToggleRow label="Boarding reminders" hint="A reminder on your phone when check-in opens and when it's time to head to your hub." value={notifyBoarding} onChange={setNotifyBoarding} />
           </Group>
 
           {mode === 'connected' && !session && (

@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { SpaceGate } from '@/session/SpaceGate';
+import { PickupReminders } from '@/notifications/PickupReminders';
 import { colors } from '@/theme';
 
 /** Passenger space: tabs plus the booking, boarding-pass, hub and notification
@@ -7,6 +8,7 @@ import { colors } from '@/theme';
 export default function PassengerLayout() {
   return (
     <SpaceGate space="passenger">
+      <PickupReminders />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="book/[tripId]" />

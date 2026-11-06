@@ -10,14 +10,13 @@
 // GOOGLE_MAPS_ANDROID_API_KEY (build-time secret, not EXPO_PUBLIC_) is required for
 // maps in Android release builds; Expo Go uses its own key. Set it as an EAS secret.
 
-// EAS project ids, one per app. Project ids are not secrets: paste each one here
-// once, from expo.dev → project → Overview (slugs togo-mobile and togo-staff), and
-// commit. Builds, EAS build workers and the release workflow all read them from here.
-// The env vars only override them for a one-off build.
+// EAS projects, one per app: @elly1/togo-mobile and @elly1/togo-staff on expo.dev.
+// Project ids are not secrets. Builds, EAS build workers and the release workflow all
+// read them from here; the env vars only override them for a one-off build.
 const EAS = {
-  owner: process.env.EAS_OWNER || '',
-  passenger: process.env.EAS_PROJECT_ID_TOGO || '',
-  staff: process.env.EAS_PROJECT_ID_TOGO_STAFF || '',
+  owner: process.env.EAS_OWNER || 'elly1',
+  passenger: process.env.EAS_PROJECT_ID_TOGO || '6a252db7-a44b-4799-a6c2-292f50f968a9',
+  staff: process.env.EAS_PROJECT_ID_TOGO_STAFF || 'e220d911-6a53-4bb0-a67c-a4ea93d35036',
 };
 
 // Permission prompts must describe what THIS app does with the permission
@@ -54,8 +53,14 @@ function assertStoreReady(variant) {
   const key = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '').trim();
   if (key.length < 20) problems.push('EXPO_PUBLIC_SUPABASE_ANON_KEY is missing');
   if (/service_role/i.test(key)) problems.push('EXPO_PUBLIC_SUPABASE_ANON_KEY looks like a service_role key');
-  for (const k of ['EXPO_PUBLIC_PRIVACY_URL', 'EXPO_PUBLIC_SUPPORT_EMAIL']) {
-    if (!(process.env[k] || '').trim()) problems.push(`${k} is missing (stores require a privacy URL and a support contact)`);
+  const required = {
+    EXPO_PUBLIC_PRIVACY_URL: 'stores require a privacy policy URL',
+    EXPO_PUBLIC_SUPPORT_EMAIL: 'stores require a support contact',
+    EXPO_PUBLIC_LEGAL_NAME: 'the privacy policy must name who runs ToGo',
+    EXPO_PUBLIC_LEGAL_ADDRESS: 'the privacy policy must give a postal address',
+  };
+  for (const [k, why] of Object.entries(required)) {
+    if (!(process.env[k] || '').trim()) problems.push(`${k} is missing (${why})`);
   }
   if (!(process.env.GOOGLE_MAPS_ANDROID_API_KEY || '').trim() && process.env.EAS_BUILD_PLATFORM === 'android') {
     problems.push('GOOGLE_MAPS_ANDROID_API_KEY is missing (maps would be blank on Android)');
@@ -78,7 +83,7 @@ module.exports = ({ config }) => {
     if (name === 'expo-location') return [name, { ...opts, locationWhenInUsePermission: text.location }];
     if (name === 'expo-camera') return [name, { ...opts, cameraPermission: text.camera }];
     if (name === 'expo-splash-screen' && staff) {
-      return [name, { ...opts, image: './assets/splash-icon-staff.png', backgroundColor: '#13a85c' }];
+      return [name, { ...opts, image: './assets/splash-icon-staff.png', imageWidth: 120, backgroundColor: '#13a85c' }];
     }
     return p;
   });
@@ -129,7 +134,12 @@ module.exports = ({ config }) => {
     android: {
       ...android,
       package: 'app.togo.staff',
-      adaptiveIcon: { ...android.adaptiveIcon, foregroundImage: './assets/adaptive-icon-staff.png', backgroundColor: '#13a85c' },
+      // ToGo Staff keeps its own mark; the bus artwork is the passenger app's icon.
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon-staff.png',
+        monochromeImage: './assets/adaptive-icon-mono-staff.png',
+        backgroundColor: '#13a85c',
+      },
     },
   };
 };

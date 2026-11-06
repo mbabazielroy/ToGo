@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useAdapter, useAppMode } from '@/data/AdapterProvider';
 
 export type SharingState =
@@ -10,10 +11,14 @@ export type SharingState =
   | { kind: 'sharing'; lastSentAt: Date | null; accuracyM: number | null }
   | { kind: 'error'; message: string };
 
+const KEEP_AWAKE_TAG = 'togo-trip-sharing';
+
 /**
  * Foreground location sharing for the driver's running trip (connected mode only).
- * Sends a fix every ~30 s or 50 m while this screen is mounted; stops when the trip
- * stops running or the driver leaves the screen. No background tracking.
+ * Sends a fix every ~30 s or 50 m while the crew workspace is open (its tabs stay
+ * mounted, so switching to Shift or Profile keeps sharing). While sharing, the phone
+ * is kept awake so the screen doesn't lock mid-trip and pause updates. Stops when
+ * the trip stops running or the driver signs out. No background tracking.
  */
 export function useLocationSharing(tripId: string | undefined, running: boolean): SharingState {
   const adapter = useAdapter();
@@ -44,6 +49,14 @@ export function useLocationSharing(tripId: string | undefined, running: boolean)
     })();
     return () => { cancelled = true; sub.current?.remove(); sub.current = null; };
   }, [adapter, mode, tripId, running]);
+
+  // Keep the screen on while actually sharing, and only then.
+  const awake = state.kind === 'sharing' || state.kind === 'error';
+  useEffect(() => {
+    if (!awake) return;
+    activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {});
+    return () => { deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {}); };
+  }, [awake]);
 
   return state;
 }

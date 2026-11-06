@@ -126,7 +126,7 @@ export default function Account() {
       </View>
 
       <View>
-        <SectionHeading title="In-app alerts" />
+        <SectionHeading title="Alerts" />
         <Group>
           <Toggle label="Delays and changes" value={profile.notifyDelays} onChange={(v) => updateProfile({ notifyDelays: v })} />
           <Separator inset={SCREEN} />

@@ -9,6 +9,7 @@ import { useSession } from '@/session/SessionProvider';
 import { colors, space, font, radius, control } from '@/theme';
 import { APP_VARIANT } from '@/env';
 import { Redirect } from 'expo-router';
+import { BrandMark } from '@/components/BrandMark';
 
 interface Slide { key: string; icon: keyof typeof Ionicons.glyphMap; title: string; body: string }
 
@@ -50,7 +51,7 @@ export default function Welcome() {
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + space.lg }]}>
       <StatusBar style="light" />
       <View style={styles.brandRow}>
-        <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
+        <BrandMark size={30} />
         <Text style={styles.brand}>ToGo</Text>
         <View style={{ flex: 1 }} />
         {mode === 'demo' && <View style={styles.previewTag}><Text style={styles.previewText}>Preview</Text></View>}
@@ -123,8 +124,6 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.forest900 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, height: 52 },
-  logo: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.live, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: colors.forest900, fontWeight: '900', fontSize: 16 },
   brand: { color: colors.white, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
   previewTag: { backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginRight: 12 },
   previewText: { color: colors.white, fontSize: 12, fontWeight: '700' },

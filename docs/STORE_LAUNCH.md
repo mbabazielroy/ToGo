@@ -39,8 +39,10 @@ rejects demo apps (guideline 2.1), and preview data is fictional.
 
 ## 2. Before the first store build (your accounts and decisions)
 
-1. **Legal entity and contact.** Fill in who runs ToGo (company name, address, a
-   support email) in `src/legal/content.ts`, and have a lawyer review both documents
+1. **Legal entity and contact.** Set `EXPO_PUBLIC_LEGAL_NAME`, `EXPO_PUBLIC_LEGAL_ADDRESS`
+   and `EXPO_PUBLIC_SUPPORT_EMAIL` (EAS environment variables for the app builds, and
+   the web host's environment for the hosted pages); they fill the "Who we are"
+   section, and store builds refuse to build without them. Have a lawyer review both documents
    against Uganda's Data Protection and Privacy Act 2019. Register with the Personal
    Data Protection Office if required.
 2. **Host the policies.** Deploy the web app (Vercel, `vercel.json`) with
@@ -59,7 +61,8 @@ rejects demo apps (guideline 2.1), and preview data is fictional.
 5. **Developer accounts.** Apple Developer Program ($99/yr) and Google Play Console
    ($25 once). Create both apps in App Store Connect and Play Console with the bundle
    IDs above.
-6. **Reviewer accounts.** Make a passenger account and a staff account (assigned to a
+6. **Listing text, review notes and screenshots:** `docs/STORE_LISTING.md`.
+7. **Reviewer accounts.** Make a passenger account and a staff account (assigned to a
    test trip and hub) on production, with departures scheduled during the review
    window. Put the credentials in App Review notes and Play "App access".
 
@@ -77,9 +80,8 @@ rejects demo apps (guideline 2.1), and preview data is fictional.
   and Play internal testing. It reruns the checks first.
 - One-time setup:
   1. GitHub → Settings → Secrets → Actions: add `EXPO_TOKEN` (expo.dev → Access tokens).
-  2. Create two projects on expo.dev, slugs `togo-mobile` (ToGo) and `togo-staff`
-     (ToGo Staff), and paste their ids and your Expo account name into `EAS` at the
-     top of `apps/mobile/app.config.js`. Commit it (project ids are not secrets).
+  2. ~~Create the EAS projects~~ Done: `@elly1/togo-mobile` and `@elly1/togo-staff`,
+     linked in `apps/mobile/app.config.js`.
   3. Create EAS environment variables for `production` and `preview` (expo.dev →
      project → Environment variables) listed in `eas.json`.
   4. `npx eas-cli credentials` → add an App Store Connect API key (iOS submit) and a
@@ -127,6 +129,7 @@ listing with a reviewer account. On Google Play, use a closed testing track or
 - [ ] Fresh install → welcome → onboarding → privacy link opens → Start travelling
 - [ ] Create account, confirm email, sign in; reset password through the email link
 - [ ] Reserve, view boarding pass; check-in shows "opens at …" until 2 h before pickup
+- [ ] Allow notifications: "Check-in is open" and "Time to head to …" reminders arrive and open the pass; cancelling removes them
 - [ ] Driver starts the trip, location sharing turns on; passenger map shows the bus
 - [ ] Conductor scans the QR (camera permission prompt), confirms boarding
 - [ ] Attendant checks in by reference
@@ -139,6 +142,6 @@ listing with a reviewer account. On Google Play, use a closed testing track or
 
 ## 6. Known limits at launch
 
-- Alerts are in-app only (no push notifications yet); the app says so.
-- Location sharing runs only while the driver's trip screen is open.
+- Trip reminders (check-in open, time to leave) are local notifications on the phone. Delay and change alerts are in-app only until push is added.
+- Location sharing runs while ToGo Staff is open (any tab), with the screen kept awake; it pauses if the app is closed or backgrounded.
 - Payment is cash to the conductor; the app takes no payments.

@@ -10,6 +10,7 @@ import { useToast } from '@/components/ToastProvider';
 import { humanError } from '@/hooks/useAsync';
 import { colors, radius, space, font } from '@/theme';
 import { APP_VARIANT } from '@/env';
+import { BrandMark } from '@/components/BrandMark';
 
 type Tab = 'signin' | 'signup' | 'reset';
 
@@ -63,7 +64,7 @@ export default function AuthScreen() {
         <Text style={styles.backText}>Not now</Text>
       </Pressable>
       <View style={{ alignItems: 'center', marginTop: space.sm, marginBottom: space.lg }}>
-        <View style={styles.logo}><Text style={styles.logoText}>ToGo</Text></View>
+        <View style={{ marginBottom: 8 }}><BrandMark size={72} /></View>
         <Muted>{staff ? 'Sign in with your staff account.' : next?.startsWith('/book') ? 'Sign in to reserve your seat.' : 'Your bus. Your stop.'}</Muted>
       </View>
       <Card style={{ gap: 12 }}>
@@ -110,8 +111,6 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   back: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 6 },
   backText: { color: colors.forest700, fontWeight: '600', fontSize: font.body },
-  logo: { backgroundColor: colors.forest700, borderRadius: radius.lg, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 8 },
-  logoText: { color: colors.white, fontWeight: '900', fontSize: 24 },
   tabs: { flexDirection: 'row', backgroundColor: colors.sand100, borderRadius: radius.md, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
   tabActive: { backgroundColor: colors.white },

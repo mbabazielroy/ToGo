@@ -1,6 +1,6 @@
 # ToGo — launch readiness overview
 
-_5 November 2026 · ToGo 1.0.0 (passengers) and ToGo Staff 1.0.0 (crew + operations)_
+_5 November 2026 (updated) · ToGo 1.0.0 (passengers) and ToGo Staff 1.0.0 (crew + operations)_
 
 ## Verdict
 
@@ -15,11 +15,26 @@ may reject ToGo Staff as an internal-only app.
 | Automated checks (tests, types, lint, Expo Doctor, release bundles) | Passing locally |
 | CI/CD on GitHub | Added; runs after you push |
 | Production backend (Supabase) | Not set up |
-| Legal entity, policy hosting, support email | Not set up |
-| Store accounts, EAS projects, signing credentials | Not set up |
+| Company details in the legal text | Wired up; your values not entered yet |
+| Policy hosting | Not set up |
+| EAS projects | Done (`@elly1/togo-mobile`, `@elly1/togo-staff`) |
+| Store listing text, review notes, data-safety answers | Done (`docs/STORE_LISTING.md`) |
+| Apple / Google accounts, signing credentials, `EXPO_TOKEN` | Not set up |
 | Real-device test on production | Not done |
 
-## Fixed in this pass
+## Fixed in the second pass
+
+| Blocker or risk | Fix |
+|---|---|
+| EAS projects didn't exist, so the release workflow couldn't build | Created and linked `@elly1/togo-mobile` and `@elly1/togo-staff`; ids live in `app.config.js` |
+| The privacy policy and terms didn't say who runs ToGo | New "Who we are" section from `EXPO_PUBLIC_LEGAL_NAME`, `EXPO_PUBLIC_LEGAL_ADDRESS` and `EXPO_PUBLIC_SUPPORT_EMAIL` (in-app and hosted pages); store builds refuse to build without them |
+| Phone lock paused the bus position mid-trip | ToGo Staff keeps the screen awake while sharing, and sharing continues across the crew tabs |
+| No reminders outside the app | Local notifications: "Check-in is open" (2 h before) and "Time to head to your hub" (30 min before); tapping opens the pass; cleared on cancel, sign-out or when turned off. No server needed |
+| No listing copy, review notes or screenshot plan | `docs/STORE_LISTING.md` |
+| `eas.json` had a comment key EAS rejects | Removed |
+| Placeholder "T" icon and logo | Your bus artwork is now the ToGo app icon (iOS, Android adaptive with gradient background, themed monochrome), the splash screen, favicon, notification icon and the in-app logo. ToGo Staff keeps its green "T" mark so crews can tell the apps apart |
+
+## Fixed in the first pass
 
 | Issue | Store rule | Fix |
 |---|---|---|
@@ -49,10 +64,12 @@ separate icons and splash screens, check-in window.
 ## Verified
 
 - Root: typecheck, lint, 66/66 tests, web build that produces `dist/legal/*.html`.
-- Mobile: typecheck, lint (0 problems), 7/7 tests, Expo Doctor 20/20.
+- Mobile: typecheck, lint (0 problems), 10/10 tests (including the new reminder planner), Expo Doctor 20/20.
 - CI store-config check and release export run locally for both apps on iOS and Android; no pre-launch wording found.
 - Release guard: a production build with demo mode and no backend fails with a clear list. A correctly configured staff build resolves with the staff permission text. The passenger build has no camera permission.
 - Both workflow files parse as valid YAML.
+- Browser preview: new logo on welcome, sign-in and headers; "Who we are" in the privacy policy; Alerts settings; no console errors.
+- Both EAS projects resolve (`eas project:info`).
 
 **Not verified:** the workflows haven't run on GitHub (nothing is pushed). The new
 database test hasn't run (no Postgres on this Mac; CI runs it). Connected mode against
@@ -60,19 +77,19 @@ a real Supabase project hasn't been tested. No physical device has been tested.
 
 ## Blockers before store review (you)
 
-1. **Legal:** add the operating company's name, address and support email to `apps/mobile/src/legal/content.ts`. Have both documents reviewed against Uganda's Data Protection and Privacy Act 2019, and register with the PDPO if required.
-2. **Hosting:** deploy the web app with `EXPO_PUBLIC_SUPPORT_EMAIL` set. Use `/legal/privacy.html` as the store privacy URL and `/legal/delete-account.html` as Play's deletion URL.
-3. **Supabase production:** create the project, apply all migrations (including 0018 and 0019), set the auth redirect URLs `togo://` and `togostaff://`, and create the EAS environment variables.
-4. **Accounts:** Apple Developer ($99/yr) and Google Play Console ($25); create both apps under their bundle IDs.
-5. **EAS:** create the `togo-mobile` and `togo-staff` projects and paste their IDs into `apps/mobile/app.config.js`. Add the `EXPO_TOKEN` GitHub secret, and add the App Store Connect API key and Play service-account key with `eas credentials`. Upload the first Android build of each app by hand.
-6. **Reviewer accounts:** create a passenger account and a staff account on production, with trips scheduled during review.
-7. **Device test:** run the checklist in `docs/STORE_LAUNCH.md` §5 on a real iPhone and Android phone.
+1. **Company details:** set `EXPO_PUBLIC_LEGAL_NAME`, `EXPO_PUBLIC_LEGAL_ADDRESS` and `EXPO_PUBLIC_SUPPORT_EMAIL` in EAS (production) and on the web host. Have the policy and terms reviewed against Uganda's Data Protection and Privacy Act 2019.
+2. **Hosting** (excluded from this pass): deploy the web app so the `/legal/*` pages are live.
+3. **Supabase production** (excluded): project, migrations, redirect URLs, and the EAS variables.
+4. **Apple and Google accounts** (excluded): then add the App Store Connect API key and the Play service-account key with `eas credentials`, and upload the first Android build by hand.
+5. **`EXPO_TOKEN`:** create it at expo.dev → Access tokens and add it as a GitHub Actions secret.
+6. **Reviewer accounts and screenshots:** these need the production backend; the steps and sizes are in `docs/STORE_LISTING.md`.
+7. **Device test:** `docs/STORE_LAUNCH.md` §5 on a real iPhone and Android phone. This Mac has no Xcode, so the iOS Simulator wasn't available.
 
 ## Risks and decisions
 
 - **ToGo Staff and Apple 3.2:** an app only staff can sign in to is often rejected as internal-only. Recommended: distribute it privately (Apple Business Manager / Unlisted, and Managed Google Play) and send only ToGo for public review.
-- **Location only while the screen is open:** if a driver locks the phone, the bus stops updating. That's acceptable for the MVP, and the app says so. Background location would need a strong justification to pass review.
-- **No push notifications:** alerts are in-app only, so passengers may miss delay messages. Add push next.
+- **Location while the app is open:** the screen now stays awake, but if a driver closes or backgrounds the app, the bus stops updating. Background location would need a strong justification to pass review.
+- **Delay alerts are in-app only:** trip reminders now arrive as phone notifications, but delays and changes need push (a server-side sender). Add it next.
 - **Google Play closed testing:** new personal developer accounts must run a closed test (12+ testers for 14 days) before production access. Plan for that time.
 
 ## Suggested launch order
