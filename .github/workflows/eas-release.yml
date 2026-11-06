@@ -1,0 +1,144 @@
+name: Release (EAS build + submit)
+
+# Builds ToGo and/or ToGo Staff on Expo Application Services and, optionally,
+# submits them to TestFlight and the Google Play internal testing track.
+#
+# Triggers:
+#   - Manual: Actions → "Release (EAS build + submit)" → Run workflow.
+#   - Tag:    pushing v1.2.3 builds both apps for both stores and submits them.
+#
+# One-time setup (see docs/STORE_LAUNCH.md → "CI/CD"):
+#   - Repository secret EXPO_TOKEN (expo.dev → Account settings → Access tokens).
+#   - EAS project ids for both apps filled in at the top of apps/mobile/app.config.js.
+#   - EAS environment variables for "production" (and "preview"): Supabase URL and
+#     anon key, privacy/terms URLs, support email, GOOGLE_MAPS_ANDROID_API_KEY.
+#   - Store credentials stored in EAS (`eas credentials`): Apple App Store Connect
+#     API key and a Google Play service-account key. The FIRST Android upload of
+#     each app must be done by hand in Play Console.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Which app
+        type: choice
+        options: [both, togo, staff]
+        default: both
+      platform:
+        description: Platform
+        type: choice
+        options: [all, ios, android]
+        default: all
+      profile:
+        description: Build profile (preview = internal test build, production = store build)
+        type: choice
+        options: [production, preview]
+        default: production
+      submit:
+        description: Submit production builds to TestFlight / Play internal testing
+        type: boolean
+        default: false
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  group: eas-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Never release code that fails CI.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - working-directory: apps/mobile
+        run: npm ci
+      - working-directory: apps/mobile
+        run: npm run typecheck && npm run lint && npm test && npx expo-doctor
+      - name: Tag matches app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: apps/mobile
+        run: |
+          v=$(node -p 'require("./app.json").expo.version')
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "::error::Tag ${GITHUB_REF_NAME} does not match app.json version $v"; exit 1; }
+
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.pick.outputs.apps }}
+    steps:
+      - id: pick
+        run: |
+          case "${{ inputs.app || 'both' }}" in
+            togo)  echo 'apps=["togo"]' >> "$GITHUB_OUTPUT" ;;
+            staff) echo 'apps=["staff"]' >> "$GITHUB_OUTPUT" ;;
+            *)     echo 'apps=["togo","staff"]' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  build:
+    needs: [verify, matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.matrix.outputs.apps) }}
+    env:
+      PROFILE: ${{ inputs.profile || 'production' }}
+      PLATFORM: ${{ inputs.platform || 'all' }}
+      # Tag pushes always submit; manual runs submit only when asked (production only).
+      SUBMIT: ${{ github.event_name == 'push' || (inputs.submit && inputs.profile == 'production') }}
+    steps:
+      - name: Check EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          [ -n "$EXPO_TOKEN" ] || { echo "::error::Add the EXPO_TOKEN repository secret (expo.dev → Access tokens)"; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+      - run: npm ci
+      - working-directory: apps/mobile
+        run: npm ci
+      - name: Check EAS project id
+        working-directory: apps/mobile
+        run: |
+          v=passenger; [ "${{ matrix.app }}" = "staff" ] && v=staff
+          id=$(EXPO_PUBLIC_APP_VARIANT=$v npx expo config --type public --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).extra?.eas?.projectId||""))')
+          [ -n "$id" ] || { echo "::error::Fill in the EAS project id for $v at the top of apps/mobile/app.config.js (docs/STORE_LAUNCH.md → CI/CD)"; exit 1; }
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Build ${{ matrix.app }} (${{ env.PROFILE }}, ${{ env.PLATFORM }})
+        working-directory: apps/mobile
+        run: |
+          profile="$PROFILE"
+          [ "${{ matrix.app }}" = "staff" ] && profile="$PROFILE-staff"
+          args=(--platform "$PLATFORM" --profile "$profile" --non-interactive --no-wait)
+          if [ "$SUBMIT" = "true" ] && [ "$PROFILE" = "production" ]; then
+            args+=(--auto-submit-with-profile "$profile")
+          fi
+          echo "eas build ${args[*]}"
+          eas build "${args[@]}"
+      - name: Summary
+        run: |
+          echo "### ${{ matrix.app }}: build queued on EAS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Profile **$PROFILE**, platform **$PLATFORM**, submit **$SUBMIT**." >> "$GITHUB_STEP_SUMMARY"
+          echo "Follow progress at https://expo.dev (Builds and Submissions)." >> "$GITHUB_STEP_SUMMARY"

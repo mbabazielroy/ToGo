@@ -3,10 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "ToGo — a virtual bus terminal prototype for Uganda (demo only).",
+  "description": "ToGo — a virtual bus terminal for Uganda.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run legal && tsc -b && vite build",
+    "legal": "node scripts/build-legal-pages.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",

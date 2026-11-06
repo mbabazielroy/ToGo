@@ -12,7 +12,6 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.togo.mobile",
-      "buildNumber": "1",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -70,7 +69,6 @@
     },
     "android": {
       "package": "app.togo.mobile",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/adaptive-icon-mono.png",

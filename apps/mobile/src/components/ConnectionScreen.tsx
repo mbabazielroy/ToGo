@@ -16,6 +16,10 @@ export function ConnectionScreen({
 }: { state: 'unconfigured' | 'unreachable'; detail?: string; onRetry: () => void; retrying?: boolean }) {
   const insets = useSafeAreaInsets();
   const unconfigured = state === 'unconfigured';
+  // Build-setup wording is for developers only. A release binary can't reach this
+  // state (EAS production builds fail without the config, see app.config.js), but if
+  // it ever did, users see a plain message rather than setup instructions.
+  const devSetup = unconfigured && __DEV__;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + space.xxl, paddingBottom: insets.bottom + space.lg }]}>
@@ -24,18 +28,20 @@ export function ConnectionScreen({
         <View style={styles.icon}>
           <Ionicons name={unconfigured ? 'construct-outline' : 'cloud-offline-outline'} size={30} color={colors.forest700} />
         </View>
-        <Text style={styles.title}>{unconfigured ? 'Setup needed' : 'Can’t reach ToGo'}</Text>
+        <Text style={styles.title}>{devSetup ? 'Setup needed' : unconfigured ? 'ToGo is unavailable' : 'Can’t reach ToGo'}</Text>
         <Text style={styles.body}>
-          {unconfigured
+          {unconfigured && !devSetup
+            ? 'ToGo can’t start right now. Please update the app from the store, or try again later.'
+            : unconfigured
             ? 'ToGo isn’t connected to its booking service yet. The app needs a Supabase project URL and publishable key configured at build time before departures, bookings and check-ins can load.'
             : 'ToGo is configured but the booking service didn’t respond. Check your connection and try again — your data is safe on the server.'}
         </Text>
-        {detail ? <Text style={styles.detail} numberOfLines={3}>{detail}</Text> : null}
+        {detail && (__DEV__ || !unconfigured) ? <Text style={styles.detail} numberOfLines={3}>{detail}</Text> : null}
       </View>
 
       <View style={styles.actions}>
         <PrimaryButton title={retrying ? 'Checking…' : 'Try again'} onPress={onRetry} loading={retrying} />
-        {unconfigured && (
+        {devSetup && (
           <Text style={styles.note}>
             This is set once, at build time. After adding the configuration the app must be rebuilt or restarted.
           </Text>

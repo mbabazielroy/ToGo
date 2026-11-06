@@ -50,14 +50,14 @@ export const PRIVACY: LegalDoc = {
     {
       heading: 'How long we keep it',
       body: [
-        'Your account and trip history are kept while you have an account. When you delete your account, your profile, bookings and alerts are deleted straight away. Operational logs keep a record that a booking event happened, without your identity.',
+        'Your account and trip history are kept while you have an account. When you delete your account, your profile, bookings and alerts are deleted straight away. Records of actions you took on other people’s trips (for example, as crew) are kept for safety and accounting, without your identity.',
       ],
     },
     {
       heading: 'Your choices and rights',
       body: [
         'You can view and edit your profile in Account at any time.',
-        'Delete your account from Account → Delete account. This is permanent.',
+        'Delete your account from Account → Delete account. This is permanent. Without the app, ask support to delete it (see the “Delete your account” page on our website); we do so within 30 days.',
         'You can turn location and camera access off in your phone’s settings; the app keeps working without them.',
         'You can ask for a copy of your data, or a correction, by contacting support. You also have the rights given by Uganda’s Data Protection and Privacy Act, 2019, including complaining to the Personal Data Protection Office.',
       ],

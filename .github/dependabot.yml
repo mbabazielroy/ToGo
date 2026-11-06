@@ -1,0 +1,8 @@
+# Keeps GitHub Actions up to date. App dependencies are not auto-bumped: Expo
+# packages must move together with the SDK (`npx expo install --fix`).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

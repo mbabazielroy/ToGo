@@ -11,15 +11,26 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+
 jobs:
-  # Typecheck, lint, unit/adapter tests, and production build.
+  # Web app + shared rules: typecheck, lint, unit/adapter tests, production build
+  # (which also generates the hosted privacy / terms / delete-account pages).
   checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - name: Typecheck
@@ -28,40 +39,77 @@ jobs:
         run: npm run lint
       - name: Unit + adapter tests
         run: npm test
-      - name: Build
+      - name: Build (web + legal pages)
         run: npm run build
+      - name: Legal pages exist
+        run: test -s dist/legal/privacy.html && test -s dist/legal/terms.html && test -s dist/legal/delete-account.html
 
-  # Real PostgreSQL: RLS/transaction suite + concurrency race. The auth shim
-  # (supabase/tests/00_shim.sql) is test-only infrastructure and is never part of
-  # the migrations applied to a real project.
-  # Mobile app: TypeScript, shared-rule/persistence tests, and an iOS+Android
-  # bundle export (no device needed). Installs apps/mobile separately from the web.
+  # Mobile apps (ToGo and ToGo Staff): typecheck, lint, tests, Expo Doctor, and a
+  # release bundle export of each store app for iOS and Android (no device needed).
   mobile:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      # The mobile app compiles the shared ../../src modules (via @shared/*), and
-      # src/data/supabaseAdapter.ts imports @supabase/supabase-js. TypeScript resolves
-      # that from the repo-root node_modules, so the root deps must be installed too.
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+      # The mobile app compiles the shared ../../src modules (via @shared/*), which
+      # import @supabase/supabase-js from the repo-root node_modules.
       - name: Install root deps (shared src)
         run: npm ci
       - name: Install mobile deps
         working-directory: apps/mobile
-        run: npm install
+        run: npm ci
       - name: Typecheck
         working-directory: apps/mobile
         run: npm run typecheck
-      - name: Shared-rule + persistence tests
+      - name: Lint
+        working-directory: apps/mobile
+        run: npm run lint
+      - name: Tests
         working-directory: apps/mobile
         run: npm test
-      - name: Bundle export (iOS + Android)
+      - name: Expo Doctor
         working-directory: apps/mobile
-        run: npx expo export --platform ios --platform android
+        run: npx expo-doctor
+      - name: Store config (both apps)
+        working-directory: apps/mobile
+        run: |
+          for v in passenger staff; do
+            EXPO_PUBLIC_APP_VARIANT=$v npx expo config --type public --json > "config-$v.json"
+            node -e '
+              const c = require("./config-" + process.argv[1] + ".json");
+              const fail = (m) => { console.error("::error::" + process.argv[1] + ": " + m); process.exit(1); };
+              if (!c.version) fail("missing version");
+              if (c.ios?.supportsTablet !== false) fail("iPad support must stay off unless iPad screenshots are added");
+              if (c.ios?.infoPlist?.ITSAppUsesNonExemptEncryption !== false) fail("export compliance key missing");
+              if (!c.ios?.privacyManifests) fail("iOS privacy manifest missing");
+              const blocked = c.android?.blockedPermissions ?? [];
+              if (!blocked.includes("android.permission.ACCESS_BACKGROUND_LOCATION")) fail("background location must be blocked");
+              if (process.argv[1] === "passenger" && !blocked.includes("android.permission.CAMERA")) fail("passenger app must not request the camera");
+              console.log(process.argv[1] + ": " + c.name + " " + c.version + " (" + c.ios.bundleIdentifier + ") ok");
+            ' "$v"
+          done
+      - name: Release bundle export (both apps, iOS + Android)
+        working-directory: apps/mobile
+        run: |
+          for v in passenger staff; do
+            EXPO_PUBLIC_APP_VARIANT=$v npx expo export --platform ios --platform android --output-dir "dist-$v"
+          done
+      - name: No preview wording in release bundles
+        working-directory: apps/mobile
+        run: |
+          if grep -rlaE "\b(pilot|illustrative|lorem ipsum)\b" dist-passenger dist-staff --include=*.hbc --include=*.js; then
+            echo "::error::Release bundle contains pre-launch wording"; exit 1
+          fi
 
+  # Real PostgreSQL: RLS/transaction suite + concurrency race. The auth shim
+  # (supabase/tests/00_shim.sql) is test-only infrastructure and is never part of
+  # the migrations applied to a real project.
   database:
     runs-on: ubuntu-latest
     services:
@@ -102,7 +150,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - name: Supabase integration (two sessions)
