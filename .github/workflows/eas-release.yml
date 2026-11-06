@@ -122,7 +122,7 @@ jobs:
           v=passenger; [ "${{ matrix.app }}" = "staff" ] && v=staff
           id=$(EXPO_PUBLIC_APP_VARIANT=$v npx expo config --type public --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).extra?.eas?.projectId||""))')
           [ -n "$id" ] || { echo "::error::Fill in the EAS project id for $v at the top of apps/mobile/app.config.js (docs/STORE_LAUNCH.md → CI/CD)"; exit 1; }
-      - uses: expo/expo-github-action@v8
+      - uses: expo/expo-github-action@v9
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
