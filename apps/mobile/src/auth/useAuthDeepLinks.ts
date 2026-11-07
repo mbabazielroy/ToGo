@@ -2,17 +2,16 @@ import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthProvider';
+import { parseAuthLink } from './authLink';
 
 /**
- * Handles auth callback deep links (email confirmation / password recovery) on
- * native. Supabase's web `detectSessionInUrl` does not apply on native, so we parse
- * the incoming URL ourselves.
+ * Handles sign-in links (email confirmation and password reset) opened in the app.
+ * Supabase's web `detectSessionInUrl` does not apply on native, so the incoming
+ * URL is read here. Only PKCE `?code=` links are accepted; see authLink.ts for why.
  *
- * IMPORTANT (honesty): this path is implemented but UNVERIFIED in this environment.
- * It only works once (a) the app is opened via its `togo://` scheme or a configured
- * https deep link, and (b) the Supabase project's Redirect URLs include that scheme
- * — which in turn generally requires a development build, not plain Expo Go. See
- * docs/MOBILE.md. No claim is made that callbacks were tested on a device.
+ * Not yet tested on a device: links need the `togo://` scheme in the Supabase
+ * project's Redirect URLs and a development or store build (not Expo Go). See
+ * docs/MOBILE.md.
  */
 export function useAuthDeepLinks() {
   const { setRecoveryMode, refresh } = useAuth();
@@ -21,31 +20,18 @@ export function useAuthDeepLinks() {
     if (!supabase) return;
 
     async function handle(url: string | null) {
-      if (!url || !supabase) return;
-      const parsed = Linking.parse(url);
-      const qp = (parsed.queryParams ?? {}) as Record<string, string | string[] | undefined>;
-      const str = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-
-      // Fragment params (implicit flow) come through as part of the URL after '#'.
-      const hash = url.includes('#') ? url.slice(url.indexOf('#') + 1) : '';
-      const frag = new URLSearchParams(hash);
-      const access_token = frag.get('access_token') ?? str(qp.access_token);
-      const refresh_token = frag.get('refresh_token') ?? str(qp.refresh_token);
-      const type = frag.get('type') ?? str(qp.type);
-      const code = str(qp.code);
-
+      const link = parseAuthLink(url);
+      if (!link || !supabase) return;
       try {
-        if (access_token && refresh_token) {
-          await supabase.auth.setSession({ access_token, refresh_token });
-        } else if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
-        } else {
-          return;
-        }
-        if (type === 'recovery') setRecoveryMode(true);
+        // Fails unless this phone holds the matching code verifier.
+        const { error } = await supabase.auth.exchangeCodeForSession(link.code);
+        if (error) return;
+        // Supabase also emits PASSWORD_RECOVERY for reset links (AuthProvider
+        // listens for it); the path check covers the same case.
+        if (link.recovery) setRecoveryMode(true);
         await refresh();
       } catch {
-        // Invalid/expired link — leave the user on the auth screen with no session.
+        // Invalid, expired or already-used link: stay signed out.
       }
     }
 

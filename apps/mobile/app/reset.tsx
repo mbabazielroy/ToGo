@@ -33,7 +33,7 @@ export default function ResetScreen() {
         <Text style={styles.title}>Set a new password</Text>
       </View>
       <Card style={{ gap: 12 }}>
-        {!session && <View style={styles.warn}><Text style={styles.warnText}>This reset link is invalid or has expired. Request a new one from the sign-in screen.</Text></View>}
+        {!session && <View style={styles.warn}><Text style={styles.warnText}>This reset link is invalid, has expired, or was asked for on a different phone. Request a new one from the sign-in screen on this phone.</Text></View>}
         {err && <ErrorRow message={err} onRetry={submit} />}
         <View><Text style={styles.label}>New password</Text>
           <TextInput style={styles.input} value={pw} onChangeText={setPw} secureTextEntry textContentType="newPassword" autoComplete="new-password" placeholder="At least 8 characters" placeholderTextColor={colors.muted} accessibilityLabel="New password" /></View>

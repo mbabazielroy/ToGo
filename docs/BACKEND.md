@@ -87,6 +87,11 @@ In **Authentication → URL Configuration**:
   deployed URL).
 - **Redirect URLs**: add every origin the app is served from. Email confirmation
   and password-reset links redirect back to `‹origin›/`.
+- Both apps use Supabase's **PKCE** sign-in flow. Email links arrive as
+  `‹redirect›?code=…` and only work in the browser or on the phone that asked for
+  the email; links carrying tokens in the URL are rejected. The default Supabase
+  email templates (`{{ .ConfirmationURL }}`) work as they are; a custom template
+  must keep using `{{ .ConfirmationURL }}` rather than building token links.
 
 Email/password is the only method used. For a pilot you may disable email
 confirmations (Authentication → Providers → Email) so testers can sign in

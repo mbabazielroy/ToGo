@@ -41,7 +41,7 @@ export function ResetPasswordPage() {
       <div className="card p-5">
         {!session && (
           <div className="mb-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
-            <AlertCircle size={16} className="mt-0.5 shrink-0" /> This reset link is invalid or has expired. Request a new one from the sign-in screen.
+            <AlertCircle size={16} className="mt-0.5 shrink-0" /> This reset link is invalid, has expired, or was opened in a different browser from the one that asked for it. Request a new one from the sign-in screen in this browser.
           </div>
         )}
         {err && <div className="mb-3 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200"><AlertCircle size={16} className="mt-0.5 shrink-0" /> {err}</div>}

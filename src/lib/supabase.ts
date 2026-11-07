@@ -9,6 +9,10 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        // Email links carry a one-time ?code= that only works in the browser that
+        // asked for it. Links carrying tokens in the URL are rejected, so a crafted
+        // link can't sign someone into another account (login CSRF).
+        flowType: 'pkce',
       },
     })
   : null;

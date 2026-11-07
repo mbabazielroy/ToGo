@@ -14,6 +14,9 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false, // native deep links are handled explicitly
+        // Email links carry a one-time code that only works on the phone that
+        // asked for it (src/auth/authLink.ts). Token links are not accepted.
+        flowType: 'pkce',
       },
     })
   : null;

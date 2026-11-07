@@ -293,7 +293,11 @@ itself.
 ### What needs a development build + configured redirect URLs
 - **Auth callback deep links** (email confirmation and password-reset return links).
   Supabase's web `detectSessionInUrl` does not apply on native; the app parses the
-  incoming `togo://` link itself (`useAuthDeepLinks.ts`). For those links to open
+  incoming `togo://` link itself (`useAuthDeepLinks.ts`). Only PKCE `?code=`
+  links are accepted (`src/auth/authLink.ts`): the code works only on the phone
+  that asked for the email, so a forwarded or crafted link can't sign a phone into
+  someone else's account. A person must open the link on the same phone where
+  they signed up or asked for the reset. For those links to open
   the app and be accepted, the Supabase project's **Redirect URLs** must include
   the app's scheme/URL, which in practice means a **development build** (or a
   standalone build) rather than plain Expo Go, whose deep-link scheme differs.
