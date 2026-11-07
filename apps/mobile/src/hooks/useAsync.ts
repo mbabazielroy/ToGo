@@ -39,7 +39,12 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T
 }
 
 /** Friendly, honest messages for backend/adapter errors. */
+const NETWORK = /network|fetch|Failed to fetch|timeout/i;
+
 export function humanError(e: unknown): string {
+  if (e instanceof AdapterError && e.code === 'ERROR' && NETWORK.test(e.message)) {
+    return 'Network problem — check your connection and retry.';
+  }
   if (e instanceof AdapterError) {
     switch (e.code) {
       case 'SOLD_OUT': return e.message || 'That trip just sold out.';
@@ -54,10 +59,15 @@ export function humanError(e: unknown): string {
       case 'CAPACITY_TOO_LOW': return e.message;
       case 'CHECKIN_NOT_OPEN': return 'Check-in opens 2 hours before your pickup.';
       case 'CHECKIN_CLOSED': return 'The bus has already left this hub, so check-in is closed.';
-      default: return e.message || 'Something went wrong.';
+      // 'ERROR' means the server's raw text had no CODE: prefix (e.g. a Postgres
+      // constraint message): never show that to users outside development.
+      // Coded errors carry messages written for people, so show those.
+      case 'ERROR': return (__DEV__ && e.message) || 'Something went wrong. Please try again.';
+      default: return e.message || 'Something went wrong. Please try again.';
     }
   }
   const msg = (e as Error)?.message ?? '';
-  if (/network|fetch|Failed to fetch|timeout/i.test(msg)) return 'Network problem — check your connection and retry.';
-  return msg || 'Something went wrong.';
+  if (NETWORK.test(msg)) return 'Network problem — check your connection and retry.';
+  // Plain errors here are sign-in/auth messages ("Invalid login credentials"), which are written for users.
+  return msg || 'Something went wrong. Please try again.';
 }

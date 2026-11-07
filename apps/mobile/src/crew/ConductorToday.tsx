@@ -167,7 +167,7 @@ export function ConductorToday({ staffId, tripParam }: { staffId: string; tripPa
             <View style={styles.search}>
               <Ionicons name="search" size={16} color={colors.muted} />
               <TextInput style={styles.searchInput} value={query} onChangeText={setQuery} placeholder="Search name or reference" placeholderTextColor={colors.muted} accessibilityLabel="Search passengers" />
-              {query.length > 0 && <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search"><Ionicons name="close-circle" size={18} color={colors.faint} /></Pressable>}
+              {query.length > 0 && <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search"><Ionicons name="close-circle" size={18} color={colors.faint} /></Pressable>}
             </View>
             <View style={styles.filters}>
               {(['all', 'waiting', 'boarded'] as Filter[]).map((f) => (

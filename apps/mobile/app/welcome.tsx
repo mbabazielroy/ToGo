@@ -11,10 +11,10 @@ import { colors, space, font, radius, control } from '@/theme';
 import { APP_VARIANT } from '@/env';
 import { BrandMark } from '@/components/BrandMark';
 
-interface Slide { key: string; icon: keyof typeof Ionicons.glyphMap; title: string; body: string }
+interface Slide { key: string; icon: keyof typeof Ionicons.glyphMap; title: string; body: string; logo?: boolean }
 
 const SLIDES: Slide[] = [
-  { key: 'reserve', icon: 'bus', title: 'Your seat, reserved in seconds', body: 'Pick a departure between Kampala and Mbarara, choose the hub nearest you, and hold your seat. Pay the operator when you board.' },
+  { key: 'reserve', icon: 'bus', logo: true, title: 'Your seat, reserved in seconds', body: 'Pick a departure between Kampala and Mbarara, choose the hub nearest you, and hold your seat. Pay the operator when you board.' },
   { key: 'time', icon: 'time', title: 'Know exactly when to leave', body: 'Live countdowns to your pickup, plus a heads-up the moment your bus is delayed or arrives at your hub.' },
   { key: 'board', icon: 'qr-code', title: 'Board with one scan', body: 'Check in at your hub and show your boarding pass. The conductor scans it and you are on your way.' },
 ];
@@ -81,9 +81,13 @@ function Intro() {
             <View style={styles.art}>
               <View style={styles.ring3} />
               <View style={styles.ring2} />
-              <View style={styles.iconCircle}>
-                <Ionicons name={item.icon} size={56} color={colors.forest900} />
-              </View>
+              {item.logo ? (
+                <BrandMark size={128} />
+              ) : (
+                <View style={styles.iconCircle}>
+                  <Ionicons name={item.icon} size={56} color={colors.forest900} />
+                </View>
+              )}
             </View>
             <Text style={styles.title} accessibilityRole="header">{item.title}</Text>
             <Text style={styles.body}>{item.body}</Text>

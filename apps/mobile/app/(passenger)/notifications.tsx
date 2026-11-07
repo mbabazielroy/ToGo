@@ -41,12 +41,12 @@ export default function Notifications() {
 
   return (
     <Screen>
-      <Pressable onPress={() => router.back()} style={styles.back}>
+      <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" style={styles.back}>
         <Ionicons name="chevron-back" size={18} color={colors.forest600} /><Text style={styles.backText}>Back</Text>
       </Pressable>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text style={styles.title}>Notifications</Text>
-        {unread.length > 0 && <Pressable onPress={markAll}><Text style={styles.markAll}>Mark all read</Text></Pressable>}
+        {unread.length > 0 && <Pressable onPress={markAll} accessibilityRole="button" hitSlop={8}><Text style={styles.markAll}>Mark all read</Text></Pressable>}
       </View>
       <Muted style={{ fontSize: font.tiny }}>Alerts about your trips appear here and on Home while the app is open.</Muted>
 

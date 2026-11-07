@@ -21,7 +21,7 @@ export default function ResetScreen() {
   const [err, setErr] = useState<string | null>(null);
 
   async function submit() {
-    if (pw.length < 6) { setErr('Password must be at least 6 characters.'); return; }
+    if (pw.length < 8) { setErr('Use at least 8 characters for your password.'); return; }
     setErr(null); setBusy(true);
     try { await updatePassword(pw); toast('Password updated.', 'ok'); router.replace('/'); }
     catch (e) { setErr(humanError(e)); setBusy(false); }
@@ -36,9 +36,9 @@ export default function ResetScreen() {
         {!session && <View style={styles.warn}><Text style={styles.warnText}>This reset link is invalid or has expired. Request a new one from the sign-in screen.</Text></View>}
         {err && <ErrorRow message={err} onRetry={submit} />}
         <View><Text style={styles.label}>New password</Text>
-          <TextInput style={styles.input} value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" placeholderTextColor={colors.muted} accessibilityLabel="New password" /></View>
+          <TextInput style={styles.input} value={pw} onChangeText={setPw} secureTextEntry textContentType="newPassword" autoComplete="new-password" placeholder="At least 8 characters" placeholderTextColor={colors.muted} accessibilityLabel="New password" /></View>
         <PrimaryButton title="Update password" onPress={submit} loading={busy} disabled={!session} />
-        <Pressable onPress={() => { clearRecoveryMode(); router.replace('/'); }}><Text style={styles.back}>Back to sign in</Text></Pressable>
+        <Pressable onPress={() => { clearRecoveryMode(); router.replace('/'); }} accessibilityRole="button" hitSlop={8}><Text style={styles.back}>Back to sign in</Text></Pressable>
       </Card>
     </Screen>
   );

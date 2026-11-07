@@ -70,7 +70,7 @@ export default function AuthScreen() {
       <Card style={{ gap: 12 }}>
         <View style={styles.tabs}>
           {(staffOnly ? ['signin'] as const : ['signin', 'signup'] as const).map((k) => (
-            <Pressable key={k} onPress={() => { setTab(k); setErr(null); }} style={[styles.tab, tab === k && styles.tabActive]}>
+            <Pressable key={k} onPress={() => { setTab(k); setErr(null); }} accessibilityRole="tab" accessibilityState={{ selected: tab === k }} style={[styles.tab, tab === k && styles.tabActive]}>
               <Text style={[styles.tabText, tab === k && styles.tabTextActive]}>{k === 'signin' ? 'Sign in' : 'Create account'}</Text>
             </Pressable>
           ))}
@@ -92,7 +92,7 @@ export default function AuthScreen() {
           title={tab === 'signin' ? 'Sign in' : tab === 'signup' ? 'Create passenger account' : 'Send reset link'}
           onPress={submit} loading={busy}
         />
-        {tab === 'signin' && <Pressable onPress={() => { setTab('reset'); setErr(null); }}><Text style={styles.forgot}>Forgot your password?</Text></Pressable>}
+        {tab === 'signin' && <Pressable onPress={() => { setTab('reset'); setErr(null); }} accessibilityRole="button" hitSlop={8}><Text style={styles.forgot}>Forgot your password?</Text></Pressable>}
         {tab === 'signup' && (
           <Text style={styles.agree}>
             By creating an account you agree to the{' '}

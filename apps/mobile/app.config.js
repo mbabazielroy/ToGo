@@ -84,7 +84,7 @@ module.exports = ({ config }) => {
     if (name === 'expo-location') return [name, { ...opts, locationWhenInUsePermission: text.location }];
     if (name === 'expo-camera') return [name, { ...opts, cameraPermission: text.camera }];
     if (name === 'expo-splash-screen' && staff) {
-      return [name, { ...opts, image: './assets/splash-icon-staff.png', imageWidth: 120, backgroundColor: '#13a85c' }];
+      return [name, { ...opts, image: './assets/splash-icon-staff.png' }];
     }
     return p;
   });
@@ -135,11 +135,12 @@ module.exports = ({ config }) => {
     android: {
       ...android,
       package: 'app.togo.staff',
-      // ToGo Staff keeps its own mark; the bus artwork is the passenger app's icon.
+      // Same bus artwork on a dark tile with a STAFF badge.
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon-staff.png',
-        monochromeImage: './assets/adaptive-icon-mono-staff.png',
-        backgroundColor: '#13a85c',
+        backgroundImage: './assets/adaptive-icon-staff-background.png',
+        monochromeImage: './assets/adaptive-icon-mono.png',
+        backgroundColor: '#0b2e1c',
       },
     },
   };

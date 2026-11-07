@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AdapterProvider } from '@/data/AdapterProvider';
@@ -36,6 +37,33 @@ function AuthGate() {
 //   (passenger)/…  → passenger app        (SpaceGate: passenger)
 //   crew/…         → crew workspace       (SpaceGate: driver / conductor / attendant)
 //   admin/…        → operations console   (SpaceGate: admin)
+/**
+ * Last line of defence: if a screen throws while rendering, show a calm message
+ * with a way back instead of a blank or red screen. Technical detail only in
+ * development builds.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <View style={eb.root} accessibilityRole="alert">
+      <Text style={eb.title}>Something went wrong</Text>
+      <Text style={eb.body}>This screen couldn’t be shown. Your reservations are safe. Try again, or restart the app if it keeps happening.</Text>
+      {__DEV__ ? <Text style={eb.detail} numberOfLines={4}>{error.message}</Text> : null}
+      <Pressable onPress={retry} accessibilityRole="button" style={({ pressed }) => [eb.button, pressed && { opacity: 0.85 }]}>
+        <Text style={eb.buttonText}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const eb = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  title: { fontSize: 22, fontWeight: '800', color: colors.ink, textAlign: 'center' },
+  body: { fontSize: 16, color: colors.inkSoft, textAlign: 'center', lineHeight: 23 },
+  detail: { fontSize: 12, color: colors.muted, textAlign: 'center' },
+  button: { marginTop: 8, backgroundColor: colors.forest700, borderRadius: 14, paddingHorizontal: 28, minHeight: 50, justifyContent: 'center' },
+  buttonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+});
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>

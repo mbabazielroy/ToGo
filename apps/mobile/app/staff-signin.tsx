@@ -9,6 +9,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useSession, homeFor, ROLE_LABEL, type Identity, type Role } from '@/session/SessionProvider';
 import { haptics } from '@/lib/feedback';
 import { colors, space, font, SCREEN } from '@/theme';
+import { BrandMark } from '@/components/BrandMark';
 
 const GROUPS: { role: Role; title: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
   { role: 'driver', title: 'Drivers', icon: 'bus', color: '#1f5fd1' },
@@ -40,7 +41,7 @@ export default function StaffSignIn() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {standalone ? (
         <View style={styles.brandRow}>
-          <View style={styles.logo}><Text style={styles.logoText}>T</Text></View>
+          <BrandMark size={30} />
           <Text style={styles.brand}>ToGo Staff</Text>
         </View>
       ) : (
@@ -114,8 +115,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontWeight: '800', color: colors.ink, letterSpacing: -0.6 },
   lead: { fontSize: font.body, color: colors.inkSoft, marginTop: space.sm, lineHeight: 24 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 52, paddingHorizontal: SCREEN },
-  logo: { width: 28, height: 28, borderRadius: 8, backgroundColor: colors.forest900, alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: colors.live, fontWeight: '900', fontSize: 16 },
   brand: { color: colors.ink, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
   legal: { textAlign: 'center', color: colors.forest700, fontSize: font.tiny, fontWeight: '600', marginTop: space.md },
   foot: { textAlign: 'center', color: colors.muted, fontSize: font.tiny, marginTop: space.xl },
