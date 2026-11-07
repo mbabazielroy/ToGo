@@ -22,6 +22,7 @@ import { LineBadge } from '@/components/ui';
 import { TransitMap } from '@/components/map/TransitMap';
 import { tripMapData } from '@/components/map/tripMap';
 import { ask } from '@/lib/dialog';
+import { savePass, useSavedPasses } from '@/lib/passStore';
 
 interface Stage { key: string; label: string; hint: string }
 
@@ -51,12 +52,24 @@ export default function TripScreen() {
 
   const epoch = useDataEpoch();
   const booking = useAsync(() => adapter.getBooking(String(bookingId)), [bookingId, epoch]);
-  const b = booking.data;
+  // The copy saved on the phone (connected mode). It is shown while the pass loads
+  // on a slow connection, and instead of an error when there is no connection.
+  const savedAll = useSavedPasses();
+  const saved = mode === 'connected' ? savedAll?.[String(bookingId)] : undefined;
+  const fromSaved = !booking.data && !!saved && (booking.loading || !!booking.error);
+  const b = booking.data ?? (fromSaved ? saved.booking : null);
+  // Not confirmed by the server just now: show the pass, but not actions that need it.
+  const offline = !!b && (fromSaved || !!booking.error);
   const trip = useAsync(() => (b ? adapter.getTrip(b.tripId) : Promise.resolve(null)), [b?.tripId, epoch]);
   const location = useAsync(() => (b ? adapter.latestLocation(b.tripId) : Promise.resolve(null)), [b?.tripId, epoch]);
   useLiveRefresh(() => { booking.reload(); trip.reload(); location.reload(); });
   const hubs = useAsync(() => adapter.listHubs(), []);
-  const t = trip.data;
+  const t = trip.data ?? (offline ? saved?.trip ?? null : null);
+
+  // Keep the saved copy up to date whenever the pass loads fresh.
+  useEffect(() => {
+    if (mode === 'connected' && booking.data && !booking.error) savePass(booking.data, trip.data);
+  }, [mode, booking.data, booking.error, trip.data]);
 
   useEffect(() => {
     if (!b) return;
@@ -109,10 +122,17 @@ export default function TripScreen() {
       <NavBar title="Boarding pass" onBack={() => router.replace('/trips')} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: SCREEN, paddingBottom: space.xxl * 2 }}>
-        {booking.loading && <Loading />}
-        {booking.error && <ErrorRow message={booking.error} onRetry={booking.reload} />}
+        {booking.loading && !b && <Loading />}
+        {booking.error && !b && <ErrorRow message={booking.error} onRetry={booking.reload} />}
         {b && (
           <View style={{ gap: space.md }}>
+            {offline && (
+              <SavedBanner
+                updating={booking.loading && !booking.error}
+                savedAt={saved?.savedAt}
+                onRetry={() => { booking.reload(); trip.reload(); }}
+              />
+            )}
             {cancelled && <Banner tone="red" text="This reservation was cancelled and the seats released." />}
             {!cancelled && t && t.delayMinutes > 0 && t.status !== 'completed' &&
               (b.status === 'reserved' || b.status === 'checked_in' || b.status === 'boarded') && (
@@ -174,7 +194,7 @@ export default function TripScreen() {
             </Group>
 
             {/* Map — route, your stop, and the bus once it's moving */}
-            {t && !cancelled && hubs.data && (() => {
+            {t && !cancelled && !offline && hubs.data && (() => {
               const m = tripMapData(t, hubs.data, now, { highlightHubId: b.pickupHubId, fix: stale ? null : location.data, demo: mode === 'demo' });
               return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.live ? `${m.caption} · tap to track` : m.caption}
                 onPress={() => router.push(m.live ? `/map?trip=${t.id}&follow=1` : `/map?trip=${t.id}&hub=${b.pickupHubId}`)} />;
@@ -186,7 +206,12 @@ export default function TripScreen() {
                 <Text style={styles.stepKicker}>Next · step {reached + 1} of {stages.length}</Text>
                 <Text style={styles.stepTitle}>{currentStage.label}</Text>
                 <Text style={styles.stepHint}>{currentStage.hint}</Text>
-                {b.status === 'reserved' && !leftWithout && (checkInEarly && checkInOpens ? (
+                {b.status === 'reserved' && !leftWithout && (offline ? (
+                  <View style={styles.opensRow} accessibilityRole="text">
+                    <Ionicons name="cloud-offline-outline" size={16} color={colors.inkSoft} />
+                    <Text style={styles.opensText}>Checking in needs a connection. You can still board with this pass.</Text>
+                  </View>
+                ) : checkInEarly && checkInOpens ? (
                   <View style={styles.opensRow} accessibilityRole="text">
                     <Ionicons name="time-outline" size={16} color={colors.inkSoft} />
                     <Text style={styles.opensText}>Check-in opens at {formatTime(checkInOpens.toISOString())}, {CHECKIN_OPENS_MINUTES / 60} hours before pickup.</Text>
@@ -235,7 +260,7 @@ export default function TripScreen() {
             )}
 
             {/* Live tracking (connected) */}
-            {mode === 'connected' && t && (t.status === 'en_route' || t.status === 'boarding') && (
+            {mode === 'connected' && !offline && t && (t.status === 'en_route' || t.status === 'boarding') && (
               <Group style={{ padding: space.lg }}>
                 <Text style={styles.infoTitle}>Live location</Text>
                 {location.data ? (
@@ -252,12 +277,43 @@ export default function TripScreen() {
               <Text style={styles.previewHint}>Preview tip: the bus moves when crew act on it. Open the staff workspace (or the ToGo Staff app) as this trip's driver or conductor to start it, report a delay or board you.</Text>
             )}
 
-            {(b.status === 'reserved' || b.status === 'checked_in') && (
+            {(b.status === 'reserved' || b.status === 'checked_in') && !offline && (
               <GhostButton title="Cancel reservation" danger onPress={confirmCancel} style={{ marginTop: space.xs }} />
             )}
           </View>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+/** Shown when the pass on screen is the phone's saved copy, not a fresh one. */
+function SavedBanner({ updating, savedAt, onRetry }: { updating: boolean; savedAt?: string; onRetry: () => void }) {
+  // On a normal connection the fresh pass replaces the saved one almost at once:
+  // only mention it if loading is slow.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!updating) return;
+    const id = setTimeout(() => setSlow(true), 1500);
+    return () => clearTimeout(id);
+  }, [updating]);
+  if (updating && !slow) return null;
+  return (
+    <View style={styles.savedBanner} accessibilityRole="summary">
+      <Ionicons name={updating ? 'sync-outline' : 'cloud-offline-outline'} size={18} color={colors.inkSoft} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.savedTitle}>{updating ? 'Saved pass · updating…' : 'Saved pass · no connection'}</Text>
+        <Text style={styles.savedText}>
+          {updating
+            ? 'This is the copy saved on your phone. It will refresh in a moment.'
+            : `This is the copy saved on your phone${savedAt ? `, updated ${timeAgo(savedAt)}` : ''}. Your QR code and boarding code still work at the door.`}
+        </Text>
+      </View>
+      {!updating && (
+        <Pressable onPress={onRetry} accessibilityRole="button" hitSlop={8} style={styles.savedRetry}>
+          <Text style={styles.savedRetryText}>Retry</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -276,6 +332,11 @@ function Banner({ tone, text }: { tone: 'red' | 'amber' | 'grey'; text: string }
 }
 
 const styles = StyleSheet.create({
+  savedBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md },
+  savedTitle: { color: colors.ink, fontSize: font.small, fontWeight: '700' },
+  savedText: { color: colors.inkSoft, fontSize: font.small, marginTop: 2 },
+  savedRetry: { minHeight: 32, justifyContent: 'center', paddingHorizontal: 4 },
+  savedRetryText: { color: colors.forest700, fontSize: font.small, fontWeight: '700' },
   opensRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: space.md, backgroundColor: colors.bg, borderRadius: radius.md, padding: space.md },
   opensText: { flex: 1, fontSize: font.small, color: colors.inkSoft },
   root: { flex: 1, backgroundColor: colors.bg },

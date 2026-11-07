@@ -1,9 +1,13 @@
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './ui';
 import { colors, space, font, SCREEN } from '../theme';
 import { BrandMark } from './BrandMark';
+import { SavedPassCard } from './SavedPassCard';
+import { useSavedPasses } from '../lib/passStore';
+import { listPasses } from '../lib/savedPasses';
+import { APP_VARIANT } from '../env';
 
 export type ConnState = 'checking' | 'ready' | 'unconfigured' | 'unreachable';
 
@@ -21,6 +25,32 @@ export function ConnectionScreen({
   // state (EAS production builds fail without the config, see app.config.js), but if
   // it ever did, users see a plain message rather than setup instructions.
   const devSetup = unconfigured && __DEV__;
+  // Opened with no signal (say, at the hub): boarding passes saved on this phone
+  // still open, so the passenger can board.
+  const savedAll = useSavedPasses();
+  const saved = !unconfigured && APP_VARIANT !== 'staff' && savedAll ? listPasses(savedAll) : [];
+
+  if (saved.length > 0) {
+    return (
+      <View style={[styles.root, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.lg }]}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: space.md, paddingBottom: space.lg }}>
+          <View style={styles.offlineHead}>
+            <Ionicons name="cloud-offline-outline" size={22} color={colors.forest700} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.offlineTitle} accessibilityRole="header">No connection</Text>
+              <Text style={styles.offlineBody}>
+                Your boarding pass{saved.length === 1 ? ' is' : 'es are'} saved on this phone. Show the QR code or boarding code to the conductor.
+              </Text>
+            </View>
+          </View>
+          {saved.map((p) => <SavedPassCard key={p.booking.id} pass={p} />)}
+        </ScrollView>
+        <View style={styles.actions}>
+          <PrimaryButton title={retrying ? 'Checking…' : 'Try again'} onPress={onRetry} loading={retrying} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + space.xxl, paddingBottom: insets.bottom + space.lg }]}>
@@ -71,6 +101,9 @@ const styles = StyleSheet.create({
   detail: { fontSize: font.tiny, color: colors.muted, textAlign: 'center', marginTop: space.xs },
   actions: { gap: space.sm },
   note: { fontSize: font.tiny, color: colors.muted, textAlign: 'center', lineHeight: 17 },
+  offlineHead: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingVertical: space.sm },
+  offlineTitle: { fontSize: font.h2, fontWeight: '700', color: colors.ink },
+  offlineBody: { fontSize: font.small, color: colors.inkSoft, marginTop: 2, lineHeight: 20 },
   checking: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, gap: space.md },
   checkingText: { color: colors.muted, fontSize: font.small },
 });

@@ -13,6 +13,8 @@ import { colors, radius, space, font } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import type { BookingView } from '@shared/data/adapter';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
+import { useSavedPasses } from '@/lib/passStore';
+import { listPasses } from '@/lib/savedPasses';
 
 export default function MyTrips() {
   const adapter = useAdapter();
@@ -34,7 +36,11 @@ export default function MyTrips() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedOut]);
 
-  const all = bookings.data ?? [];
+  // Offline or on a slow connection, list the passes saved on this phone.
+  const savedAll = useSavedPasses();
+  const saved = mode === 'connected' && !signedOut && savedAll ? listPasses(savedAll) : [];
+  const fromSaved = !bookings.data && saved.length > 0 && (bookings.loading || !!bookings.error);
+  const all = bookings.data ?? (fromSaved ? saved.map((p) => p.booking) : []);
   const upcoming = all.filter((b) => ['reserved', 'checked_in', 'boarded'].includes(b.status));
   const completed = all.filter((b) => b.status === 'completed');
   const notBoarded = all.filter((b) => b.status === 'missed_pickup' || b.status === 'not_boarded' || b.status === 'no_show');
@@ -48,8 +54,8 @@ export default function MyTrips() {
   );
   const destByTrip = new Map<string, string>();
   const delayByTrip = new Map<string, number>();
-  for (const t of trips.data ?? []) {
-    if (t) destByTrip.set(t.id, DIRECTION_CITIES[t.direction].destination);
+  for (const t of [...(trips.data ?? []), ...saved.map((p) => p.trip)]) {
+    if (t && !destByTrip.has(t.id)) destByTrip.set(t.id, DIRECTION_CITIES[t.direction].destination);
   }
   for (const t of trips.data ?? []) {
     if (t && t.delayMinutes > 0 && t.status !== 'completed' && t.status !== 'cancelled') {
@@ -67,8 +73,16 @@ export default function MyTrips() {
         </View>
       ) : (
         <>
-          {bookings.loading && <Loading />}
-          {bookings.error && <ErrorRow message={bookings.error} onRetry={bookings.reload} />}
+          {bookings.loading && !fromSaved && <Loading />}
+          {bookings.error && !fromSaved && <ErrorRow message={bookings.error} onRetry={bookings.reload} />}
+          {fromSaved && bookings.error && (
+            <Pressable onPress={bookings.reload} accessibilityRole="button" accessibilityHint="Tries to load your trips again" style={styles.savedNote}>
+              <Ionicons name="cloud-offline-outline" size={18} color={colors.inkSoft} />
+              <Text style={styles.savedNoteText}>
+                No connection. These are the boarding passes saved on your phone, and they open without signal. <Text style={styles.savedRetry}>Retry</Text>
+              </Text>
+            </Pressable>
+          )}
           {!bookings.loading && all.length === 0 && (
             <View style={{ gap: space.md }}>
               <EmptyState title="No trips yet">Reserve a seat and your boarding pass will live here.</EmptyState>
@@ -132,6 +146,9 @@ function Group({ title, list, onOpen, muted, delays, dest }: { title: string; li
 }
 
 const styles = StyleSheet.create({
+  savedNote: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
+  savedNoteText: { flex: 1, color: colors.inkSoft, fontSize: font.small },
+  savedRetry: { color: colors.forest700, fontWeight: '700' },
   list: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space.md, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: space.md },
   timeBlock: { width: 58, alignItems: 'flex-start' },

@@ -4,6 +4,7 @@ import type { Href } from 'expo-router';
 import { useAdapter, useAppMode, useDataEpoch } from '../data/AdapterProvider';
 import { useAuth } from '../auth/AuthProvider';
 import { APP_VARIANT } from '../env';
+import { clearSavedPasses } from '../lib/passStore';
 
 // Who is using the app, and therefore which space they get:
 //   passenger            → the passenger app (Home / Trips / Hubs / Account)
@@ -198,6 +199,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (mode === 'connected' && auth.session) {
       await auth.signOut();
+      await clearSavedPasses();
       // A signed-out phone must not keep the person's details: on a shared or
       // borrowed phone the next user would otherwise "continue as" them. Keep only
       // non-personal settings (home city, alert choices).
@@ -208,12 +210,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [mode, auth, stored, persist]);
 
   const startFresh = useCallback(async () => {
+    await clearSavedPasses();
     await AsyncStorage.removeItem(KEY).catch(() => {});
     setStored(DEFAULT);
   }, []);
 
   const deleteAccount = useCallback(async () => {
     if (mode === 'connected' && auth.session) await auth.deleteAccount();
+    await clearSavedPasses();
     await AsyncStorage.removeItem(KEY).catch(() => {});
     setStored(DEFAULT);
   }, [mode, auth]);

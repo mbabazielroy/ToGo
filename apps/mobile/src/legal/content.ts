@@ -45,6 +45,7 @@ export const PRIVACY: LegalDoc = {
         'The camera. Staff use it to scan boarding codes. Images are not saved or uploaded.',
         'Your sign-in session, kept in the phone’s secure storage, and app settings such as your home city.',
         'Trip reminders. If you allow notifications, reminders for your reservations are scheduled on your phone; nothing is sent to us to do this.',
+        'Your upcoming boarding passes, so you can show them at a hub without signal. Each copy is removed 12 hours after pickup, and all of them when you sign out or delete your account.',
       ],
     },
     {
