@@ -13,6 +13,9 @@ export interface LegalSection { heading: string; body: string[] }
 const LEGAL_NAME = (process.env.EXPO_PUBLIC_LEGAL_NAME ?? '').trim();
 const LEGAL_ADDRESS = (process.env.EXPO_PUBLIC_LEGAL_ADDRESS ?? '').trim();
 const CONTACT = (process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? '').trim();
+// Crash reporting is on in builds that set a Sentry key (src/lib/crashReporting.ts).
+// The website's legal pages must be built with the same value as the apps.
+const CRASH_REPORTS = (process.env.EXPO_PUBLIC_SENTRY_DSN ?? '').trim().startsWith('https://');
 
 function whoWeAre(role: string): LegalSection {
   const who = LEGAL_NAME ? `ToGo is provided by ${LEGAL_NAME}${LEGAL_ADDRESS ? `, ${LEGAL_ADDRESS}` : ''}` : 'ToGo is provided by the ToGo operations team';
@@ -25,7 +28,7 @@ export interface LegalDoc { title: string; updated: string; intro: string; secti
 
 export const PRIVACY: LegalDoc = {
   title: 'Privacy policy',
-  updated: '5 November 2026',
+  updated: '6 November 2026',
   intro: 'This explains what ToGo collects, why, and the choices you have. ToGo has no ads, sells no data and does not track you across other apps or websites.',
   sections: [
     whoWeAre('which is responsible for your personal data in ToGo (the data controller)'),
@@ -35,6 +38,9 @@ export const PRIVACY: LegalDoc = {
         'Account: your email address and password (stored only as a secure hash by our hosting provider), your name and, if you add it, your mobile number.',
         'Trips: the departures you reserve, your pickup and drop-off hubs, seats, booking reference, and check-in and boarding status.',
         'Alerts: the in-app messages we show you about your trips (delays, boarding, changes).',
+        ...(CRASH_REPORTS
+          ? ['Crash reports: if the app crashes or hits an error, it sends a report so we can fix it: what went wrong, the app version, and your phone model and system version. Reports do not include your name, email, phone number, boarding code or location, and are not linked to your account.']
+          : []),
         'Staff only: when a driver starts a trip, the ToGo Staff app sends the bus’s location about every 30 seconds while the app is open on the driver’s phone, so passengers can see where the bus is. It stops when the trip ends, the driver signs out or the app is closed. It never runs in the background.',
       ],
     },
@@ -61,6 +67,7 @@ export const PRIVACY: LegalDoc = {
       body: [
         'The bus operator running your trip, for the purposes above.',
         'Our hosting provider (Supabase), which stores the data for us under contract.',
+        ...(CRASH_REPORTS ? ['Our crash-reporting provider (Sentry), which receives the crash reports described above, under contract. Reports are kept for no more than 90 days.'] : []),
         'Authorities, only if the law requires it.',
         'Nobody else. We do not sell personal data or use it for advertising.',
       ],

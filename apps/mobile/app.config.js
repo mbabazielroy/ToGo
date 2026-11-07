@@ -71,6 +71,31 @@ function assertStoreReady(variant) {
   }
 }
 
+// Crash reporting (Sentry) is opt-in per build: set EXPO_PUBLIC_SENTRY_DSN. With
+// it set, the Sentry native SDK is added and the iOS privacy manifest declares
+// crash data (not linked to the person, not used for tracking). Readable stack
+// traces need source maps: set SENTRY_ORG, SENTRY_PROJECT and the secret
+// SENTRY_AUTH_TOKEN; without the token the upload is skipped, not failed.
+function sentry() {
+  const dsn = (process.env.EXPO_PUBLIC_SENTRY_DSN || '').trim();
+  if (!dsn) return null;
+  const upload = !!(process.env.SENTRY_AUTH_TOKEN || '').trim();
+  return {
+    plugin: ['@sentry/react-native/expo', {
+      organization: process.env.SENTRY_ORG || undefined,
+      project: process.env.SENTRY_PROJECT || undefined,
+      url: process.env.SENTRY_URL || 'https://sentry.io/',
+      disableAutoUpload: !upload,
+    }],
+    crashData: {
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeCrashData',
+      NSPrivacyCollectedDataTypeLinked: false,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+    },
+  };
+}
+
 module.exports = ({ config }) => {
   const raw = (process.env.EXPO_PUBLIC_APP_VARIANT || 'passenger').trim().toLowerCase();
   const variant = raw === 'staff' || raw === 'combined' ? raw : 'passenger';
@@ -89,6 +114,18 @@ module.exports = ({ config }) => {
     return p;
   });
 
+  const crash = sentry();
+  if (crash) plugins.push(crash.plugin);
+  const ios = crash
+    ? {
+        ...config.ios,
+        privacyManifests: {
+          ...config.ios.privacyManifests,
+          NSPrivacyCollectedDataTypes: [...config.ios.privacyManifests.NSPrivacyCollectedDataTypes, crash.crashData],
+        },
+      }
+    : config.ios;
+
   const mapsKey = (process.env.GOOGLE_MAPS_ANDROID_API_KEY || '').trim();
   const androidBase = {
     ...config.android,
@@ -105,7 +142,7 @@ module.exports = ({ config }) => {
 
   const projectId = EAS[variant === 'staff' ? 'staff' : 'passenger'];
   const extra = { ...config.extra, appVariant: variant, ...(projectId ? { eas: { projectId } } : {}) };
-  const base = { ...config, ...(EAS.owner ? { owner: EAS.owner } : {}), plugins, android, extra };
+  const base = { ...config, ...(EAS.owner ? { owner: EAS.owner } : {}), plugins, ios, android, extra };
   if (!staff) return base;
 
   // ToGo Staff: own name, bundle id, scheme and icon so both apps can sit side by side.
@@ -116,13 +153,13 @@ module.exports = ({ config }) => {
     scheme: 'togostaff',
     icon: './assets/icon-staff.png',
     ios: {
-      ...config.ios,
+      ...ios,
       bundleIdentifier: 'app.togo.staff',
       // Drivers share the bus position while a trip runs (foreground only).
       privacyManifests: {
-        ...config.ios.privacyManifests,
+        ...ios.privacyManifests,
         NSPrivacyCollectedDataTypes: [
-          ...config.ios.privacyManifests.NSPrivacyCollectedDataTypes,
+          ...ios.privacyManifests.NSPrivacyCollectedDataTypes,
           {
             NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePreciseLocation',
             NSPrivacyCollectedDataTypeLinked: true,

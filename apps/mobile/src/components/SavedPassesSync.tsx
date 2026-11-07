@@ -4,6 +4,7 @@ import { useAdapter, useAppMode } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { savePasses } from '@/lib/passStore';
 import { keepPass } from '@/lib/savedPasses';
+import { reportError } from '@/lib/crashReporting';
 
 /**
  * Keeps the phone's copy of upcoming boarding passes fresh while there is signal,
@@ -33,8 +34,10 @@ export function SavedPassesSync() {
         const tripIds = [...new Set(upcoming.map((b) => b.tripId))];
         const trips = await Promise.all(tripIds.map((id) => adapter.getTrip(id).catch(() => null)));
         if (live) await savePasses(bookings, trips);
-      } catch {
+      } catch (e) {
         // Offline or a server error: keep the passes saved last time.
+        // (Lost connections are not reported; other failures are.)
+        reportError(e, 'saved-passes');
       } finally {
         running = false;
       }

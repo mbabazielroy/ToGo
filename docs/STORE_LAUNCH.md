@@ -62,7 +62,14 @@ rejects demo apps (guideline 2.1), and preview data is fictional.
    ($25 once). Create both apps in App Store Connect and Play Console with the bundle
    IDs above.
 6. **Listing text, review notes and screenshots:** `docs/STORE_LISTING.md`.
-7. **Reviewer accounts.** Make a passenger account and a staff account (assigned to a
+7. **Crash reporting (recommended).** Create a free Sentry account and a React
+   Native project for each app (or one shared project). Set its DSN as the EAS
+   variable `EXPO_PUBLIC_SENTRY_DSN` for both production profiles, and on the web
+   host (the privacy page mentions crash reports only when it is set, so the website
+   and the apps must match). For readable stack traces also set `SENTRY_ORG`,
+   `SENTRY_PROJECT` and the secret `SENTRY_AUTH_TOKEN`. Without the DSN the apps send
+   nothing. Answer the store privacy questions in §4 to match.
+8. **Reviewer accounts.** Make a passenger account and a staff account (assigned to a
    test trip and hub) on production, with departures scheduled during the review
    window. Put the credentials in App Review notes and Play "App access".
 
@@ -109,11 +116,16 @@ Functionality only, not used for tracking:
 - Identifiers: user ID
 - Other data: trip reservations
 - ToGo Staff only, also: precise location (driver, while a trip is running)
+- If crash reporting is on (`EXPO_PUBLIC_SENTRY_DSN` set): Diagnostics → Crash data,
+  **not** linked to the user, App Functionality, not tracking. (The build adds the
+  matching entry to the iOS privacy manifest.)
 
 **Google Play Data safety**: Collected: name, email, phone (optional), user IDs,
 "other app activity" (reservations); Staff app also approximate/precise location. Not
 shared with third parties for their own use; encrypted in transit; users can request
-deletion (in-app, Account → Delete account).
+deletion (in-app, Account → Delete account). If crash reporting is on, also: App info
+and performance → Crash logs and Diagnostics, collected, not shared, for analytics /
+app functionality, processed by Sentry as a service provider.
 
 **Content rating**: no objectionable content → 4+ (Apple) / Everyone (IARC).
 **Category**: Travel (ToGo), Business (ToGo Staff).

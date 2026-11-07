@@ -6,6 +6,7 @@ import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useSession } from '@/session/SessionProvider';
 import { planReminders } from '@/lib/reminders';
+import { reportError } from '@/lib/crashReporting';
 
 // On-device reminders for the passenger's own trips: "check-in is open" (2 h before
 // pickup) and "time to head to your hub" (30 min before). They are scheduled on the
@@ -84,8 +85,9 @@ export function PickupReminders() {
             trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: 'trip-reminders' },
           });
         }
-      } catch {
-        // Reminders are a convenience: never break the app over them.
+      } catch (e) {
+        // Reminders are a convenience: never break the app over them, but report it.
+        reportError(e, 'reminders');
       }
     })();
     return () => { cancelled = true; };

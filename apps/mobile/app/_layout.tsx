@@ -1,3 +1,6 @@
+// Starts crash reporting (release builds with EXPO_PUBLIC_SENTRY_DSN only) before
+// anything else loads, so a crash during start-up is reported too.
+import { reportError } from '@/lib/crashReporting';
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
@@ -43,6 +46,7 @@ function AuthGate() {
  * development builds.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => { reportError(error, 'screen'); }, [error]);
   return (
     <View style={eb.root} accessibilityRole="alert">
       <Text style={eb.title}>Something went wrong</Text>
