@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router';
 import { AppShell } from './components/AppShell';
 import { Home } from './pages/passenger/Home';
 import { Hubs } from './pages/passenger/Hubs';

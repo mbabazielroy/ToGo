@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { Ticket, ChevronRight, Search } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { operatorById, hubById, DIRECTION_LABEL } from '../../lib/lookup';

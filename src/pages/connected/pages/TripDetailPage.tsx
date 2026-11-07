@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router';
 import { ArrowLeft, Wallet, CheckCircle2, XCircle, MapPin, QrCode } from 'lucide-react';
 import { useAdapter } from '../../../data/AdapterProvider';
 import { useToast } from '../../../components/ToastProvider';

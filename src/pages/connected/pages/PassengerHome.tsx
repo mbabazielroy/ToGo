@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { ArrowLeftRight, Search, Clock, Users, ChevronRight } from 'lucide-react';
 import { useAdapter } from '../../../data/AdapterProvider';
 import { useAsync } from '../hooks';

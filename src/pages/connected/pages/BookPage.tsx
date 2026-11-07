@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router';
 import { ArrowLeft, MapPin, Flag, Wallet, Loader2 } from 'lucide-react';
 import { useAdapter } from '../../../data/AdapterProvider';
 import { useToast } from '../../../components/ToastProvider';

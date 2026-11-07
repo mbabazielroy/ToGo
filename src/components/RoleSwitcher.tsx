@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, User, ClipboardCheck, Bus, LayoutDashboard, Info } from 'lucide-react';
 import { useStore } from '../state/store';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import type { DemoRole } from '../types';
 
 const ROLES: { role: DemoRole; label: string; icon: typeof User; path: string }[] = [

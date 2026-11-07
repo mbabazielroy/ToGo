@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router';
 import { ArrowLeft, MapPin, Flag, Wallet, Check, Users, ShieldCheck } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { useSearch } from '../../state/search';

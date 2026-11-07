@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { ArrowLeft, Bus, Clock, MapPin, Users, SearchX } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { useSearch } from '../../state/search';

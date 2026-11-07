@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { UserCircle, Bell, RotateCcw, Info, Github, Eye, ChevronRight } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { useToast } from '../../components/ToastProvider';

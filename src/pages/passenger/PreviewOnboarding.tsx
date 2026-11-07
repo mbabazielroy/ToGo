@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Bus, Mail, Lock, User as UserIcon, ArrowLeft, Eye, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 type Tab = 'signin' | 'signup' | 'reset';

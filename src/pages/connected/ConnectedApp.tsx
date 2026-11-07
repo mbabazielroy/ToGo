@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router';
 import { useAuth } from '../../auth/AuthProvider';
 import { AuthScreen } from './AuthScreen';
 import { ConnectedShell } from './ConnectedShell';

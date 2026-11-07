@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router';
 import { Bus, Home, Bell, UserCircle, ClipboardCheck, LayoutDashboard, Shield, Navigation } from 'lucide-react';
 import { useAuth } from '../../auth/AuthProvider';
 

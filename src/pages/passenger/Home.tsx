@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { ArrowRight, ArrowLeftRight, CalendarDays, Users, MapPin, Search, Ticket } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { useSearch } from '../../state/search';

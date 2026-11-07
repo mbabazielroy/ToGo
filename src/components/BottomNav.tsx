@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 import { Home, MapPin, Ticket, UserCircle } from 'lucide-react';
 
 const ITEMS = [

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Bus, Loader2, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../../auth/AuthProvider';
 import { humanError } from '../hooks';

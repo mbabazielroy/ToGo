@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { MapPin, ChevronRight, ShieldQuestion } from 'lucide-react';
 import { useStore } from '../../state/store';
 import { DemoNote, SectionHeading } from '../../components/ui';
