@@ -44,12 +44,12 @@ on a physical phone yet.
 
 - **M1. Delay alerts by push.** Trip reminders are local notifications; delays and changes only show inside the app. Add push for those (server sender plus device tokens).
 - **M2. End-to-end tests.** Unit and database tests are strong, but no test drives the real screens. Add a few phone UI tests (for example with Maestro) for onboarding → reserve → boarding pass, and driver → conductor.
-- ~~**M3. Website routing library.**~~ **Done:** moved to `react-router` 7; nothing the website ships has a known advisory (`npm audit --omit=dev`). A route smoke test checks every page renders. The remaining advisories are in build and test tools only (Vite 5, Vitest 2, typescript-eslint); upgrading those is a separate change. Original finding: The web app uses `react-router-dom` 6.30.6, which has moderate advisories (open redirect, SSR deserialization). No 6.x release fixes them, so the fix is moving to version 7. This only affects the website, not the phone apps.
+- ~~**M3. Website routing library.**~~ **Done:** moved to `react-router` 7; nothing the website ships has a known advisory (`npm audit --omit=dev`). A route smoke test checks every page renders. Build and test tools then moved to Vite 8, Vitest 5 (website and phone app) and a patched `minimatch` for typescript-eslint, so the website's `npm audit` is clean (Node 22.12 or newer is now required). Original finding: The web app uses `react-router-dom` 6.30.6, which has moderate advisories (open redirect, SSR deserialization). No 6.x release fixes them, so the fix is moving to version 7. This only affects the website, not the phone apps.
 - **M4. Separate code per app.** The passenger app still includes the crew and operations screens in its bundle. They're unreachable and the server enforces access, but splitting them out makes the app smaller and avoids shipping staff tools to the public.
 
 ### Low
 
-- **L1. Build-tool advisories.** `glob` and `minimatch` inside the Expo command-line tools have moderate advisories. They aren't part of the installed apps; pick up the fix with the next Expo patch (`npx expo install --fix`).
+- **L1. Build-tool advisories.** (Update: the test runner's critical ones are fixed by Vitest 5. 9 moderate ones remain inside Expo's and Sentry's build tools.) `glob` and `minimatch` inside the Expo command-line tools have moderate advisories. They aren't part of the installed apps; pick up the fix with the next Expo patch (`npx expo install --fix`).
 - **L2. Silent failures.** 21 places deliberately ignore an error (reminders, haptics, best-effort profile sync). That's fine today; once H3 is in, report them there instead of discarding them.
 - **L3. Lint configuration.** ESLint warns that the configuration format is old. Move to the flat config when convenient.
 
