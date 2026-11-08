@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -106,7 +106,7 @@ jobs:
         run: |
           [ -n "$EXPO_TOKEN" ] || { echo "::error::Add the EXPO_TOKEN repository secret (expo.dev → Access tokens)"; exit 1; }
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
