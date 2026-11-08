@@ -6,6 +6,8 @@ import { useAppMode } from '@/data/AdapterProvider';
 import { useSession, ROLE_LABEL, homeFor, type Identity } from '@/session/SessionProvider';
 import { colors, space, font, SCREEN, control, radius } from '@/theme';
 import { ask } from '@/lib/dialog';
+import { useAuth } from '@/auth/AuthProvider';
+import { AccountSecurity } from '@/auth/AccountSecurity';
 
 const ROLE_GUIDE: Record<string, string[]> = {
   driver: [
@@ -29,6 +31,7 @@ export default function CrewProfile() {
   const router = useRouter();
   const mode = useAppMode();
   const { identity, available, signInAs, signOut } = useSession();
+  const { session } = useAuth();
   if (!identity) return null;
   const others = available.filter((a) => !(a.role === identity.role && a.staffId === identity.staffId));
 
@@ -85,6 +88,8 @@ export default function CrewProfile() {
         {mode === 'demo' && (
           <Banner tone="info" title="Preview workspace">Actions here change the simulated trips on this device. Passengers in the preview see them straight away.</Banner>
         )}
+
+        {mode === 'connected' && session && <AccountSecurity name={identity.name} />}
 
         <View>
           <SectionHeading title="About" />

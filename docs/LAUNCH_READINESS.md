@@ -78,7 +78,7 @@ a real Supabase project hasn't been tested. No physical device has been tested.
 ## Blockers before store review (you)
 
 1. **Company details:** set `EXPO_PUBLIC_LEGAL_NAME`, `EXPO_PUBLIC_LEGAL_ADDRESS` and `EXPO_PUBLIC_SUPPORT_EMAIL` in EAS (production) and on the web host. Have the policy and terms reviewed against Uganda's Data Protection and Privacy Act 2019.
-2. **Hosting** (excluded from this pass): deploy the web app so the `/legal/*` pages are live.
+2. **Hosting** (excluded from this pass): deploy the website so the info page and the `/legal/*` pages are live.
 3. **Supabase production** (excluded): project, migrations, redirect URLs, and the EAS variables.
 4. **Apple and Google accounts** (excluded): then add the App Store Connect API key and the Play service-account key with `eas credentials`, and upload the first Android build by hand.
 5. **`EXPO_TOKEN`:** create it at expo.dev → Access tokens and add it as a GitHub Actions secret.

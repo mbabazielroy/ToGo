@@ -38,6 +38,7 @@ export const PRIVACY: LegalDoc = {
         'Account: your email address and password (stored only as a secure hash by our hosting provider), your name and, if you add it, your mobile number.',
         'Trips: the departures you reserve, your pickup and drop-off hubs, seats, booking reference, and check-in and boarding status.',
         'Alerts: the in-app messages we show you about your trips (delays, boarding, changes).',
+        'Push alerts: if you allow notifications and keep “Delays and changes” on, a push address for your phone, so we can tell you when your bus sets off, or is late, rescheduled or cancelled. It is removed when you sign out, turn the alerts off or delete your account.',
         ...(CRASH_REPORTS
           ? ['Crash reports: if the app crashes or hits an error, it sends a report so we can fix it: what went wrong, the app version, and your phone model and system version. Reports do not include your name, email, phone number, boarding code or location, and are not linked to your account.']
           : []),
@@ -47,7 +48,7 @@ export const PRIVACY: LegalDoc = {
     {
       heading: 'What stays on your phone',
       body: [
-        'Your own location. If you allow it, the map uses it to show where you are and which hub is nearest. It is not sent to ToGo.',
+        'Your own location. If you allow it, the app uses it while a map or your pass is open, to show where you are, which hub is nearest and how far you are from your pickup. It stops when you leave that screen, never runs in the background, and is not sent to ToGo.',
         'The camera. Staff use it to scan boarding codes. Images are not saved or uploaded.',
         'Your sign-in session, kept in the phone’s secure storage, and app settings such as your home city.',
         'Trip reminders. If you allow notifications, reminders for your reservations are scheduled on your phone; nothing is sent to us to do this.',
@@ -67,6 +68,7 @@ export const PRIVACY: LegalDoc = {
       body: [
         'The bus operator running your trip, for the purposes above.',
         'Our hosting provider (Supabase), which stores the data for us under contract.',
+        'Expo, and Apple or Google, which deliver push alerts to your phone. They receive the alert text and your phone’s push address, nothing else.',
         ...(CRASH_REPORTS ? ['Our crash-reporting provider (Sentry), which receives the crash reports described above, under contract. Reports are kept for no more than 90 days.'] : []),
         'Authorities, only if the law requires it.',
         'Nobody else. We do not sell personal data or use it for advertising.',

@@ -48,10 +48,16 @@ export function PickupReminders() {
   // Tapping a reminder opens that boarding pass.
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const sub = Notifications.addNotificationResponseReceivedListener((r) => {
-      const bookingId = r.notification.request.content.data?.bookingId;
+    // Reminders and push alerts both carry the booking id.
+    const open = (r: Notifications.NotificationResponse | null) => {
+      const bookingId = r?.notification.request.content.data?.bookingId;
       if (typeof bookingId === 'string') router.push(`/trip/${bookingId}`);
-    });
+    };
+    // An alert tapped while the app was closed opened it: go to that pass too.
+    Notifications.getLastNotificationResponseAsync().then((r) => {
+      if (r) { open(r); Notifications.clearLastNotificationResponseAsync?.().catch(() => {}); }
+    }).catch(() => {});
+    const sub = Notifications.addNotificationResponseReceivedListener(open);
     return () => sub.remove();
   }, [router]);
 

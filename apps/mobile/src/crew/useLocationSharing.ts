@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useAdapter, useAppMode } from '@/data/AdapterProvider';
+import { reportError, reported } from '../lib/crashReporting';
 
 export type SharingState =
   | { kind: 'simulated' }
@@ -44,7 +45,12 @@ export function useLocationSharing(tripId: string | undefined, running: boolean)
             .then(() => { if (!cancelled) setState({ kind: 'sharing', lastSentAt: new Date(), accuracyM: accuracy }); })
             .catch((e: unknown) => { if (!cancelled) setState({ kind: 'error', message: (e as Error)?.message ?? 'Could not send location' }); });
         },
-      ).catch(() => null);
+      ).catch((e: unknown) => {
+        // Tracking didn't start: say so instead of showing "Sharing" with nothing sent.
+        reportError(e, 'location-start');
+        if (!cancelled) setState({ kind: 'error', message: 'Couldn’t start location' });
+        return null;
+      });
       if (cancelled) sub.current?.remove();
     })();
     return () => { cancelled = true; sub.current?.remove(); sub.current = null; };
@@ -54,7 +60,8 @@ export function useLocationSharing(tripId: string | undefined, running: boolean)
   const awake = state.kind === 'sharing' || state.kind === 'error';
   useEffect(() => {
     if (!awake) return;
-    activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(() => {});
+    // If the screen can't be kept on, the phone may sleep and stop sharing: report it.
+    activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch(reported('keep-awake'));
     return () => { deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {}); };
   }, [awake]);
 

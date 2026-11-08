@@ -253,7 +253,8 @@ export interface DataAdapter {
 
   // Realtime (no-op in demo)
   subscribeMyBookings(onChange: () => void): Subscription;
-  subscribeTrip(tripId: string, onChange: () => void): Subscription;
+  /** Changes to a trip and its bookings; `onLocation` fires for each new bus GPS fix. */
+  subscribeTrip(tripId: string, onChange: () => void, onLocation?: () => void): Subscription;
 }
 
 /** Error type carrying a stable machine code parsed from the backend message. */

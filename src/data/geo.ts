@@ -27,6 +27,33 @@ export const CITY_CENTRE: Record<string, LatLng> = {
 
 export const CORRIDOR_REGION = { latitude: -0.15, longitude: 31.6, latitudeDelta: 1.35, longitudeDelta: 2.4 };
 
+/** Straight-line distance in kilometres (haversine). */
+export function distanceKm(a: LatLng, b: LatLng): number {
+  const R = 6371, toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude), dLng = toRad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** "850 m" under a kilometre, "3.2 km" up to 10 km, then whole kilometres. */
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.max(10, Math.round((km * 1000) / 10) * 10)} m`;
+  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+}
+
+/**
+ * How old a bus's GPS fix may be and still be drawn as its position. The driver's
+ * phone sends a fix every ~30 s while moving; a bus stuck in traffic may send
+ * none (iOS reports on distance), so allow a few minutes before falling back to
+ * the schedule estimate.
+ */
+export const LIVE_FIX_MAX_AGE_MS = 3 * 60000;
+
+/** Whether a fix received at `receivedAt` is recent enough to show as live. */
+export function isFreshFix(fix: { receivedAt: string } | null | undefined, now: Date): boolean {
+  return !!fix && now.getTime() - new Date(fix.receivedAt).getTime() < LIVE_FIX_MAX_AGE_MS;
+}
+
 export function hubPoint(h: Pick<HubView, 'lat' | 'lng'> | undefined): LatLng | null {
   if (!h || h.lat == null || h.lng == null) return null;
   return { latitude: h.lat, longitude: h.lng };

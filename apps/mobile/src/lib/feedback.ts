@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 export const haptics = {
   success() {
     if (Platform.OS === 'web') return;
+    // Best effort: vibration is optional (unsupported devices, reduced haptics).
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   },
   warning() {

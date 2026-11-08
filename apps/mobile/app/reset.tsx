@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card, PrimaryButton, ErrorRow } from '@/components/ui';
 import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
-import { humanError } from '@/hooks/useAsync';
+import { PasswordField } from '@/components/PasswordField';
+import { authErrorMessage, newPasswordProblem } from '@shared/lib/authRules';
 import { colors, radius, space, font } from '@/theme';
 
-// Reached after a password-recovery deep link sets recoveryMode (see
-// useAuthDeepLinks). If there is no recovery session the form explains the link is
-// invalid/expired. This path is UNVERIFIED without a dev build + configured redirect
-// URLs (see docs/MOBILE.md).
+// Reached after a password-reset link opened on this phone sets recoveryMode (see
+// useAuthDeepLinks), or when a reset code worked but the new password was refused.
+// Without a recovery session the form explains the link is invalid or expired.
+// Setting the password signs every other device out. The link path is unverified
+// without a development build and the redirect URLs set up (docs/MOBILE.md).
 export default function ResetScreen() {
-  const { session, updatePassword, clearRecoveryMode } = useAuth();
+  const { session, user, updatePassword, clearRecoveryMode } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const [pw, setPw] = useState('');
@@ -21,10 +23,11 @@ export default function ResetScreen() {
   const [err, setErr] = useState<string | null>(null);
 
   async function submit() {
-    if (pw.length < 8) { setErr('Use at least 8 characters for your password.'); return; }
+    const problem = newPasswordProblem(pw, { email: user?.email });
+    if (problem) { setErr(problem); return; }
     setErr(null); setBusy(true);
-    try { await updatePassword(pw); toast('Password updated.', 'ok'); router.replace('/'); }
-    catch (e) { setErr(humanError(e)); setBusy(false); }
+    try { await updatePassword(pw); toast('Password changed. Other devices were signed out.', 'ok'); router.replace('/'); }
+    catch (e) { setErr(authErrorMessage(e)); setBusy(false); }
   }
 
   return (
@@ -33,10 +36,9 @@ export default function ResetScreen() {
         <Text style={styles.title}>Set a new password</Text>
       </View>
       <Card style={{ gap: 12 }}>
-        {!session && <View style={styles.warn}><Text style={styles.warnText}>This reset link is invalid, has expired, or was asked for on a different phone. Request a new one from the sign-in screen on this phone.</Text></View>}
-        {err && <ErrorRow message={err} onRetry={submit} />}
-        <View><Text style={styles.label}>New password</Text>
-          <TextInput style={styles.input} value={pw} onChangeText={setPw} secureTextEntry textContentType="newPassword" autoComplete="new-password" placeholder="At least 8 characters" placeholderTextColor={colors.muted} accessibilityLabel="New password" /></View>
+        {!session && <View style={styles.warn}><Text style={styles.warnText}>This reset link has expired, was already used, or was opened on a different phone from the one that asked for it. On the sign-in screen, tap “Forgot your password?” and use the code from the new email instead: it works on any device.</Text></View>}
+        <PasswordField label="New password" value={pw} onChange={setPw} isNew context={{ email: user?.email }} onSubmit={submit} />
+        {err && <ErrorRow message={err} />}
         <PrimaryButton title="Update password" onPress={submit} loading={busy} disabled={!session} />
         <Pressable onPress={() => { clearRecoveryMode(); router.replace('/'); }} accessibilityRole="button" hitSlop={8}><Text style={styles.back}>Back to sign in</Text></Pressable>
       </Card>
@@ -46,8 +48,6 @@ export default function ResetScreen() {
 
 const styles = StyleSheet.create({
   title: { fontSize: font.h1, fontWeight: '700', color: colors.ink },
-  label: { fontSize: font.tiny, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, color: colors.forest600, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
   warn: { backgroundColor: colors.amber100, borderRadius: radius.md, padding: space.md },
   warnText: { color: colors.amber800, fontSize: font.small },
   back: { textAlign: 'center', color: colors.forest500, fontWeight: '600', fontSize: font.small },

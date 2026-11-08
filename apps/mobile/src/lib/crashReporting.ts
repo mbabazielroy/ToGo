@@ -41,3 +41,9 @@ export function reportError(error: unknown, where: string): void {
   if (NETWORK.test(message)) return;
   Sentry.captureException(error, { tags: { where } });
 }
+
+/** A .catch() handler for best-effort work: the app carries on, but the failure
+ *  is reported (e.g. `.catch(reported('save-settings'))`). */
+export function reported(where: string): (error: unknown) => void {
+  return (error) => reportError(error, where);
+}

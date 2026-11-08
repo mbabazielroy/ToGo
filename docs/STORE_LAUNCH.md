@@ -45,16 +45,18 @@ rejects demo apps (guideline 2.1), and preview data is fictional.
    section, and store builds refuse to build without them. Have a lawyer review both documents
    against Uganda's Data Protection and Privacy Act 2019. Register with the Personal
    Data Protection Office if required.
-2. **Host the policies.** Deploy the web app (Vercel, `vercel.json`) with
+2. **Host the website and policies.** Deploy the website (Vercel, `vercel.json`) with
    `EXPO_PUBLIC_SUPPORT_EMAIL` set; it serves `/legal/privacy.html`, `/legal/terms.html`
    and `/legal/delete-account.html`. Use those as the store privacy URL and the Play
    "Delete account" URL, and set `EXPO_PUBLIC_PRIVACY_URL`, `EXPO_PUBLIC_TERMS_URL`
    and `EXPO_PUBLIC_SUPPORT_EMAIL` for the app builds.
 3. **Supabase.** Create the production project, run every migration in
-   `supabase/migrations` in order (including `0018` and `0019`), and set
+   `supabase/migrations` in order (through `0020`), and set
    `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` as EAS environment
    variables for the `production` and `production-staff` profiles. Set the auth
-   redirect URLs to `togo://` and `togostaff://`.
+   redirect URLs to `togo://**`, `togostaff://**` and `‹website›/console/auth/reset`.
+   Set up push alerts (function, webhook, Firebase `GOOGLE_SERVICES_JSON` for
+   Android): `docs/BACKEND.md` → Push alerts.
 4. **Google Maps key** for Android: create one in Google Cloud, restrict it to the
    two package names and their signing SHA-1, and add it as the EAS secret
    `GOOGLE_MAPS_ANDROID_API_KEY`.
@@ -116,12 +118,16 @@ Functionality only, not used for tracking:
 - Identifiers: user ID
 - Other data: trip reservations
 - ToGo Staff only, also: precise location (driver, while a trip is running)
+- ToGo, for push alerts: Identifiers → Device ID (the push token), linked to the
+  user, App Functionality, not tracking. (Apple doesn't require push tokens to be
+  declared in every case; declaring them is the cautious choice.)
 - If crash reporting is on (`EXPO_PUBLIC_SENTRY_DSN` set): Diagnostics → Crash data,
   **not** linked to the user, App Functionality, not tracking. (The build adds the
   matching entry to the iOS privacy manifest.)
 
 **Google Play Data safety**: Collected: name, email, phone (optional), user IDs,
-"other app activity" (reservations); Staff app also approximate/precise location. Not
+"other app activity" (reservations), "Device or other IDs" (ToGo's push token, for
+app functionality); Staff app also approximate/precise location. Not
 shared with third parties for their own use; encrypted in transit; users can request
 deletion (in-app, Account → Delete account). If crash reporting is on, also: App info
 and performance → Crash logs and Diagnostics, collected, not shared, for analytics /
@@ -139,10 +145,15 @@ listing with a reviewer account. On Google Play, use a closed testing track or
 ## 5. Device test before submitting (real phones, production backend)
 
 - [ ] Fresh install → welcome → onboarding → privacy link opens → Start travelling
-- [ ] Create account, confirm email, sign in; reset password through the email link
+- [ ] Create account and confirm with the 8-digit code; sign in
+- [ ] Forgotten password: reset with the code read on another device, then with the link on the same phone; the other phone is signed out and a "password changed" email arrives
+- [ ] Account → Security: change password (wrong current password refused); Sign out on all devices
+- [ ] iOS offers to save the password and fills the emailed code from Mail
 - [ ] Reserve, view boarding pass; check-in shows "opens at …" until 2 h before pickup
 - [ ] Allow notifications: "Check-in is open" and "Time to head to …" reminders arrive and open the pass; cancelling removes them
-- [ ] Driver starts the trip, location sharing turns on; passenger map shows the bus
+- [ ] Driver starts the trip, location sharing turns on; the passenger gets "Your bus is on its way", the pass says the bus is sharing its position, and the bus moves on the map within seconds of each update
+- [ ] Walk towards the pickup hub with the pass open: the blue dot follows and "You're … from …" counts down; leave the screen and the location arrow in the status bar goes away
+- [ ] With location not yet allowed, the pass shows a button and asks only when it's tapped
 - [ ] Conductor scans the QR (camera permission prompt), confirms boarding
 - [ ] Attendant checks in by reference
 - [ ] Delay and cancellation reach the passenger's alerts
@@ -154,6 +165,13 @@ listing with a reviewer account. On Google Play, use a closed testing track or
 
 ## 6. Known limits at launch
 
-- Trip reminders (check-in open, time to leave) are local notifications on the phone. Delay and change alerts are in-app only until push is added.
+- Trip reminders (check-in open, time to leave) are local notifications on the phone. "On its way", delay and change alerts are pushed once the push function and webhook are set up (`docs/BACKEND.md`).
+- The passenger's own position is used only while a map or their pass is open, and stays on the phone.
+- The Live map shows real GPS for the passenger's own bus only; other buses are placed from the timetable (passengers can only read GPS for trips they're booked on).
 - Location sharing runs while ToGo Staff is open (any tab), with the screen kept awake; it pauses if the app is closed or backgrounded.
 - Payment is cash to the conductor; the app takes no payments.
+
+## After the apps are published
+
+Set `EXPO_PUBLIC_APP_STORE_URL` and `EXPO_PUBLIC_PLAY_STORE_URL` on the web host and
+redeploy: the website's "Coming soon" buttons become download links.

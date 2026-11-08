@@ -1,67 +1,178 @@
-# ToGo app audit
+# ToGo audit
 
-_6 November 2026 · ToGo 1.0.0 and ToGo Staff 1.0.0 · branch `claude/togo-bus-terminal-0o4g26`_
+_Second pass, 6 November 2026 · ToGo 1.0.0, ToGo Staff 1.0.0 and the website · branch `claude/togo-bus-terminal-0o4g26`_
 
 ## Summary
 
-The apps are in good shape for a first release. Store requirements are met, the
-database rules are tested against real Postgres in CI, and there are no committed
-secrets or high-severity dependency problems. The biggest gaps are about the real
-world rather than the code. A boarding pass needs a network connection to open. The
-sign-in links need hardening before real accounts exist. And nothing has been tested
-on a physical phone yet.
+Every code item from the first audit is done except H4, testing on real phones,
+which needs you. Both projects now report no known vulnerabilities. End-to-end tests
+drive the real screens on every push. Each app ships only its own screens.
+
+The website is now a public information page about the app, with the operations
+console kept at `/console` for staff.
+
+What's left is mostly outside the code:
+- Testing on real phones.
+- Setting up the production Supabase project, the push alerts and the store accounts.
+- Trying the parts that need those against real services: sign-in emails, push
+  alerts and the console.
 
 | Area | Rating | Notes |
 |---|---|---|
-| App Store / Play policy | Good | Done in earlier passes; see `docs/STORE_LAUNCH.md` |
-| Security | Good, one fix to make | Server rules tested in CI; sign-in links accept tokens from any link (see H2) |
-| Privacy | Good | No tracking or ads; sign-out now clears personal details; in-app deletion |
-| Reliability | Fair | Error screens and retries exist; no offline boarding pass (H1); no crash reporting (H3) |
-| Accessibility | Good, needs a device check | Buttons labelled; large-text and screen-reader passes still to do on a phone |
-| Performance | Good | About 5 MB JavaScript bundle per app; images trimmed in this pass |
-| Code health | Good | Typecheck and lint clean, 76 unit tests plus the database suites, CI on every push |
+| App Store / Play policy | Good | Privacy policy and store answers now cover push alerts and crash reports |
+| Security | Good | Accounts reviewed against NIST SP 800-63B and OWASP ASVS (see below); PKCE sign-in links; push tokens locked to their owner and tested; push function checks a shared secret; website security headers. Two-factor sign-in for staff is still to do (N5) |
+| Privacy | Good | Crash reports stripped of personal data; push tokens removed on sign-out and account deletion; no tracking or ads |
+| Reliability | Good | Offline boarding pass, crash reporting, failures that matter are now reported |
+| Accessibility | Good, needs a device check | Screen-reader roles in place; large text and VoiceOver/TalkBack still to try on a phone |
+| Performance | Good | Each app is 170–260 KB smaller without the other app's screens; the info page loads about 18 KB of its own code |
+| Code health | Good | ESLint 10, Vite 8, Vitest 5; 86 + 23 unit tests, 12 end-to-end tests and the database suites in CI |
+| Dependencies | Good | `npm audit` finds 0 vulnerabilities in both the website and the phone app |
 
-## Fixed in this audit
+## First audit: status
+
+| Item | Status | What was done |
+|---|---|---|
+| H1. Boarding pass offline | Done | Upcoming passes are saved on the phone and shown, marked as saved, on the pass, on My trips and on the no-connection screen |
+| H2. Sign-in links | Done | PKCE flow in the apps and the console; links carrying tokens are ignored |
+| H3. Crash reporting | Done, needs your Sentry key | Sentry in release builds, personal data stripped first; privacy policy and store answers updated |
+| H4. Device testing | **Open: needs you** | Checklist in `docs/STORE_LAUNCH.md` §5 |
+| M1. Push alerts for delays | Done, needs setup | Delays, cancellations, schedule changes and incidents are pushed; see "Push alerts" in `docs/BACKEND.md` |
+| M2. End-to-end tests | Done | Playwright runs the real screens (web build, preview mode) for both apps and a full passenger-to-conductor journey; CI job `e2e` |
+| M3. Website routing library | Done, then removed | Upgraded to React Router 7; the console still uses it, and the info page needs none |
+| M4. Separate code per app | Done | The bundler leaves the other app's screen folders out (`metro.config.js`) |
+| L1. Build-tool advisories | Done | Patched `glob`, `minimatch` and `uuid` via npm overrides; Expo Doctor, fingerprints and release exports checked |
+| L2. Silent failures | Done | Failed saves, profile syncs, keep-awake and location start are reported; harmless ones (vibration, links) stay quiet |
+| L3. Lint configuration | Done | ESLint 10 with the flat config in both projects |
+
+## Fixed in this pass
 
 | Finding | Fix |
 |---|---|
-| A screen that crashed while drawing would leave a blank or red screen | App-wide error screen with **Try again**; technical detail only in development builds (`app/_layout.tsx`) |
-| Six small buttons weren't announced as buttons to VoiceOver or TalkBack: the sign-in tabs, "Forgot your password?", "Back to sign in", "Back" and "Mark all read" on Notifications, and "Clear search" | Added roles, selected state for the tabs, and larger tap areas |
-| Password reset accepted 6 characters while sign-up requires 8 | Both require 8; the reset field offers the phone's password suggestion |
-| Raw database text, such as a constraint message, could be shown to users | Uncoded server errors now show "Something went wrong. Please try again." outside development. Coded messages, sign-in messages and network messages are unchanged |
-| The in-app logo (370 KB) and splash images (1.2 MB) were heavier than needed | Logo at 384 px, splash at 640 px: about 1 MB less in ToGo and 0.7 MB less in ToGo Staff |
+| The website was a second copy of the booking app | Replaced with an information page: what ToGo does, how it works, features, a section for operators, FAQ, store buttons (showing "Coming soon" until the links are set) and the legal pages |
+| The operations console only existed inside that web app | Kept at `/console`, staff sign-in only (no public sign-up), operator and admin tools only, marked `noindex` |
+| If location tracking failed to start, the driver screen still said "Sharing bus location" | It now shows "Couldn't start location" and the failure is reported |
+| A push tapped while the app was closed didn't open the boarding pass | The app now opens the pass for alerts tapped from a closed app |
+| The console's password reset accepted 6 characters | 8, the same as the apps |
+| The console told operators reservations were "demo" | Rewritten for real use |
+| The website's Docker image used Node 20 and had no `/console` routing | Node 22, routing for `/console`, security headers |
+
+## Added after this pass: live location
+
+| Finding | Change |
+|---|---|
+| The passenger's dot was one reading, taken only when they tapped "Find my nearest hub", and only on the Live map | The dot follows them while a map or their pass is open, on the Live map, the pass and the hub screen. It stops when they leave the screen or the app; nothing runs in the background and the position isn't sent anywhere |
+| Nothing told a passenger how far they were from their pickup | The pass and hub screen show "You're 850 m from Nakawa Green Hub", updating as they walk, and work without a connection. If location isn't allowed yet, there's a button rather than a permission prompt on opening the screen |
+| A new bus GPS fix reached the passenger only on the next 30-second refresh | The pass and Live map now receive each fix as it's stored (realtime), so the bus moves within seconds |
+| The pass and the Live map disagreed on when a bus fix was too old (2 vs 5 minutes) | One rule, 3 minutes, for both |
+| Passengers weren't told when their bus set off | "Your bus is on its way" (pickup hub and expected time) when a trip first starts, however it's started; pushed to the phone, once per booking (`0022_trip_started.sql`). The pass then offers "Track the bus live" |
+
+## Added after this pass: accounts and sign-in
+
+Reviewed sign-up, sign-in, password recovery and sessions in both apps and the
+console against NIST SP 800-63B (passwords) and OWASP ASVS (authentication and
+sessions).
+
+Already sound and kept:
+- Email links are PKCE: they work only where they were asked for, so a forwarded or
+  crafted link can't sign someone in.
+- Phone sessions are stored in the Keychain or Keystore.
+- Wrong email and wrong password get the same message, and "forgot password" never
+  says whether an account exists.
+- Staff accounts can't be created in the staff app or the console.
+
+| Finding | Change |
+|---|---|
+| The server accepted 6-character passwords (only the apps asked for 8), and anything at all was accepted if it was long enough | Server minimum 8 (`config.toml`). The apps and console refuse common passwords and ones built from the person's email or name, show why as they type, with a strength meter and show/hide button, and allow pasting and password managers. Leaked-password protection listed for production |
+| Email confirmation was off | On. Sign-up ends with an 8-digit code from the email; "Send a new code" waits 60 s between emails |
+| A reset link only worked on the phone that asked for it, and had never been tried on a device | The reset email carries an 8-digit code that works on any device; the code and new password are entered on one screen. Codes and links last 30 minutes and work once |
+| Resetting or changing a password left every other session signed in | All other sessions are signed out, and the owner is emailed "your password was changed" |
+| Changing the password in Account needed no current password: anyone holding an unlocked phone could take over the account | The current password is checked first, and the server requires a recent sign-in (`secure_password_change`). Staff can now change their password in the crew profile too |
+| Sign out on a phone signed the person out everywhere, including the console | Sign out ends this device only; "Sign out on all devices" is in Account → Security |
+| The console stayed signed in indefinitely | Signs out after 30 minutes without activity, and says so |
+| Supabase error text was shown as it came | Every auth error has a plain message (`src/lib/authRules.ts`), none of which reveals whether an account exists |
+| Emails were Supabase's defaults | ToGo templates with the code and link, an expiry note and a "we never ask for this code" line, plus "password changed" and "email changed" notices (`supabase/templates/`) |
+| `npm run backend:up` failed on the current Supabase CLI (3.0): `[inbucket]` and PostgreSQL 16 are no longer accepted | `[local_smtp]` and PostgreSQL 17; the CLI now reads the config and every template |
 
 ## Recommended next
 
-### High priority (before or right after launch)
+### High
 
-- ~~**H1. Boarding pass offline.**~~ **Done:** upcoming passes are saved on the phone (`src/lib/savedPasses.ts`, `src/lib/passStore.ts`) and shown, marked as saved, on the boarding pass, on My trips and on the no-connection screen. Original finding: In connected mode the boarding pass loads from the server each time. Hubs on the corridor can have weak signal, and a passenger who can't open their pass at the door is the worst failure this app can have. Fix: keep the latest copy of each upcoming booking on the phone and show it, marked "saved", when offline.
-- ~~**H2. Harden the sign-in links.**~~ **Done:** the phone app and website use Supabase's PKCE flow; the phone accepts only `?code=` links (`src/auth/authLink.ts`), and token links are ignored. Still to test on a device with a real project. Original finding: The email-link handler accepts a session token from any incoming `togo://` link. A crafted link could sign someone into another person's account (login CSRF). Fix: switch Supabase to the PKCE flow and accept only `?code=` links, which only work on the phone that asked for them. Test on a device, because email links don't work in Expo Go.
-- ~~**H3. Crash reporting.**~~ **Done (needs your Sentry account):** Sentry is built in and turns on in release builds that set `EXPO_PUBLIC_SENTRY_DSN`. Reports are stripped of personal data first (`src/lib/scrub.ts`); the privacy policy and store answers cover it. Original finding: Nothing reports crashes from real phones today. Add a crash reporter such as Sentry with personal data stripped, and mention it in the privacy policy and the store privacy answers.
-- **H4. Device testing.** Run the checklist in `docs/STORE_LAUNCH.md` §5 on an iPhone and an Android phone. Include the largest text size and VoiceOver/TalkBack, which a browser can't check.
+- **H4. Device testing** (from the first audit). Install both store builds on an
+  iPhone and an Android phone and run `docs/STORE_LAUNCH.md` §5. Add to it:
+  - a push alert arriving and opening the right pass;
+  - the offline boarding pass with airplane mode on;
+  - a password-reset email opened on the same phone;
+  - the largest text size, and VoiceOver or TalkBack.
+- **N1. Try everything that needs real services once the project exists.** That is:
+  - sign-in and reset emails;
+  - the push function and its webhook;
+  - crash reports reaching Sentry;
+  - the console against production data.
+
+  None of these can be run without the accounts.
 
 ### Medium
 
-- **M1. Delay alerts by push.** Trip reminders are local notifications; delays and changes only show inside the app. Add push for those (server sender plus device tokens).
-- **M2. End-to-end tests.** Unit and database tests are strong, but no test drives the real screens. Add a few phone UI tests (for example with Maestro) for onboarding → reserve → boarding pass, and driver → conductor.
-- ~~**M3. Website routing library.**~~ **Done:** moved to `react-router` 7; nothing the website ships has a known advisory (`npm audit --omit=dev`). A route smoke test checks every page renders. Build and test tools then moved to Vite 8, Vitest 5 (website and phone app) and a patched `minimatch` for typescript-eslint, so the website's `npm audit` is clean (Node 22.12 or newer is now required). Original finding: The web app uses `react-router-dom` 6.30.6, which has moderate advisories (open redirect, SSR deserialization). No 6.x release fixes them, so the fix is moving to version 7. This only affects the website, not the phone apps.
-- **M4. Separate code per app.** The passenger app still includes the crew and operations screens in its bundle. They're unreachable and the server enforces access, but splitting them out makes the app smaller and avoids shipping staff tools to the public.
+- **N5. Two-factor sign-in for staff and admins.** Operators and platform admins
+  can change the network and crew. Add authenticator-app codes (Supabase TOTP) to
+  the console and the staff app, and have the database require them for admin and
+  operator actions (`aal2`).
+- **N6. CAPTCHA on sign-up and reset.** Rate limits slow bulk sign-ups and email
+  floods; Turnstile or hCaptcha stops them. Needs a site key and the widget in the
+  apps.
+- **N2. Tests for the operations console.** The console has no automated tests,
+  because it only runs against Supabase. Add a few Playwright tests against the
+  local Supabase stack (`npm run backend:up`): sign in as an operator, schedule a
+  departure, assign crew.
+- **N3. Content Security Policy for the website.** Security headers are set, but
+  there's no CSP. Add one once the final hosting domain and Supabase address are
+  known.
 
 ### Low
 
-- **L1. Build-tool advisories.** (Update: the test runner's critical ones are fixed by Vitest 5. 9 moderate ones remain inside Expo's and Sentry's build tools.) `glob` and `minimatch` inside the Expo command-line tools have moderate advisories. They aren't part of the installed apps; pick up the fix with the next Expo patch (`npx expo install --fix`).
-- **L2. Silent failures.** 21 places deliberately ignore an error (reminders, haptics, best-effort profile sync). That's fine today; once H3 is in, report them there instead of discarding them.
-- **L3. Lint configuration.** ESLint warns that the configuration format is old. Move to the flat config when convenient.
+- **N4. One visual style for the website.** The console keeps the earlier
+  prototype's look (lime accents, Inter font from Google Fonts). Restyle it to match
+  the information page and the apps when convenient. It's staff-only, so this is
+  cosmetic.
 
-## Verified
+## Verified in this pass
 
-- CI on GitHub passes on every push: web, mobile, and the database RLS, transaction and concurrency suites. The suites cover the 2-hour check-in window and account deletion.
-- Locally: 66 shared and 10 mobile tests, typecheck and lint clean, Expo Doctor 20/20, the store-config check, and release builds of both apps for iOS and Android with no pre-launch wording.
-- No secrets or keys in the repository; only the `.env.example` templates.
-- Browser preview: passenger and staff apps separated; crew links don't open in the passenger app; welcome, onboarding, booking, account, legal pages, and the new icons and logos.
+- Website: typecheck, ESLint 10, 70 unit tests (shared rules, adapters, push
+  messages), production build of the information page, console and legal pages.
+  The page was checked in a browser at desktop and phone width with no sideways
+  scrolling; images, legal pages and the `/console` setup screen loaded.
+- Phone apps: typecheck, ESLint 10, 23 unit tests, Expo Doctor 20/20, the
+  store-config check for both apps, and release exports for iOS and Android with
+  no pre-launch wording.
+- Accounts: 13 tests of the password, email-code and error-message rules; the
+  console's idle limit; the Supabase CLI (3.0) reads `config.toml` and finds all
+  five email templates (a missing template and a bad duration were each caught
+  when tried on purpose).
+- End-to-end: 12 Playwright tests pass. They cover:
+  - ToGo: onboarding → reserve two seats → pass → check in → My trips; cancel; welcome back.
+  - ToGo with a faked GPS position: the distance to the hub appears without a prompt and updates as the position moves (670 m → 3.4 km → "You're at …"); without permission, a button is shown instead.
+  - ToGo's sign-in screen: common and personal passwords refused as typed, show and hide, the forgotten-password steps.
+  - ToGo Staff: driver, conductor, hub attendant and operations; no booking screens in the staff app.
+  - The full journey: a passenger reserves and checks in, then the conductor boards them by code.
+- Each app's bundle no longer contains the other app's screens (checked in the exported bundles).
+- `npm audit`: 0 vulnerabilities in both projects.
 
 ## Not verified
 
-- Anything against a real Supabase project, including sign-in links and password reset.
-- Physical phones: notifications, keep-awake, camera scanning, maps, large text and screen readers.
-- The new crash screen. It's built on Expo Router's standard error-boundary hook, but no screen was made to crash on purpose.
+- **The database suite on a full PostgreSQL server.** All migrations and every
+  database check (107, including the push-token and "on its way" cases) pass in
+  PGlite, an in-process build of PostgreSQL. The GitHub `database` job runs them on
+  a real server; the concurrency script (`concurrency.sh`) wasn't run.
+- **Anything against a real Supabase project**: sign-up and reset codes, the
+  "password changed" email, other devices being signed out, the console's data
+  screens, push delivery. No local Supabase stack was run either (no Docker here).
+  The production dashboard settings must be copied by hand (BACKEND.md).
+- **Physical phones.** Not tried on a device:
+  - push receipt;
+  - camera scanning;
+  - maps, keep-awake and location sharing;
+  - the passenger's own dot following them, its accuracy and battery use;
+  - large text and screen readers;
+  - the offline pass.
+- The end-to-end tests run the React Native screens in a browser, not on iOS or
+  Android. They don't cover native-only behaviour.

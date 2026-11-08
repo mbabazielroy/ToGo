@@ -11,6 +11,7 @@ import { homeFor, useSession, type PassengerProfile } from '@/session/SessionPro
 import { useToast } from '@/components/ToastProvider';
 import { SUPPORT_EMAIL, APP_VARIANT } from '@/env';
 import { humanError } from '@/hooks/useAsync';
+import { AccountSecurity } from '@/auth/AccountSecurity';
 import { haptics } from '@/lib/feedback';
 import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
 import { colors, space, font, SCREEN, control, radius } from '@/theme';
@@ -28,14 +29,13 @@ export default function Account() {
   const resetDemo = useResetDemo();
   const toast = useToast();
   const router = useRouter();
-  const { session, user, updatePassword } = useAuth();
+  const { session, user } = useAuth();
   const { profile, updateProfile, signOut, deleteAccount, available } = useSession();
 
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
   const [homeCity, setHomeCity] = useState<PassengerProfile['homeCity']>(profile.homeCity);
-  const [pw, setPw] = useState('');
-  const [busy, setBusy] = useState<null | 'pw' | 'profile' | 'delete'>(null);
+  const [busy, setBusy] = useState<null | 'profile' | 'delete'>(null);
   const [open, setOpen] = useState<number | null>(null);
 
   useEffect(() => { setName(profile.name); setPhone(profile.phone); setHomeCity(profile.homeCity); }, [profile.name, profile.phone, profile.homeCity]);
@@ -49,13 +49,6 @@ export default function Account() {
     if (!phoneLooksValid(phone)) { toast(PHONE_HINT, 'error'); return; }
     setBusy('profile');
     try { await updateProfile({ name: name.trim(), phone: phone.trim(), homeCity }); haptics.success(); toast('Profile saved.', 'ok'); }
-    catch (e) { toast(humanError(e), 'error'); }
-    finally { setBusy(null); }
-  }
-  async function changePassword() {
-    if (pw.length < 8) { toast('Use at least 8 characters.', 'error'); return; }
-    setBusy('pw');
-    try { await updatePassword(pw); toast('Password updated.', 'ok'); setPw(''); }
     catch (e) { toast(humanError(e), 'error'); }
     finally { setBusy(null); }
   }
@@ -134,15 +127,7 @@ export default function Account() {
         </Group>
       </View>
 
-      {mode === 'connected' && session && (
-        <View>
-          <SectionHeading title="Security" />
-          <Group>
-            <Field label="New password"><TextInput style={styles.input} secureTextEntry value={pw} onChangeText={setPw} placeholder="At least 8 characters" placeholderTextColor={colors.faint} textContentType="newPassword" accessibilityLabel="New password" /></Field>
-          </Group>
-          {pw.length > 0 && <View style={{ marginTop: space.sm }}><PrimaryButton title="Update password" onPress={changePassword} loading={busy === 'pw'} /></View>}
-        </View>
-      )}
+      {mode === 'connected' && session && <AccountSecurity name={profile.name} />}
 
       <View>
         <SectionHeading title="Help" />

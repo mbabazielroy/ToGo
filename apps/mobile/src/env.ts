@@ -30,7 +30,6 @@ export const APP_MODE: AppMode = DEMO_ENABLED ? 'demo' : 'connected';
 
 // Defensive: refuse an obviously-privileged key in a public var.
 if (isSupabaseConfigured && /service_role/i.test(anonKey)) {
-  // eslint-disable-next-line no-console
   console.error('[ToGo] Refusing a service_role key in EXPO_PUBLIC_*. Use the publishable/anon key only.');
 }
 

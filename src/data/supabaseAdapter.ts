@@ -88,6 +88,8 @@ function mapBooking(row: any): BookingView {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
+let channelSeq = 0;
+
 export class SupabaseAdapter implements DataAdapter {
   readonly mode = 'connected' as const;
   constructor(private sb: SupabaseClient) {}
@@ -401,12 +403,19 @@ export class SupabaseAdapter implements DataAdapter {
       .subscribe();
     return { unsubscribe: () => { this.sb.removeChannel(ch); } };
   }
-  subscribeTrip(tripId: string, onChange: () => void): Subscription {
-    const ch = this.sb
-      .channel('trip-' + tripId)
+  subscribeTrip(tripId: string, onChange: () => void, onLocation?: () => void): Subscription {
+    // Each subscriber gets its own channel, so two screens on the same trip (the pass
+    // and the live map) don't close each other's channel.
+    let ch = this.sb
+      .channel(`trip-${tripId}-${++channelSeq}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` }, onChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'booking_events', filter: `trip_id=eq.${tripId}` }, onChange)
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'booking_events', filter: `trip_id=eq.${tripId}` }, onChange);
+    // New GPS fixes from the driver's phone, so the bus moves as soon as one arrives
+    // (row-level security limits these to the trip's crew and booked passengers).
+    if (onLocation) {
+      ch = ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_updates', filter: `trip_id=eq.${tripId}` }, onLocation);
+    }
+    ch.subscribe();
     return { unsubscribe: () => { this.sb.removeChannel(ch); } };
   }
 }

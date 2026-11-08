@@ -19,6 +19,7 @@ import { colors, space, font, SCREEN, control } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import { tripJourney, dropoffStopFor } from '@shared/data/journey';
 import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
+import { reported } from '@/lib/crashReporting';
 
 function makeIdemKey() {
   return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -83,7 +84,7 @@ export default function BookScreen() {
       });
       haptics.success();
       // Remember the name for next time if the profile didn't have one yet.
-      if (!profile.name.trim()) updateProfile({ name: name.trim(), ...(profile.phone ? {} : { phone: phone.trim() }) }).catch(() => {});
+      if (!profile.name.trim()) updateProfile({ name: name.trim(), ...(profile.phone ? {} : { phone: phone.trim() }) }).catch(reported('save-name'));
       toast(`Reserved — ${booking.reference}`, 'ok');
       router.replace(`/trip/${booking.id}`);
     } catch (e) { haptics.warning(); setErr(humanError(e)); setBusy(false); }

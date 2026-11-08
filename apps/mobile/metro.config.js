@@ -22,4 +22,24 @@ config.resolver.blockList = existing
   ? [].concat(existing, appleDouble)
   : appleDouble;
 
+// Each store app ships only its own screens. Expo Router finds screens by
+// scanning app/, and the bundler skips anything on the block list, so leaving a
+// route folder out removes its screens and everything only they import.
+//   ToGo (passenger): no crew, operations or staff sign-in screens.
+//   ToGo Staff: no passenger booking screens.
+// The combined development build (EXPO_PUBLIC_APP_VARIANT=combined) keeps all.
+const variant = (process.env.EXPO_PUBLIC_APP_VARIANT || 'passenger').trim().toLowerCase();
+const esc = (p) => path.join(projectRoot, p).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const dir = (p) => new RegExp(`^${esc(p)}[\\\\/].*`);
+const file = (p) => new RegExp(`^${esc(p)}$`);
+const VARIANT_BLOCK = {
+  passenger: [
+    dir('app/crew'), dir('app/admin'), file('app/staff-signin.tsx'),
+    dir('src/crew'), dir('src/admin'), dir('src/staff'),
+  ],
+  staff: [dir('app/(passenger)'), file('app/onboarding.tsx')],
+  combined: [],
+}[variant] ?? [];
+config.resolver.blockList = [].concat(config.resolver.blockList, VARIANT_BLOCK);
+
 module.exports = config;

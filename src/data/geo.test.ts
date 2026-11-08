@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DemoAdapter } from './demoAdapter';
 import { buildSeedState } from './seed';
-import { tripGeometry, estimateBus, along, CITY_CENTRE } from './geo';
+import { tripGeometry, estimateBus, along, CITY_CENTRE, distanceKm, formatDistance, isFreshFix, LIVE_FIX_MAX_AGE_MS } from './geo';
 
 const TODAY = '2026-09-11';
 
@@ -47,5 +47,30 @@ describe('map geometry', () => {
   it('interpolates along a polyline', () => {
     const p = along([{ latitude: 0, longitude: 0 }, { latitude: 0, longitude: 2 }], 0.5);
     expect(p.longitude).toBeCloseTo(1);
+  });
+});
+
+describe('distances and live fixes', () => {
+  it('measures straight-line distance', () => {
+    // Kampala to Mbarara centres are about 240 km apart as the crow flies.
+    const d = distanceKm(CITY_CENTRE.Kampala, CITY_CENTRE.Mbarara);
+    expect(d).toBeGreaterThan(220);
+    expect(d).toBeLessThan(260);
+    expect(distanceKm(CITY_CENTRE.Kampala, CITY_CENTRE.Kampala)).toBe(0);
+  });
+
+  it('formats distances for people walking', () => {
+    expect(formatDistance(0.004)).toBe('10 m');
+    expect(formatDistance(0.846)).toBe('850 m');
+    expect(formatDistance(3.24)).toBe('3.2 km');
+    expect(formatDistance(42.6)).toBe('43 km');
+  });
+
+  it('treats a fix as live for a few minutes only', () => {
+    const now = new Date('2026-09-11T05:30:00Z');
+    const at = (msAgo: number) => ({ receivedAt: new Date(now.getTime() - msAgo).toISOString() });
+    expect(isFreshFix(at(30000), now)).toBe(true);
+    expect(isFreshFix(at(LIVE_FIX_MAX_AGE_MS + 1000), now)).toBe(false);
+    expect(isFreshFix(null, now)).toBe(false);
   });
 });

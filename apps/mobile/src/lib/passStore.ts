@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parsePasses, prunePasses, syncPasses, upsertPass, type SavedPasses } from './savedPasses';
 import type { BookingView, TripView } from '@shared/data/adapter';
+import { reported } from './crashReporting';
 
 // The phone's copy of upcoming boarding passes (connected mode only; the preview
 // runs on the phone already). App-sandbox storage, the same place the app keeps its
@@ -27,7 +28,7 @@ function write(update: (s: SavedPasses) => SavedPasses): Promise<void> {
     const next = update(await read());
     cache = next;
     listeners.forEach((l) => l(next));
-    await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+    await AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(reported('save-passes'));
   });
   queue = run.catch(() => {});
   return run.catch(() => {});

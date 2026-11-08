@@ -11,9 +11,11 @@ accounts, real shared data, real row-level security) — not the simulated previ
 ## Prerequisites (install once)
 
 - **Docker Desktop**, running — https://docs.docker.com/get-docker/
-- **Supabase CLI** — https://supabase.com/docs/guides/cli
-  (or skip the install: the scripts fall back to `npx --yes supabase`)
-- **Node 20+** and `npm ci` already run at the repo root.
+- **Supabase CLI 3 or newer** — https://supabase.com/docs/guides/cli
+  (or skip the install: the scripts fall back to `npx --yes supabase`). Older CLIs
+  don't understand `[local_smtp]` in `supabase/config.toml`. The local database is
+  PostgreSQL 17, like new hosted projects.
+- **Node 22.13+** and `npm ci` already run at the repo root.
 
 ## One command
 
@@ -26,7 +28,7 @@ That runs `scripts/local-backend.sh up`, which:
 1. Preflights Docker + the Supabase CLI (and tells you exactly what to install if a
    piece is missing).
 2. `supabase start` — boots Postgres, Auth (GoTrue), PostgREST, Realtime, Studio, and
-   a mail catcher (Inbucket). The first run pulls Docker images.
+   a mail catcher. The first run pulls Docker images.
 3. `supabase db reset` — applies **all** migrations in `supabase/migrations/` and the
    demo data in `supabase/seed.sql` (operators, approved test hubs, routes, and
    departures for **today + tomorrow** in Africa/Kampala).
@@ -46,7 +48,7 @@ Useful local URLs (defaults):
 | --------------- | ------------------------- |
 | App (web)       | http://localhost:5173     |
 | Supabase Studio | http://127.0.0.1:54323    |
-| Mailbox (Inbucket) — sign-up & reset emails land here | http://127.0.0.1:54324 |
+| Mailbox — sign-up & reset emails (with their codes) land here | http://127.0.0.1:54324 |
 | API / Auth      | http://127.0.0.1:54321    |
 
 ## Create an account, then become staff
@@ -57,7 +59,7 @@ a signed-up user:
 
 ```bash
 # 1) In the app, create an account (Account → it prompts to sign in / create account).
-#    Confirmation email (if enabled) appears in the Inbucket mailbox above.
+#    The confirmation email, with its 8-digit code, appears in the mailbox above.
 
 # 2) Grant a role on the local DB (list targets by omitting the id):
 scripts/grant-staff.sh you@example.com admin

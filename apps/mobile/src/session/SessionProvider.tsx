@@ -5,6 +5,8 @@ import { useAdapter, useAppMode, useDataEpoch } from '../data/AdapterProvider';
 import { useAuth } from '../auth/AuthProvider';
 import { APP_VARIANT } from '../env';
 import { clearSavedPasses } from '../lib/passStore';
+import { unregisterFromPush } from '../notifications/push';
+import { reported } from '../lib/crashReporting';
 
 // Who is using the app, and therefore which space they get:
 //   passenger            → the passenger app (Home / Trips / Hubs / Account)
@@ -101,7 +103,8 @@ interface SessionCtx {
   signInAs: (identity: Identity) => Promise<void>;
   updateProfile: (patch: Partial<PassengerProfile>) => Promise<void>;
   /** Leave the current space (and, in connected mode, the account) → welcome. */
-  signOut: () => Promise<void>;
+  /** Sign out this phone; `everywhere` also ends the account's other sessions. */
+  signOut: (everywhere?: boolean) => Promise<void>;
   /** Delete the account (connected: on the server) and wipe this device's profile. */
   deleteAccount: () => Promise<void>;
   /** "Not you?": forget this phone's profile and start again from the welcome slides. */
@@ -132,13 +135,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(raw) as Partial<Stored>;
         setStored({ ...DEFAULT, ...parsed, profile: { ...DEFAULT_PROFILE, ...(parsed.profile ?? {}) } });
       })
-      .catch(() => {})
+      // Unreadable settings: start from the defaults, but report it.
+      .catch(reported('load-settings'))
       .finally(() => setReady(true));
   }, []);
 
   const persist = useCallback((next: Stored) => {
     setStored(next);
-    AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+    AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(reported('save-settings'));
   }, []);
 
   // Resolve which crew/admin identities this user may use.
@@ -179,7 +183,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const profile = { ...stored.profile, ...(patch ?? {}) };
     persist({ onboarded: true, profile, identity: { role: 'passenger', name: profile.name || 'Traveller' }, signedOut: false });
     if (mode === 'connected' && auth.session && patch?.name) {
-      await auth.updateProfile({ full_name: patch.name, phone: patch.phone || null }).catch(() => {});
+      await auth.updateProfile({ full_name: patch.name, phone: patch.phone || null }).catch(reported('sync-profile'));
     }
   }, [stored, persist, mode, auth]);
 
@@ -196,9 +200,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [stored, persist, mode, auth]);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (everywhere = false) => {
     if (mode === 'connected' && auth.session) {
-      await auth.signOut();
+      // Stop push alerts to this phone first, while the session can still do it.
+      await unregisterFromPush();
+      await auth.signOut(everywhere);
       await clearSavedPasses();
       // A signed-out phone must not keep the person's details: on a shared or
       // borrowed phone the next user would otherwise "continue as" them. Keep only
@@ -216,7 +222,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteAccount = useCallback(async () => {
-    if (mode === 'connected' && auth.session) await auth.deleteAccount();
+    if (mode === 'connected' && auth.session) {
+      await unregisterFromPush();
+      await auth.deleteAccount();
+    }
     await clearSavedPasses();
     await AsyncStorage.removeItem(KEY).catch(() => {});
     setStored(DEFAULT);

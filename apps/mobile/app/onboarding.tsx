@@ -84,7 +84,7 @@ export default function Onboarding() {
 
           <SectionHeading title="Alerts" />
           <Group>
-            <ToggleRow label="Delays and changes" hint="If your bus is late, rescheduled or cancelled." value={notifyDelays} onChange={setNotifyDelays} />
+            <ToggleRow label="Delays and changes" hint="When your bus sets off, or if it’s late, rescheduled or cancelled." value={notifyDelays} onChange={setNotifyDelays} />
             <Separator inset={SCREEN} />
             <ToggleRow label="Boarding reminders" hint="A reminder on your phone when check-in opens and when it's time to head to your hub." value={notifyBoarding} onChange={setNotifyBoarding} />
           </Group>

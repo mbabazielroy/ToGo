@@ -1,9 +1,9 @@
 # ToGo mobile (Expo) — iOS & Android
 
-A native React Native passenger app built with **Expo (SDK 57)**, **Expo Router**,
-and **TypeScript**, living under `apps/mobile`. It reuses the web app's
-platform-neutral types, validation, and business rules — it is **not** a WebView
-wrapper. The web app, backend, migrations, and tests are untouched.
+Two native apps, **ToGo** (passengers) and **ToGo Staff** (crews and operations),
+built from one **Expo (SDK 58)** + **Expo Router** + **TypeScript** project in
+`apps/mobile`. They reuse the repo's platform-neutral types and booking rules from
+`src/` (via `@shared/*`); they are **not** WebView wrappers.
 
 ## Project structure
 
@@ -51,7 +51,10 @@ apps/mobile/
 | Demo only | ToGo | all three spaces on one phone | `npm run preview:combined` (port 8083) | — |
 
 `app.config.js` sets the name, bundle id and URL scheme from `EXPO_PUBLIC_APP_VARIANT`;
-`src/env.ts` reads the same flag so the router only contains that build's spaces. The
+`src/env.ts` reads the same flag so the router only contains that build's spaces, and
+`metro.config.js` leaves the other app's screen folders out of the bundle entirely
+(ToGo has no crew, operations or staff sign-in code; ToGo Staff has no booking
+screens). The
 development build keeps everything on one device so the full passenger → crew →
 operations loop can be demoed with preview data. (Separate preview builds keep separate
 on-device data; they share data once connected to Supabase.)
@@ -59,8 +62,10 @@ on-device data; they share data once connected to Supabase.)
 ### Maps
 `react-native-maps` (Apple Maps on iOS, Google Maps on Android — both work in Expo Go)
 draws each trip's route in the operator's line colour, its stops, and the bus:
-- **Passenger boarding pass**: route, your stop highlighted, the bus once it's moving.
-- **Hub detail**: hub location + Directions.
+- **Passenger boarding pass**: route, your stop highlighted, the bus once it's moving
+  (it moves as soon as the driver's phone sends a fix), your own position, and
+  "You're 850 m from …" until you're picked up.
+- **Hub detail**: hub location, your position and distance, and Directions.
 - **Driver**: route with **passengers to pick up per stop** on the map and in the stop
   list; stops with nobody booked show 0 so drivers can pass straight through.
 - **Hub attendant**: where the next bus is. **Admin**: live network + per-departure map.
@@ -72,8 +77,15 @@ tapping any embedded map): full-screen map with a bottom sheet, like Transit —
 - tap a **bus** → where it's heading, upcoming stops with times, "your bus reaches X in
   N min" when you're booked, **Follow bus** (camera tracks it), Book a seat;
 - **locate me** (location permission, stays on the phone) selects your nearest hub;
+  after that the blue dot follows you while the map is open;
   **show everything** resets the view; swap direction from the top pill.
 Drivers can tap any stop (map or list) to see who is booked there and their status.
+
+**Your own position** (`src/location/useMyLocation.ts`): follows the phone only while
+a map or the pass is on screen and the app is in front, and stops when you leave.
+It starts by itself only if location is already allowed; otherwise the screen shows
+a button and nothing is asked until it's tapped. It's kept in memory, never saved
+or sent.
 
 Bus position is a real GPS fix when one exists (connected mode), otherwise an estimate
 from the schedule and delay that never runs past a hub the crew hasn't marked reached
@@ -204,16 +216,6 @@ indicator explains the data is simulated; connected mode and its honest
 setup/connection-error screens are untouched, and a configured connected app is
 **never** silently switched to local data.
 
-**Web preview** (from the repo root):
-```bash
-npm run preview:local        # = VITE_TOGO_DEMO=1 vite  → http://localhost:5173
-# alias: npm run dev:preview
-```
-Opens the passenger app with a role switcher (top-right): **Passenger**, **Hub
-attendant**, **Conductor**, and the **Dispatcher console** (Operator). All four
-share the same local dataset, so a passenger reservation immediately appears in the
-attendant, conductor, and dispatcher views on the same device.
-
 **Mobile preview** (from `apps/mobile/`):
 ```bash
 npm run preview              # ToGo (passengers), preview data   (QR + URLs)
@@ -229,10 +231,9 @@ a preview persona **only filters simulated data on the device — it grants no b
 permission** (in connected mode the app instead shows only the workspaces the signed-in
 account is actually assigned to, resolved on the server).
 
-> Preview state is per platform: the native app (AsyncStorage) and the web app
-> (`localStorage`) each keep their own local dataset and do **not** sync with each
-> other without a backend. Reset from Account → *Reset preview* (native) or the
-> Operator/Account reset (web).
+> Preview data lives on each device and does **not** sync between devices without a
+> backend. Reset from Account → *Reset preview*. (The repo-root website is now the
+> public information page and the operations console, not a booking preview.)
 
 ## Connected mode (default) vs demo
 
@@ -291,13 +292,16 @@ is **no** custom native code, so no development build is required to run the app
 itself.
 
 ### What needs a development build + configured redirect URLs
+- **Push alerts** (delays, cancellations, schedule changes): Expo Go can't receive
+  them. See `docs/BACKEND.md` → Push alerts for the server and Firebase setup.
 - **Auth callback deep links** (email confirmation and password-reset return links).
   Supabase's web `detectSessionInUrl` does not apply on native; the app parses the
   incoming `togo://` link itself (`useAuthDeepLinks.ts`). Only PKCE `?code=`
   links are accepted (`src/auth/authLink.ts`): the code works only on the phone
   that asked for the email, so a forwarded or crafted link can't sign a phone into
-  someone else's account. A person must open the link on the same phone where
-  they signed up or asked for the reset. For those links to open
+  someone else's account. The link works only on the phone where they signed up
+  or asked for the reset; the 8-digit code in the same email works on any device
+  and needs no deep link, so it's what the sign-in screen asks for. For those links to open
   the app and be accepted, the Supabase project's **Redirect URLs** must include
   the app's scheme/URL, which in practice means a **development build** (or a
   standalone build) rather than plain Expo Go, whose deep-link scheme differs.
@@ -396,40 +400,27 @@ up-to-date Expo Go matches this project. (This
 is Expo's stated Go policy; it was not confirmed against the live App Store listing
 from this network-restricted environment — update Expo Go before testing.)
 
-## Verification performed (this environment)
-- Authoritative versions read from the **lockfile** (table above) and cross-checked
-  against `expo/bundledNativeModules.json` — no contradiction.
-- `tsc --noEmit` (mobile) — passes.
-- `vitest` (shared) — 28 tests pass: reserve/capacity/cancel rules, outcome
-  classification (missed_pickup / not_boarded), single-use boarding, and the new
-  **journey-endpoint regression suite** (`src/data/journey.test.ts`) that locks the
-  destination to the corridor city and the arrival to `destinationArrival`.
-- `expo-doctor` — **19/21 checks pass**, re-run this phase. The 2 failures are
-  **network-blocked and remain UNVERIFIED**: the Expo config-schema host and the
-  React Native Directory API are not on the egress allow-list (they return the
-  proxy's "Host not in allow-list" response). They are not project defects.
-- `expo export --platform ios --platform android` — succeeds; both Hermes bundles
-  build, confirming the shared `@shared/*` imports resolve and the app bundles for
-  iOS and Android.
-- **Visual check via a web preview only.** `expo export --platform web`
-  (react-native-web) was served locally and rendered in headless Chromium to review
-  Home, booking, boarding pass, hub details and My Trips at **390×844**, a **narrow
-  340×760**, and an **enlarged-UI proxy (1.35× page zoom)**. Checked: no clipped
-  time/fare/action, no overlapping controls (the grouped form keeps a gap between
-  label and value at large text), correct destination across search → review →
-  boarding pass, and consistent grouped typography/spacing. Long operator names
-  truncate to a single line with an ellipsis by design. These are a **web preview of
-  the React Native screens — not native iOS/Android renders.** True OS Dynamic Type,
-  `Modal`/gesture behaviour, translucency, and `expo-haptics` are **not exercised on
-  web and remain unverified**; the 1.35× zoom is a layout proxy, not RN font scaling.
-  Translucent nav/tab surfaces are implemented as their **opaque fallback** (no
-  `expo-blur` dependency added); real blur is an optional dev-build enhancement.
-- Tunnel reachability **re-confirmed impossible here**: `exp.host` / `api.expo.dev` /
-  ngrok endpoints all return `403 CONNECT` through the egress proxy; no tunnelling
-  binary is installed; no inbound public URL exists.
-- **No native simulator or physical device was used.** Authentication callbacks and
-  Expo Go loading were **NOT** tested on a device. No QR/tunnel/working connection
-  was produced from this environment.
+## Tests
+
+- **Unit tests** (`npm test`): saved boarding passes, reminders, sign-in links,
+  crash-report scrubbing, validation and the preview rules.
+- **End-to-end tests** (`npm run e2e:build && npm run e2e`): Playwright drives the
+  real screens, rendered by react-native-web in a phone-sized Chromium, for each app
+  in preview mode with the clock fixed at 05:30 Kampala time:
+  - ToGo: first launch → onboarding → reserve two seats → boarding pass → check in →
+    My trips; cancelling a reservation; the "Welcome back" screen; with a faked
+    GPS position, the pass shows the distance to the pickup hub and updates as the
+    passenger moves, and without permission it shows a button instead of asking.
+  - ToGo Staff: a driver starts the trip and marks hubs reached; a conductor refuses
+    an unknown code; a hub attendant sees the buses due; operations sees departures
+    needing crew; booking screens aren't in the staff app.
+  - Combined build: a passenger reserves and checks in, then the conductor boards
+    them with the code from their pass.
+  CI runs them on every push (`e2e` job). They don't cover native-only behaviour:
+  camera scanning, push, keychain, maps SDK, real GPS, haptics or OS text scaling. Those need
+  a device (see the checklist in `docs/STORE_LAUNCH.md`).
+- **CI** also runs typecheck, lint, Expo Doctor, a store-config check, and release
+  exports of both apps for iOS and Android.
 
 ## Later path to Android and iOS builds (EAS)
 Running in Expo Go covers this phase. Installable store/standalone builds use EAS:

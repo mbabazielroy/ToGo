@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Linking, type LayoutChan
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import { TransitMap } from '@/components/map/TransitMap';
 import { tripMapData } from '@/components/map/tripMap';
 import { LineBadge } from '@/components/ui';
@@ -18,17 +17,11 @@ import { colors, space, font, radius, SCREEN } from '@/theme';
 import { kampalaToday, formatTime, formatUGX } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { tripJourney } from '@shared/data/journey';
-import { hubPoint, type LatLng } from '@shared/data/geo';
+import { hubPoint, distanceKm, formatDistance, isFreshFix, type LatLng } from '@shared/data/geo';
+import { useMyLocation } from '@/location/useMyLocation';
 import type { DirectionCode, TripView } from '@shared/data/adapter';
 
 type Selection = { kind: 'stop'; id: string } | { kind: 'bus'; id: string } | null;
-
-function km(a: LatLng, b: LatLng) {
-  const R = 6371, toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.latitude - a.latitude), dLng = toRad(b.longitude - a.longitude);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
 
 /**
  * Live map, Transit-style: every bus on the road for a direction, the pickup hubs,
@@ -52,7 +45,12 @@ export default function LiveMap() {
   const [expanded, setExpanded] = useState(true);
   const [sheetH, setSheetH] = useState(0);
   const [refit, setRefit] = useState(0);
-  const [me, setMe] = useState<LatLng | null>(null);
+  // The passenger's own position: follows them while the map is open.
+  const myLocation = useMyLocation();
+  const me = myLocation.coord;
+  // Frame the map around where they were first seen, not every step they take.
+  const [fitMe, setFitMe] = useState<LatLng | null>(null);
+  useEffect(() => { if (me && !fitMe) setFitMe(me); }, [me, fitMe]);
 
   const today = kampalaToday(now);
   const hubs = useAsync(() => adapter.listHubs(), [epoch]);
@@ -91,16 +89,24 @@ export default function LiveMap() {
 
   // Real GPS fixes for buses on the road (connected mode); preview estimates instead.
   const liveIds = list.filter((t) => t.status === 'en_route' || t.status === 'boarding').map((t) => t.id);
+  const liveKey = liveIds.join(',');
   const fixes = useAsync(
     async () => (mode === 'connected'
       ? new Map(await Promise.all(liveIds.map(async (id) => [id, await adapter.latestLocation(id).catch(() => null)] as const)))
       : new Map()),
-    [liveIds.join(','), tick, mode],
+    [liveKey, tick, mode],
   );
+  // Move a bus as soon as its driver's phone sends a fix, not only on the 30 s refresh.
+  useEffect(() => {
+    if (mode !== 'connected' || !liveKey) return;
+    const subs = liveKey.split(',').map((id) => adapter.subscribeTrip(id, () => {}, () => fixes.reload()));
+    return () => subs.forEach((s) => s.unsubscribe());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adapter, mode, liveKey]);
   const data = useMemo(() => list.map((t) => {
     const fix = fixes.data?.get(t.id) ?? null;
-    // Ignore fixes older than 5 minutes — fall back to the schedule estimate.
-    const fresh = fix && now.getTime() - new Date(fix.receivedAt).getTime() < 5 * 60000 ? fix : null;
+    // Old fixes fall back to the schedule estimate (same rule as the trip screen).
+    const fresh = isFreshFix(fix, now) ? fix : null;
     return { t, m: tripMapData(t, allHubs, now, { demo: mode === 'demo', fix: fresh }) };
   }), [list, allHubs, now, mode, fixes.data]);
   const running = data.filter(({ t }) => t.status === 'en_route' || t.status === 'boarding');
@@ -130,28 +136,30 @@ export default function LiveMap() {
       ? [hubPoint(selectedHub)!, ...originHubs.map((h) => hubPoint(h)!)]
       // Default view frames the pickup hubs near you (and you); buses further down
       // the corridor are listed in the sheet — tap one to fly to it.
-      : stops.length > 0 ? [...stops.map((s) => s.coord), ...(me ? [me] : [])] : buses.map((b) => b.coord);
+      : stops.length > 0 ? [...stops.map((s) => s.coord), ...(fitMe ? [fitMe] : [])] : buses.map((b) => b.coord);
 
   async function locateMe() {
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== 'granted') { toast('Location is off — allow it in Settings to find your nearest hub.', 'error'); return; }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const here = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-      setMe(here);
+    const found = me ? { coord: me, denied: false } : await myLocation.enable();
+    const here = found.coord;
+    if (!here) {
+      toast(found.denied
+        ? 'Location is off — allow it in Settings to find your nearest hub.'
+        : 'Couldn’t get your location. Try again outside or check Settings.', 'error');
+      return;
+    }
+    {
       const nearest = originHubs
-        .map((h) => ({ h, d: km(here, hubPoint(h)!) }))
+        .map((h) => ({ h, d: distanceKm(here, hubPoint(h)!) }))
         .sort((a, b) => a.d - b.d)[0];
       if (nearest && nearest.d < 60) {
+        setFollowing(false);
         setSel({ kind: 'stop', id: nearest.h.id });
-        toast(`Nearest hub: ${nearest.h.name} · ${nearest.d < 1 ? `${Math.round(nearest.d * 1000)} m` : `${nearest.d.toFixed(1)} km`}`, 'ok');
+        toast(`Nearest hub: ${nearest.h.name} · ${formatDistance(nearest.d)}`, 'ok');
       } else {
         setRefit((n) => n + 1);
         toast(`You're not near a ${cities.origin} hub right now.`, 'ok');
       }
       haptics.select();
-    } catch {
-      toast('Couldn’t get your location. Try again outside or check Settings.', 'error');
     }
   }
 

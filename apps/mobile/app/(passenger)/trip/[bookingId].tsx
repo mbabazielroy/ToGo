@@ -23,6 +23,9 @@ import { TransitMap } from '@/components/map/TransitMap';
 import { tripMapData } from '@/components/map/tripMap';
 import { ask } from '@/lib/dialog';
 import { savePass, useSavedPasses } from '@/lib/passStore';
+import { useMyLocation } from '@/location/useMyLocation';
+import { DistanceToHub } from '@/location/DistanceToHub';
+import { hubPoint, distanceKm, isFreshFix } from '@shared/data/geo';
 
 interface Stage { key: string; label: string; hint: string }
 
@@ -73,7 +76,7 @@ export default function TripScreen() {
 
   useEffect(() => {
     if (!b) return;
-    const sub = adapter.subscribeTrip(b.tripId, () => { booking.reload(); trip.reload(); location.reload(); });
+    const sub = adapter.subscribeTrip(b.tripId, () => { booking.reload(); trip.reload(); location.reload(); }, () => location.reload());
     return () => sub.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [b?.tripId]);
@@ -104,8 +107,9 @@ export default function TripScreen() {
     { key: 'arrive', label: `Arrived in ${destination}`, hint: 'Trip complete.' },
   ];
 
-  const staleMs = location.data ? Date.now() - new Date(location.data.receivedAt).getTime() : 0;
-  const stale = staleMs > 120000;
+  // A bus fix older than a few minutes is shown as out of date, and the map falls
+  // back to the schedule estimate (the Live map uses the same rule).
+  const stale = !!location.data && !isFreshFix(location.data, now);
 
   const { reached, stalled } = b ? stageProgress(b.status, t?.status) : { reached: 0, stalled: false };
   const cancelled = b?.status === 'cancelled';
@@ -116,6 +120,16 @@ export default function TripScreen() {
   const checkInOpens = myStop ? checkInOpensAt(myStop.pickupTime) : null;
   const checkInEarly = !!checkInOpens && now < checkInOpens;
   const currentStage = !cancelled && !stalled && !leftWithout && reached < stages.length ? stages[reached] : undefined;
+
+  // The passenger's own position while they make their way to the pickup hub.
+  const myLocation = useMyLocation();
+  const pickupPoint = hubPoint(hubs.data?.find((h) => h.id === b?.pickupHubId));
+  const waiting = !!b && (b.status === 'reserved' || b.status === 'checked_in') && !leftWithout && !myStop?.reached
+    && t?.status !== 'cancelled' && t?.status !== 'completed';
+  const me = myLocation.coord;
+  // Frame the walk to the hub when they're nearby; further away, keep the route view.
+  const nearPickup = !!me && !!pickupPoint && waiting && distanceKm(me, pickupPoint) < 5;
+  const busLive = mode === 'connected' && !!location.data && !stale && (t?.status === 'en_route' || t?.status === 'boarding');
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -196,9 +210,16 @@ export default function TripScreen() {
             {/* Map — route, your stop, and the bus once it's moving */}
             {t && !cancelled && !offline && hubs.data && (() => {
               const m = tripMapData(t, hubs.data, now, { highlightHubId: b.pickupHubId, fix: stale ? null : location.data, demo: mode === 'demo' });
-              return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses} focus={m.focus} caption={m.live ? `${m.caption} · tap to track` : m.caption}
+              return <TransitMap height={210} routes={m.routes} stops={m.stops} buses={m.buses}
+                focus={nearPickup && me ? [...m.focus, me] : m.focus} userLocation={me}
+                caption={m.live ? `${m.caption} · tap to track` : m.caption}
                 onPress={() => router.push(m.live ? `/map?trip=${t.id}&follow=1` : `/map?trip=${t.id}&hub=${b.pickupHubId}`)} />;
             })()}
+
+            {/* How far they are from the pickup hub (GPS works without a connection) */}
+            {waiting && journey?.pickup && (
+              <DistanceToHub location={myLocation} hub={pickupPoint} hubName={journey.pickup.hubName} />
+            )}
 
             {/* Current step */}
             {currentStage && (
@@ -264,9 +285,16 @@ export default function TripScreen() {
               <Group style={{ padding: space.lg }}>
                 <Text style={styles.infoTitle}>Live location</Text>
                 {location.data ? (
-                  <Text style={[styles.infoText, stale && { color: colors.amber800 }]}>
-                    Last update {timeAgo(location.data.receivedAt)}{stale ? '  ·  stale, may be out of date' : ''}
-                  </Text>
+                  <>
+                    <Text style={[styles.infoText, stale && { color: colors.amber800 }]}>
+                      {busLive ? 'The bus is sharing its position. ' : ''}Last update {timeAgo(location.data.receivedAt)}{stale ? '  ·  out of date, showing the schedule estimate' : ''}
+                    </Text>
+                    {busLive && (
+                      <View style={{ marginTop: space.md }}>
+                        <PrimaryButton title="Track the bus live" icon="navigate" onPress={() => router.push(`/map?trip=${t.id}&follow=1`)} />
+                      </View>
+                    )}
+                  </>
                 ) : (
                   <Text style={styles.infoText}>No live location yet. Sharing works only while a staff device keeps the app open — this is a scheduled estimate, not GPS navigation.</Text>
                 )}

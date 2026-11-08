@@ -24,7 +24,7 @@ const EAS = {
 // (App Store 5.1.1, Play permissions policy), so each app gets its own wording.
 const PERMISSION_TEXT = {
   passenger: {
-    location: 'ToGo uses your location to show where you are on the map and which pickup hub is nearest. It stays on your phone.',
+    location: 'ToGo uses your location to show where you are on the map and how far you are from your pickup hub. It stays on your phone.',
     camera: 'ToGo does not use the camera.',
   },
   staff: {
@@ -127,8 +127,13 @@ module.exports = ({ config }) => {
     : config.ios;
 
   const mapsKey = (process.env.GOOGLE_MAPS_ANDROID_API_KEY || '').trim();
+  // Push alerts on Android need the app's Firebase config (google-services.json).
+  // Store it as an EAS file variable named GOOGLE_SERVICES_JSON; EAS passes its path.
+  // ToGo only: ToGo Staff doesn't receive push alerts, and the file names one app.
+  const googleServices = staff ? '' : (process.env.GOOGLE_SERVICES_JSON || '').trim();
   const androidBase = {
     ...config.android,
+    ...(googleServices ? { googleServicesFile: googleServices } : {}),
     ...(mapsKey ? { config: { ...(config.android?.config ?? {}), googleMaps: { apiKey: mapsKey } } } : {}),
   };
   // The passenger app never opens the camera, so it must not request it on Android.

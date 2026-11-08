@@ -12,7 +12,7 @@ function randomChars(n: number, alphabet: string): string {
 
 /** Booking reference, e.g. "TG-7K3Q". */
 export function makeBookingRef(existing: Set<string> = new Set()): string {
-  let ref = '';
+  let ref: string;
   do {
     ref = `TG-${randomChars(4, REF_ALPHABET)}`;
   } while (existing.has(ref));
@@ -21,7 +21,7 @@ export function makeBookingRef(existing: Set<string> = new Set()): string {
 
 /** 4-digit boarding code, e.g. "8391". Kept readable for demo lookup. */
 export function makeBoardingCode(existing: Set<string> = new Set()): string {
-  let code = '';
+  let code: string;
   do {
     code = String(Math.floor(1000 + Math.random() * 9000));
   } while (existing.has(code));

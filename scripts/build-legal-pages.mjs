@@ -47,7 +47,7 @@ function page(title, body) {
 </style>
 </head>
 <body><main>
-<nav><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of use</a><a href="delete-account.html">Delete your account</a></nav>
+<nav><a href="/">ToGo home</a><a href="privacy.html">Privacy policy</a><a href="terms.html">Terms of use</a><a href="delete-account.html">Delete your account</a></nav>
 <div class="card">
 ${body}
 ${contact}

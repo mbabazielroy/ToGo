@@ -3,7 +3,7 @@
 ToGo is three deployable pieces:
 
 1. **Backend** — a Supabase project (Postgres + Auth + PostgREST + Realtime).
-2. **Web app** — a static Vite SPA (this repo root).
+2. **Website** — the info page, operations console and legal pages (this repo root).
 3. **Mobile app** — the Expo app in `apps/mobile` (store/EAS builds).
 
 Everything below is **configuration** — this session created no live cloud resources.
@@ -26,9 +26,14 @@ Provision the backend and deploy the clients from your own accounts when ready.
 3. In **Project Settings → API**, copy the **Project URL** and the **anon/publishable**
    key. These are the only backend values the clients need. **Never** ship the
    `service_role` key to a client.
-4. In **Authentication → URL Configuration**, set the Site URL and add your deployed
-   web URL(s) and the mobile scheme (`togo://`) to the redirect allow-list, so
-   email-confirm and password-reset links return to the app.
+4. In **Authentication → URL Configuration**, set the Site URL to your website and
+   add these redirect URLs: `togo://**` and `togostaff://**` (the apps), and
+   `https://YOUR-SITE/console/auth/reset` (console password reset). Email-confirm
+   and password-reset links then return to the right place.
+5. Set the account security settings (email confirmation, password rules,
+   leaked-password check, 8-digit email codes, email templates, security
+   notifications, your own SMTP sender): the table in
+   [BACKEND.md](BACKEND.md#account-security-settings).
 
 ### Option B — local stack (development)
 
@@ -36,49 +41,52 @@ Provision the backend and deploy the clients from your own accounts when ready.
 
 ---
 
-## 2. Web app
+## 2. Website
 
-The web app reads two **build-time** public env vars (Vite inlines them):
+The website is the public information page (`/`), the operations console
+(`/console`, staff only) and the legal pages (`/legal/*.html`). All settings are
+**build-time** and public (Vite inlines them):
 
-| Variable | Value |
-| --- | --- |
-| `VITE_SUPABASE_URL` | your Supabase Project URL |
-| `VITE_SUPABASE_ANON_KEY` | your Supabase anon/publishable key |
+| Variable | Used by | Value |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` | console | your Supabase Project URL |
+| `VITE_SUPABASE_ANON_KEY` | console | your Supabase anon/publishable key |
+| `EXPO_PUBLIC_SUPPORT_EMAIL` | info page, legal pages | support address (same as the apps) |
+| `EXPO_PUBLIC_LEGAL_NAME`, `EXPO_PUBLIC_LEGAL_ADDRESS` | info page footer, legal pages | who runs ToGo (same as the apps) |
+| `EXPO_PUBLIC_APP_STORE_URL`, `EXPO_PUBLIC_PLAY_STORE_URL` | info page | store links; until set the page says "coming soon" |
+| `EXPO_PUBLIC_SENTRY_DSN` | legal pages | set when the apps use crash reporting, so the policy matches |
 
-Without them the app serves the honest **"Setup needed"** screen — it never silently
-opens demo mode. (The local preview build sets `VITE_TOGO_DEMO=1` instead; never set
-that for a real deploy.)
+Without the two `VITE_*` values the info page still works and the console shows
+"Setup needed". The legal pages and info page never need the backend.
 
 ### Vercel
 
-`vercel.json` is included (Vite framework, SPA rewrite to `/index.html`, asset
-caching). Steps:
+`vercel.json` is included: Vite build, `/console/*` served by the console page
+(marked `noindex`), long caching for hashed assets, and basic security headers.
 
 1. Import the repo in Vercel (root directory = repo root).
-2. Add the two `VITE_*` vars under **Settings → Environment Variables** (Production +
+2. Add the variables above under **Settings → Environment Variables** (Production +
    Preview).
 3. Deploy. Vercel runs `npm ci` + `npm run build` and serves `dist/`.
 
-Any other static host (Netlify, Cloudflare Pages, S3+CloudFront, GitHub Pages) works
-the same way: build with the two env vars set, publish `dist/`, and add an SPA
-fallback rewrite of all paths to `/index.html`.
+Any other static host works the same way: build with the variables set, publish
+`dist/`, and route `/console/*` to `/console/index.html`.
 
 ### Docker / any container host
 
-A multi-stage `Dockerfile` (Node build → nginx serve, with the SPA fallback in
-`deploy/nginx.conf`) is included:
+A multi-stage `Dockerfile` (Node build → nginx, config in `deploy/nginx.conf`) is
+included:
 
 ```bash
 docker build -t togo-web \
   --build-arg VITE_SUPABASE_URL=https://YOUR-ref.supabase.co \
-  --build-arg VITE_SUPABASE_ANON_KEY=YOUR-anon-key .
+  --build-arg VITE_SUPABASE_ANON_KEY=YOUR-anon-key \
+  --build-arg EXPO_PUBLIC_SUPPORT_EMAIL=help@example.com .
 docker run -p 8080:80 togo-web            # http://localhost:8080
-# or: docker compose up --build            (reads the vars from your shell env)
+# or: docker compose up --build            (reads the values from your shell env)
 ```
 
-Because the Supabase config is baked at build time, build one image per environment
-(or rebuild on config change). Push the image to any registry and run it on Fly.io,
-Cloud Run, ECS, a VM, etc.
+Settings are baked in at build time, so build one image per environment.
 
 ---
 
@@ -106,8 +114,11 @@ works in Expo Go without it. Full detail: [MOBILE.md](MOBILE.md).
 ## Pre-launch checklist
 
 - [ ] Supabase project created; `supabase db push` applied all migrations.
-- [ ] Web `VITE_*` env set on the host; a test build shows the app (not "Setup needed").
-- [ ] Auth redirect URLs include the web origin and `togo://` scheme.
+- [ ] Website variables set on the host; `/console` shows the sign-in page (not "Setup needed").
+- [ ] Auth redirect URLs include `togo://**`, `togostaff://**` and `/console/auth/reset`.
+- [ ] Account security settings match [BACKEND.md](BACKEND.md#account-security-settings): confirm email on, minimum 8, leaked-password protection on, 8-digit codes for 30 minutes, ToGo email templates and security notifications, own SMTP sender.
+- [ ] Sign up, confirm with the code, reset a password with the code: tried once on the production project.
+- [ ] Push alerts set up (function, webhook, Firebase for Android): [BACKEND.md](BACKEND.md#push-alerts).
 - [ ] First platform admin granted (see [BACKEND.md](BACKEND.md)); operators, hubs,
       and crew assigned to real accounts.
 - [ ] Non-software prerequisites tracked in [MVP_READINESS.md](MVP_READINESS.md)

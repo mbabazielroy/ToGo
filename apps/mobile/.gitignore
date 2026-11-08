@@ -11,3 +11,7 @@ web-build/
 
 expo-env.d.ts
 # @end expo-cli
+# End-to-end test builds and reports
+dist-e2e/
+e2e/results/
+e2e/report/

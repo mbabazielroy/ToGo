@@ -11,16 +11,19 @@ backend from the Supabase dashboard and a SQL console.
 
 ---
 
-## 1. Modes
+## 1. Who talks to the backend
 
-- **Demo mode** (default): no environment variables set. The app runs entirely in
-  the browser with local seed data. Fully usable, clearly labelled "Demo mode".
-- **Connected mode**: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set. The
-  app uses real Supabase auth and shared data. On any auth/permission/network
-  error it shows the error — it never silently falls back to demo.
+- **ToGo and ToGo Staff** (phone apps): `EXPO_PUBLIC_SUPABASE_URL` and
+  `EXPO_PUBLIC_SUPABASE_ANON_KEY`. Their preview mode (`EXPO_PUBLIC_TOGO_DEMO=1`)
+  uses sample data on the phone instead and never touches the backend.
+- **Operations console** (`/console` on the website): `VITE_SUPABASE_URL` and
+  `VITE_SUPABASE_ANON_KEY`. Without them it shows "Setup needed".
+- **Push function** (`supabase/functions/push`): runs inside Supabase.
 
-Only the **public URL** and **publishable/anon key** are used in the frontend.
-The service-role key must never appear in a `VITE_` variable.
+On any auth, permission or network error the clients show the error; they never
+silently fall back to sample data. Only the **public URL** and
+**publishable/anon key** are used in the clients. The service-role key must never
+appear in an `EXPO_PUBLIC_` or `VITE_` variable.
 
 ---
 
@@ -43,13 +46,13 @@ The schema lives in `supabase/migrations/*.sql`, applied in filename order.
 # install the CLI: https://supabase.com/docs/guides/cli
 supabase link --project-ref <your-project-ref>
 supabase db push          # applies supabase/migrations in order
-# optional local dev stack (Postgres + Auth + Studio + Inbucket):
+# optional local dev stack (Postgres + Auth + Studio + mailbox):
 supabase start
 supabase db reset         # re-applies migrations + supabase/seed.sql locally
 ```
 
 ### Option B — SQL editor
-Paste each file in `supabase/migrations/` **in numeric order** (`0001` → `0016`)
+Paste each file in `supabase/migrations/` **in numeric order** (`0001` → `0020`)
 into the Supabase SQL editor and run them. Do **not** run
 `supabase/tests/00_shim.sql` against a real project — Supabase already provides the
 `auth` schema and roles. Note the enum-value files (`0012`, `0015`) must each be
@@ -83,20 +86,60 @@ Adding frontend env values only flips the app into connected mode against an
 ## 4. Configure auth redirects
 
 In **Authentication → URL Configuration**:
-- **Site URL**: your app origin (e.g. `http://localhost:5173` for local, or your
-  deployed URL).
-- **Redirect URLs**: add every origin the app is served from. Email confirmation
-  and password-reset links redirect back to `‹origin›/`.
+- **Site URL**: your website (e.g. `http://localhost:5173` locally, or the
+  deployed address).
+- **Redirect URLs**: `togo://**` and `togostaff://**` (the phone apps' email
+  confirmation and password-reset links) and `‹website›/console/auth/reset` (the
+  console's password reset).
 - Both apps use Supabase's **PKCE** sign-in flow. Email links arrive as
   `‹redirect›?code=…` and only work in the browser or on the phone that asked for
-  the email; links carrying tokens in the URL are rejected. The default Supabase
-  email templates (`{{ .ConfirmationURL }}`) work as they are; a custom template
-  must keep using `{{ .ConfirmationURL }}` rather than building token links.
+  the email; links carrying tokens in the URL are rejected. Custom templates must
+  keep using `{{ .ConfirmationURL }}` rather than building token links.
 
-Email/password is the only method used. For a pilot you may disable email
-confirmations (Authentication → Providers → Email) so testers can sign in
-immediately; the app handles both the confirmation-required and instant-session
-cases.
+### Account security settings
+
+The local settings are in `supabase/config.toml`. **Copy them into the production
+project by hand** (`supabase config push` or the dashboard); a hosted project
+doesn't read that file.
+
+| Setting | Dashboard place | Value |
+|---|---|---|
+| Confirm email | Authentication → Sign In / Providers → Email | **On**. Accounts can't sign in until confirmed |
+| Minimum password length | same page | **8** (no character-type rules; NIST SP 800-63B) |
+| Leaked password protection | same page | **On** (Pro plan). Refuses passwords found in breaches (HaveIBeenPwned) |
+| Secure password change | same page | **On**. Changing a password needs a recent sign-in |
+| Email OTP length / expiry | same page | **8** digits, **1800** s (30 minutes) |
+| Secure email change | same page | **On**. Confirmed from both the old and new address |
+| Email templates | Authentication → Emails → Templates | Paste `supabase/templates/confirmation.html`, `recovery.html`, `email_change.html` with the subjects in `config.toml`. They carry the 8-digit code (`{{ .Token }}`) as well as the link |
+| Security notifications | Authentication → Emails → Notifications | **Password changed** and **Email address changed** on, with `password_changed.html` and `email_changed.html` |
+| Rate limits | Authentication → Rate Limits | Sign-ins and sign-ups 30 per 5 min per IP; code checks 30 per 5 min per IP |
+| Refresh token rotation | Authentication → Sessions | **On**, reuse interval 10 s |
+| SMTP | Authentication → Emails → SMTP | Your own sender; Supabase's built-in sender is for testing only (a few emails per hour) |
+| CAPTCHA (recommended) | Authentication → Attack Protection | Turnstile or hCaptcha once the apps add the widget (not built yet) |
+
+What the apps and the console do with these:
+- **Sign-up**: name, email and a password that is checked as it's typed (length,
+  not common, not the person's email or name; `src/lib/authRules.ts`). The app
+  then asks for the 8-digit code from the email. Supabase answers the same way
+  whether or not the email already has an account, so nobody can use sign-up to
+  find out who uses ToGo.
+- **Sign-in**: one message for a wrong email or password. An unconfirmed account
+  is taken to the code step, with "Send a new code".
+- **Forgotten password**: email → 8-digit code + new password, all on one screen.
+  The code works on any device. The email's link works too, but only on the phone
+  or browser that asked for it. Either way, every other session is signed out
+  once the new password is set, and the owner gets a "password changed" email.
+- **Change password** (Account → Security, and the crew profile): needs the
+  current password first, then signs out every other device.
+- **Sign out** ends this device's session only. **Sign out on all devices**
+  (Account → Security) ends them all.
+- **Console**: the same sign-in and reset with code, and it signs out after 30
+  minutes without activity (`src/console/auth/idle.ts`).
+- Sessions on the phones are kept in the iOS Keychain or Android Keystore, never
+  in ordinary app storage.
+
+For staff and admin accounts, two-factor sign-in (an authenticator app, TOTP) is
+the next step and isn't built yet.
 
 ---
 
@@ -185,7 +228,7 @@ The policy/transaction tests run against a real Postgres (they prove RLS, not
 mocks). With a local Postgres available:
 
 ```bash
-npm run db:test         # applies shim + migrations, runs 69 RLS/transaction checks
+npm run db:test         # applies shim + migrations, runs the RLS/transaction checks
 npm run db:concurrency  # two overlapping reservations race for the last seat
 ```
 
@@ -208,6 +251,59 @@ npm run test:integration
 It self-skips (never runs against an arbitrary DB) unless all `TOGO_TEST_*` vars
 are set, isolates its fixtures with a per-run idempotency key, and cancels the
 booking it creates in teardown.
+
+---
+
+## Push alerts
+
+Passengers get a push alert when their bus sets off ("Your bus is on its way",
+with their pickup hub and time), is delayed, rescheduled or cancelled, or an
+incident affects their trip. Their own actions (reserved, checked in, boarded)
+stay in-app.
+
+How it works:
+
+1. The ToGo app registers the phone's Expo push token with
+   `register_push_token` (migration `0020_push_tokens.sql`) once the passenger
+   allows notifications, has "Delays and changes" on and has an upcoming trip. It
+   removes it on sign-out or when they turn the alerts off. Each person can only
+   register, see or remove their own phones; tokens go with the account.
+2. The database already writes a row to `public.notifications` for every alert.
+   "On its way" comes from a trigger on `trips` (`0022_trip_started.sql`): the first
+   time a trip leaves `scheduled`, however it was started, each passenger still to
+   be picked up is told once.
+3. A Database Webhook calls the `push` Edge Function for each new row. The function
+   keeps only service alerts, looks up that person's tokens, sends them through
+   Expo's push service, and forgets tokens Expo reports as no longer registered.
+
+Setup (once per project):
+
+```bash
+supabase functions deploy push --no-verify-jwt
+supabase secrets set PUSH_WEBHOOK_SECRET=$(openssl rand -hex 32)
+# Only if you turn on Expo "enhanced push security":
+supabase secrets set EXPO_ACCESS_TOKEN=...
+```
+
+Then in the dashboard, **Database → Webhooks → Create**: table
+`public.notifications`, event **Insert**, type **Supabase Edge Functions**, function
+`push`, method POST, and an HTTP header `x-webhook-secret` with the same value as
+`PUSH_WEBHOOK_SECRET`. The function refuses calls without it.
+
+Phones:
+
+- **iPhone**: EAS sets up Apple push credentials during `eas build` (Apple
+  Developer account needed).
+- **Android**: create a Firebase project, add an Android app with package
+  `app.togo`, download `google-services.json`, and add it to EAS as a file
+  variable named `GOOGLE_SERVICES_JSON` (`eas env:create --type file`). Upload the
+  Firebase service-account key in EAS credentials so Expo can deliver to Android.
+- Expo Go can't receive these pushes; use a development or store build.
+
+The message rules are unit-tested (`supabase/functions/push/messages.test.ts`), and
+the token rules and the "on its way" alert are covered by the database tests
+(`rls_cases5.sql`, `rls_cases6.sql`). Sending
+through Expo and receiving on a phone still need a real project and device.
 
 ---
 

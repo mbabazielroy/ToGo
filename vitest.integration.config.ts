@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import { defineConfig } from 'vitest/config';
 
 // Integration tests only. Real network to a DESIGNATED test Supabase project.

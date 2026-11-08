@@ -10,7 +10,9 @@ import { useSearch } from '@/state/search';
 import { useAsync } from '@/hooks/useAsync';
 import { useNow } from '@/hooks/useNow';
 import { TransitMap } from '@/components/map/TransitMap';
-import { hubPoint } from '@shared/data/geo';
+import { hubPoint, distanceKm } from '@shared/data/geo';
+import { useMyLocation } from '@/location/useMyLocation';
+import { DistanceToHub } from '@/location/DistanceToHub';
 import { haptics } from '@/lib/feedback';
 import { colors, radius, space, font, SCREEN } from '@/theme';
 import { kampalaToday } from '@shared/lib/time';
@@ -46,6 +48,12 @@ export default function HubDetail() {
     [hub?.id, epoch],
   );
 
+  const myLocation = useMyLocation();
+  const me = myLocation.coord;
+  const point = hubPoint(hub);
+  // Show them and the hub together when they're within walking or boda distance.
+  const near = !!me && !!point && distanceKm(me, point) < 5;
+
   const facilities = useMemo(
     () => Object.entries(hub?.facilities ?? {}).filter(([, v]) => v).map(([k]) => k),
     [hub],
@@ -80,8 +88,11 @@ export default function HubDetail() {
 
             {hubPoint(hub) && (
               <View style={{ marginTop: space.md, gap: space.sm }}>
-                <TransitMap height={170} stops={[{ id: hub.id, coord: hubPoint(hub)!, label: hub.name, highlight: true }]} focus={[hubPoint(hub)!]} caption={mode === 'demo' ? 'Approximate location' : undefined}
+                <TransitMap height={170} stops={[{ id: hub.id, coord: hubPoint(hub)!, label: hub.name, highlight: true }]}
+                  focus={near && me ? [hubPoint(hub)!, me] : [hubPoint(hub)!]} userLocation={me}
+                  caption={mode === 'demo' ? 'Approximate location' : undefined}
                   onPress={() => router.push(`/map?hub=${hub.id}`)} />
+                <DistanceToHub location={myLocation} hub={point} hubName={hub.name} />
                 <Pressable
                   onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${hub.lat},${hub.lng}`).catch(() => {})}
                   accessibilityRole="button" accessibilityLabel={`Directions to ${hub.name}`}

@@ -48,8 +48,8 @@ Easiest on a phone: **SQL Editor**.
 You only need this once the app is served somewhere (a preview/dev URL).
 1. **Authentication → URL Configuration**.
 2. Set **Site URL** to your app's address.
-3. Add that same address to **Redirect URLs** (email confirmation and password
-   reset links return to `‹address›/` and `‹address›/auth/reset`).
+3. Add **Redirect URLs**: `togo://**` and `togostaff://**` for the phone apps, and
+   `‹address›/console/auth/reset` for the operations console's password reset.
 4. For quick testing you may turn **off** email confirmations under
    **Authentication → Providers → Email** so testers can sign in immediately.
 

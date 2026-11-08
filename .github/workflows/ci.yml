@@ -22,8 +22,9 @@ env:
   NODE_VERSION: 22
 
 jobs:
-  # Web app + shared rules: typecheck, lint, unit/adapter tests, production build
-  # (which also generates the hosted privacy / terms / delete-account pages).
+  # Website (info site + operations console) and shared rules: typecheck, lint,
+  # unit/adapter tests, production build (which also generates the hosted privacy /
+  # terms / delete-account pages).
   checks:
     runs-on: ubuntu-latest
     steps:
@@ -41,8 +42,10 @@ jobs:
         run: npm test
       - name: Build (web + legal pages)
         run: npm run build
-      - name: Legal pages exist
-        run: test -s dist/legal/privacy.html && test -s dist/legal/terms.html && test -s dist/legal/delete-account.html
+      - name: Site, console and legal pages exist
+        run: |
+          test -s dist/index.html && test -s dist/console/index.html
+          test -s dist/legal/privacy.html && test -s dist/legal/terms.html && test -s dist/legal/delete-account.html
 
   # Mobile apps (ToGo and ToGo Staff): typecheck, lint, tests, Expo Doctor, and a
   # release bundle export of each store app for iOS and Android (no device needed).
@@ -106,6 +109,42 @@ jobs:
           if grep -rlaE "\b(pilot|illustrative|lorem ipsum)\b" dist-passenger dist-staff --include=*.hbc --include=*.js; then
             echo "::error::Release bundle contains pre-launch wording"; exit 1
           fi
+
+  # End-to-end: Playwright drives the real app screens (web build, preview mode)
+  # through the passenger journey, each crew workspace, and a passenger boarded by
+  # the conductor. Native-only parts (camera, push, maps SDK) aren't covered.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+      - name: Install root deps (shared src)
+        run: npm ci
+      - name: Install mobile deps
+        working-directory: apps/mobile
+        run: npm ci
+      - name: Install Chromium
+        working-directory: apps/mobile
+        run: npx playwright install --with-deps chromium
+      - name: Build web previews (ToGo, ToGo Staff, combined)
+        working-directory: apps/mobile
+        run: npm run e2e:build
+      - name: End-to-end tests
+        working-directory: apps/mobile
+        run: npm run e2e
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: apps/mobile/e2e/report
+          retention-days: 7
 
   # Real PostgreSQL: RLS/transaction suite + concurrency race. The auth shim
   # (supabase/tests/00_shim.sql) is test-only infrastructure and is never part of

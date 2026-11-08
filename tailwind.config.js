@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: ['./index.html', './console/index.html', './src/**/*.{ts,tsx}'],
   theme: {
     screens: {
       xs: '400px',
@@ -11,6 +11,19 @@ export default {
     },
     extend: {
       colors: {
+        // Info site: the same greens and greys as the phone apps (apps/mobile/src/theme.ts)
+        brand: {
+          900: '#0b2e1c',
+          800: '#0f3d25',
+          700: '#0c7a43',
+          500: '#13a85c',
+          400: '#3cc47c',
+          300: '#7fdba9',
+          100: '#e1f4e8',
+          50: '#f1faf4',
+        },
+        ink: '#111114',
+        muted: '#6c6c72',
         // Deep green branding
         forest: {
           50: '#f0f7f2',

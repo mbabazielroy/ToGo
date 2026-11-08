@@ -1,12 +1,12 @@
-# Run the ToGo web app as a container. The Supabase public config is baked at BUILD
-# time (Vite), so pass it via the environment when you build:
+# Run the ToGo website as a container. Settings are baked in at BUILD time, so
+# set them in your shell (or a .env file next to this one) before building:
 #
 #   VITE_SUPABASE_URL=https://YOUR-ref.supabase.co \
 #   VITE_SUPABASE_ANON_KEY=YOUR-anon-key \
+#   EXPO_PUBLIC_SUPPORT_EMAIL=help@example.com \
 #   docker compose up --build
 #
-# Then open http://localhost:8080. Without the two vars the app builds and serves the
-# honest "Setup needed" screen (it never silently opens demo mode).
+# Then open http://localhost:8080 (info page) and http://localhost:8080/console.
 services:
   web:
     build:
@@ -14,6 +14,12 @@ services:
       args:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+        EXPO_PUBLIC_SUPPORT_EMAIL: ${EXPO_PUBLIC_SUPPORT_EMAIL:-}
+        EXPO_PUBLIC_LEGAL_NAME: ${EXPO_PUBLIC_LEGAL_NAME:-}
+        EXPO_PUBLIC_LEGAL_ADDRESS: ${EXPO_PUBLIC_LEGAL_ADDRESS:-}
+        EXPO_PUBLIC_APP_STORE_URL: ${EXPO_PUBLIC_APP_STORE_URL:-}
+        EXPO_PUBLIC_PLAY_STORE_URL: ${EXPO_PUBLIC_PLAY_STORE_URL:-}
+        EXPO_PUBLIC_SENTRY_DSN: ${EXPO_PUBLIC_SENTRY_DSN:-}
     ports:
       - "8080:80"
     restart: unless-stopped
