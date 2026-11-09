@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,13 +8,15 @@ import { AdminTripRow } from '@/admin/AdminTripRow';
 import { useAdapter, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, space, font, SCREEN } from '@/theme';
+import { space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { addDays, kampalaToday, formatDate } from '@shared/lib/time';
 import type { DirectionCode } from '@shared/data/adapter';
 
 type Dir = 'all' | DirectionCode;
 
 export default function AdminDepartures() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const router = useRouter();
@@ -67,12 +69,12 @@ export default function AdminDepartures() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
-  add: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  add: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   days: { flexDirection: 'row', gap: 6, marginBottom: space.sm, flexWrap: 'wrap' },
   day: { borderRadius: 999, paddingHorizontal: 12, height: 34, justifyContent: 'center', backgroundColor: colors.surface },
-  dayOn: { backgroundColor: colors.ink },
+  dayOn: { backgroundColor: colors.inverse },
   dayText: { fontSize: font.tiny, fontWeight: '700', color: colors.inkSoft },
-  dayTextOn: { color: colors.white },
-});
+  dayTextOn: { color: colors.onInverse },
+}));

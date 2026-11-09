@@ -129,6 +129,20 @@ states. There are no lime fills, tinted backgrounds, gradients, or heavy shadows
 It stays **list-first** — choosing a pickup hub and seeing departures is the whole
 first screen; there is no decorative map (hubs have no published coordinates).
 
+**Light and dark mode.** Both apps follow the phone's appearance and switch live
+(`userInterfaceStyle: "automatic"` in `app.json`). Account → Appearance (and the
+crew profile and Operations → Team) offers System, Light or Dark; the choice is
+kept on the device (`src/appearance/AppearanceProvider.tsx`) and also applied to
+native alerts, keyboards and the map (Apple Maps follows it; Google Maps on Android
+gets a night style). Colours live in `src/palette.ts` as a light and a dark set;
+`src/palette.test.ts` checks every text/background pair the screens use meets
+WCAG AA (4.5:1) in both. Screens never import colours directly: use
+`const useStyles = makeStyles((colors) => ({ ... }))` at module level and
+`useColors()` for inline colours, both from `src/theme.ts`. Use `primary` for
+filled buttons with white text, `forest700` for green text and icons, `inverse` /
+`onInverse` for selected chips, and `white` only for text on coloured fills. QR
+codes stay black on white in both modes so scanners read them.
+
 **Visual system** (`src/theme.ts`, logical RN units — not screenshot pixels):
 `bg`/`surface`/`surfaceAlt` neutrals; text ramp `ink` (near-black) → `inkSoft` →
 `muted`, all kept ≳4.5:1 on white (`faint` is for chevrons only). Spacing scale

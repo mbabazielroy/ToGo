@@ -139,3 +139,32 @@ test('the sign-in screen checks new passwords as they’re typed and offers a re
   await page.getByRole('button', { name: 'Back to sign in' }).click();
   await expect(shown(page.getByRole('tab', { name: 'Create account' }))).toBeVisible();
 });
+
+test('the app follows the phone’s light or dark setting, and Account can override it', async ({ page }) => {
+  const background = () => page.evaluate(() => {
+    // The screen's own background: the first full-size element with a solid colour.
+    for (const el of Array.from(document.querySelectorAll('div'))) {
+      const c = getComputedStyle(el).backgroundColor;
+      if (el.clientHeight > 600 && c !== 'rgba(0, 0, 0, 0)') return c;
+    }
+    return '';
+  });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  await page.getByRole('button', { name: /Get started/ }).first().click();
+  await page.getByRole('button', { name: /Start travelling/ }).click();
+  await page.getByRole('tab', { name: /Account/ }).click();
+  await expect(shown(page.getByText(/Matches your phone’s setting \(now dark\)/))).toBeVisible();
+  expect(await background()).toBe('rgb(0, 0, 0)');
+
+  // Choose Light: kept after a reload, even though the phone is still dark.
+  await page.getByRole('tab', { name: 'Light' }).click();
+  await expect(shown(page.getByText(/Always light/))).toBeVisible();
+  await page.reload();
+  await expect(shown(page.getByText(/Always light/))).toBeVisible();
+  expect(await background()).toBe('rgb(242, 242, 247)');
+
+  // Back to System follows the phone again.
+  await page.getByRole('tab', { name: 'System' }).click();
+  await expect(shown(page.getByText(/now dark/))).toBeVisible();
+});

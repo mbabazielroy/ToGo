@@ -2,9 +2,10 @@ import type { ReactNode } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useSession, spaceOf, homeFor, spaceAllowed, type Space } from './SessionProvider';
-import { colors } from '../theme';
+import { useColors } from '../theme';
 
 export function Splash() {
+  const colors = useColors();
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
       <ActivityIndicator color={colors.forest700} />

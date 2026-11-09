@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Pressable } from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
 import { manifestCounts } from '@/staff/counts';
-import { colors, space, font, SCREEN, radius, control } from '@/theme';
+import { space, font, SCREEN, radius, control, useColors, makeStyles } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { TransitMap } from '@/components/map/TransitMap';
@@ -25,6 +25,8 @@ const FARE_MIN = 1000;
 const FARE_MAX = 500000;
 
 export default function AdminTrip() {
+  const colors = useColors();
+  const styles = useStyles();
   const { tripId } = useLocalSearchParams<{ tripId: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
@@ -218,7 +220,7 @@ export default function AdminTrip() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   head: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.sm },
   title: { fontSize: font.h2, fontWeight: '800', color: colors.ink, letterSpacing: -0.3 },
@@ -240,4 +242,4 @@ const styles = StyleSheet.create({
   pickMeta: { fontSize: font.tiny, color: colors.muted, marginTop: 1 },
   unassign: { alignItems: 'center', paddingVertical: space.md, borderRadius: radius.lg },
   unassignText: { color: colors.red700, fontWeight: '600', fontSize: font.body },
-});
+}));

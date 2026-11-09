@@ -1,14 +1,16 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import { PageHeader, Muted, Loading, ErrorRow, SectionHeading, Separator, EmptyState } from '@/components/ui';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync } from '@/hooks/useAsync';
-import { colors, radius, space, font } from '@/theme';
+import { radius, space, font, useColors, makeStyles } from '@/theme';
 import type { HubView } from '@shared/data/adapter';
 
 export default function Hubs() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const router = useRouter();
   const epoch = useDataEpoch();
@@ -69,8 +71,8 @@ export default function Hubs() {
   );
 }
 
-const styles = StyleSheet.create({
-  mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.forest700, borderRadius: 999, paddingHorizontal: 14, height: 36, marginBottom: 6 },
+const useStyles = makeStyles((colors) => ({
+  mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: 999, paddingHorizontal: 14, height: 36, marginBottom: 6 },
   mapBtnText: { color: colors.white, fontWeight: '700', fontSize: font.small },
   list: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: space.md, overflow: 'hidden' },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: space.md },
@@ -78,4 +80,4 @@ const styles = StyleSheet.create({
   name: { fontWeight: '600', color: colors.ink, fontSize: font.body },
   area: { color: colors.muted, fontSize: font.small, marginTop: 1 },
   meta: { color: colors.muted, fontSize: font.tiny, marginTop: 2 },
-});
+}));

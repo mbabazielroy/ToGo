@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, TextInput, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, PrimaryButton, Loading, ErrorRow, EmptyState, Separator, SectionHeading, LineBadge, Banner } from '@/components/ui';
 import { BookingStatusPill } from '@/components/StatusPill';
@@ -9,7 +9,7 @@ import { useNow, leadTime } from '@/hooks/useNow';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
-import { colors, radius, space, font, SCREEN, control } from '@/theme';
+import { radius, space, font, SCREEN, control, useColors, makeStyles } from '@/theme';
 import { formatTime, kampalaToday } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { hubCounts } from '@/staff/counts';
@@ -49,6 +49,8 @@ export function useHubBoard(staffId: string, tick: number) {
 }
 
 export function AttendantToday({ staffId }: { staffId: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const toast = useToast();
   const mode = useAppMode();
@@ -190,7 +192,7 @@ export function AttendantToday({ staffId }: { staffId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   headerStats: { flexDirection: 'row', gap: space.md },
   label: { fontSize: font.tiny, color: colors.muted, fontWeight: '600', marginBottom: space.sm },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
@@ -209,6 +211,6 @@ const styles = StyleSheet.create({
   paxRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: 10, paddingHorizontal: space.md },
   paxName: { fontSize: font.body, fontWeight: '600', color: colors.ink },
   paxMeta: { fontSize: font.small, color: colors.muted, marginTop: 1 },
-  inBtn: { backgroundColor: colors.forest700, borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
+  inBtn: { backgroundColor: colors.primary, borderRadius: 999, paddingHorizontal: 14, height: 34, justifyContent: 'center' },
   inBtnText: { color: colors.white, fontSize: font.tiny, fontWeight: '800' },
-});
+}));

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, type LayoutChangeEvent } from 'react-native';
 import Svg, { Polyline, Circle, G, Rect, Text as SvgText } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, font } from '../../theme';
+import { radius, font, useColors, makeStyles } from '../../theme';
 import type { LatLng } from '@shared/data/geo';
 import type { TransitMapProps } from './types';
 
@@ -12,6 +12,8 @@ export function TransitMap({
   height, fill, routes = [], stops = [], buses = [], focus, caption, selectedId,
   onStopPress, onBusPress, onMapPress, onPress, follow, userLocation, bottomInset = 0, topInset = 0,
 }: TransitMapProps) {
+  const colors = useColors();
+  const styles = useStyles();
   const [size, setSize] = useState({ w: 0, h: 0 });
   const pts = useMemo(() => {
     if (follow) {
@@ -51,11 +53,11 @@ export function TransitMap({
             return (
               <G key={s.id}>
                 <Circle cx={q.x} cy={q.y} r={r} fill={sel ? s.color ?? colors.forest700 : s.passed ? colors.surfaceAlt : colors.white} stroke={s.passed ? colors.faint : s.color ?? colors.forest700} strokeWidth={s.highlight || sel ? 4 : 3} />
-                {s.badge != null && s.badge > 0 && <SvgText x={q.x} y={q.y + 3.5} fontSize={10} fontWeight="900" fill={sel ? colors.white : colors.ink} textAnchor="middle">{s.badge}</SvgText>}
+                {s.badge != null && s.badge > 0 && <SvgText x={q.x} y={q.y + 3.5} fontSize={10} fontWeight="900" fill={sel ? colors.white : '#111114'} textAnchor="middle">{s.badge}</SvgText>}
                 {sel && (
                   <G>
-                    <Rect x={Math.min(Math.max(4, q.x - 70), w - 144)} y={q.y + 14} width={140} height={20} rx={8} fill={colors.ink} />
-                    <SvgText x={Math.min(Math.max(74, q.x), w - 74)} y={q.y + 28} fontSize={11} fontWeight="700" fill={colors.white} textAnchor="middle">{s.label.length > 22 ? `${s.label.slice(0, 21)}…` : s.label}</SvgText>
+                    <Rect x={Math.min(Math.max(4, q.x - 70), w - 144)} y={q.y + 14} width={140} height={20} rx={8} fill={colors.inverse} />
+                    <SvgText x={Math.min(Math.max(74, q.x), w - 74)} y={q.y + 28} fontSize={11} fontWeight="700" fill={colors.onInverse} textAnchor="middle">{s.label.length > 22 ? `${s.label.slice(0, 21)}…` : s.label}</SvgText>
                   </G>
                 )}
               </G>
@@ -108,10 +110,10 @@ export function TransitMap({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: '#e8efe9' },
+const useStyles = makeStyles((colors) => ({
+  wrap: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.mapBase },
   hit: { position: 'absolute', width: 44, height: 44, borderRadius: 22 },
-  caption: { position: 'absolute', left: 10, backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  caption: { position: 'absolute', left: 10, backgroundColor: colors.overlay, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   captionText: { fontSize: font.tiny, fontWeight: '700', color: colors.inkSoft },
-  expand: { position: 'absolute', right: 10, bottom: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.94)', alignItems: 'center', justifyContent: 'center' },
-});
+  expand: { position: 'absolute', right: 10, bottom: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' },
+}));

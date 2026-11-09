@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { PrimaryButton } from '../components/ui';
-import { colors, radius, space, font, SCREEN } from '../theme';
+import { radius, space, font, SCREEN, useColors, makeStyles } from '../theme';
 
 /**
  * QR scanner for conductor boarding. Requests explicit camera permission, debounces
@@ -15,6 +15,8 @@ import { colors, radius, space, font, SCREEN } from '../theme';
 export function QrScanner({
   visible, onClose, onCode,
 }: { visible: boolean; onClose: () => void; onCode: (raw: string) => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const lastRef = useRef<{ code: string; at: number }>({ code: '', at: 0 });
@@ -72,6 +74,8 @@ export function QrScanner({
 }
 
 function Fallback({ text, onClose }: { text: string; onClose?: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.center}>
       <Ionicons name="qr-code-outline" size={40} color={colors.white} />
@@ -81,7 +85,7 @@ function Fallback({ text, onClose }: { text: string; onClose?: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: '#0b0f0c' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SCREEN, paddingVertical: space.sm },
   title: { color: colors.white, fontSize: font.title, fontWeight: '700' },
@@ -92,4 +96,4 @@ const styles = StyleSheet.create({
   manualLink: { color: colors.white, textAlign: 'center', fontWeight: '600', fontSize: font.small, paddingVertical: 8 },
   reticle: { position: 'absolute', alignSelf: 'center', top: '30%', width: 220, height: 220, borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)', borderRadius: radius.lg },
   hint: { position: 'absolute', bottom: 48, alignSelf: 'center', color: colors.white, fontSize: font.body, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill },
-});
+}));

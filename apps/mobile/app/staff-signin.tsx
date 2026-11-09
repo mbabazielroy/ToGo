@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useRouter, Redirect } from 'expo-router';
 import { APP_VARIANT } from '@/env';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { useAppMode } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useSession, homeFor, ROLE_LABEL, type Identity, type Role } from '@/session/SessionProvider';
 import { haptics } from '@/lib/feedback';
-import { colors, space, font, SCREEN } from '@/theme';
+import { space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { BrandMark } from '@/components/BrandMark';
 
 const GROUPS: { role: Role; title: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
@@ -21,6 +21,8 @@ const GROUPS: { role: Role; title: string; icon: keyof typeof Ionicons.glyphMap;
 /** Entry to the crew and operations spaces. Preview: pick a fictional persona.
  *  Connected: sign in, then choose among the workspaces your account is verified for. */
 export default function StaffSignIn() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mode = useAppMode();
@@ -110,7 +112,7 @@ export default function StaffSignIn() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   title: { fontSize: 30, fontWeight: '800', color: colors.ink, letterSpacing: -0.6 },
   lead: { fontSize: font.body, color: colors.inkSoft, marginTop: space.sm, lineHeight: 24 },
@@ -118,4 +120,4 @@ const styles = StyleSheet.create({
   brand: { color: colors.ink, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
   legal: { textAlign: 'center', color: colors.forest700, fontSize: font.tiny, fontWeight: '600', marginTop: space.md },
   foot: { textAlign: 'center', color: colors.muted, fontSize: font.tiny, marginTop: space.xl },
-});
+}));

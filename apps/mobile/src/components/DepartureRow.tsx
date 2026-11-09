@@ -1,7 +1,7 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineBadge } from './ui';
-import { colors, space, font, radius } from '../theme';
+import { space, font, radius, useColors, makeStyles } from '../theme';
 import { lineFor } from '../lib/lines';
 import { countdown } from '../hooks/useNow';
 import { formatTime, formatUGX } from '@shared/lib/time';
@@ -26,6 +26,8 @@ export function DepartureRow({
   showDestination?: boolean;
   now: Date;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const line = lineFor(trip.operatorId, trip.operatorName);
   const pickupISO = pickup?.pickupTime ?? trip.originDeparture;
   const destinationCity = DIRECTION_CITIES[trip.direction].destination;
@@ -89,7 +91,7 @@ export function DepartureRow({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   card: { flexDirection: 'row', alignItems: 'stretch', backgroundColor: colors.surface, borderRadius: radius.xl, overflow: 'hidden', minHeight: 92 },
   stripe: { width: 5 },
   body: { flex: 1, minWidth: 0, paddingVertical: space.md, paddingLeft: space.md, paddingRight: space.sm, gap: 4 },
@@ -104,4 +106,4 @@ const styles = StyleSheet.create({
   when: { width: 78, alignItems: 'center', justifyContent: 'center', paddingRight: space.sm },
   big: { fontSize: 28, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.8 },
   unit: { fontSize: font.tiny, color: colors.muted, fontWeight: '600', marginTop: -2 },
-});
+}));

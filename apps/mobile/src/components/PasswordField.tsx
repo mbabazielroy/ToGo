@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { newPasswordProblem, passwordStrength, PASSWORD_MAX, type PasswordContext } from '@shared/lib/authRules';
-import { colors, radius, font } from '@/theme';
+import { radius, font, useColors, makeStyles } from '@/theme';
 
 /**
  * A password input with a show/hide button. For a new password (`isNew`) it also
@@ -20,6 +20,8 @@ export function PasswordField({
   onSubmit?: () => void;
   testID?: string;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const [shown, setShown] = useState(false);
   const problem = isNew && value.length > 0 ? newPasswordProblem(value, context) : null;
   const strength = isNew && value.length > 0 ? passwordStrength(value, context) : null;
@@ -75,12 +77,12 @@ export function PasswordField({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   label: { fontSize: font.tiny, fontWeight: '600', color: colors.muted, marginBottom: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.white, minHeight: 48 },
+  row: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, minHeight: 48 },
   input: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink },
   eye: { paddingHorizontal: 12, paddingVertical: 10 },
   meter: { flexDirection: 'row', gap: 4, marginTop: 8 },
   bar: { flex: 1, height: 4, borderRadius: 2 },
   hint: { fontSize: font.tiny, color: colors.muted, marginTop: 6, lineHeight: 17 },
-});
+}));

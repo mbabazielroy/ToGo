@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, Separator, Loading, ErrorRow, EmptyState, SectionHeading, LineBadge, StatTile } from '@/components/ui';
@@ -11,7 +11,7 @@ import { useSession } from '@/session/SessionProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useNow, leadTime } from '@/hooks/useNow';
 import { lineFor } from '@/lib/lines';
-import { colors, space, font, SCREEN } from '@/theme';
+import { space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { formatTime } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import type { TripView } from '@shared/data/adapter';
@@ -25,6 +25,8 @@ export default function Shift() {
 }
 
 function TripShift({ staffId }: { staffId: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const router = useRouter();
@@ -67,6 +69,8 @@ function TripShift({ staffId }: { staffId: string }) {
 }
 
 function TripRow({ trip, now, onPress }: { trip: TripView; now: Date; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   const line = lineFor(trip.operatorId, trip.operatorName);
   const cities = DIRECTION_CITIES[trip.direction];
   return (
@@ -86,6 +90,8 @@ function TripRow({ trip, now, onPress }: { trip: TripView; now: Date; onPress: (
 }
 
 function HubShift({ staffId }: { staffId: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   const [tick, setTick] = useState(0);
   const now = useNow(60000);
   const data = useHubBoard(staffId, tick);
@@ -134,7 +140,7 @@ function HubShift({ staffId }: { staffId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   stats: { flexDirection: 'row', gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: SCREEN, paddingVertical: space.md },
@@ -143,4 +149,4 @@ const styles = StyleSheet.create({
   meta: { fontSize: font.tiny, color: colors.muted, marginTop: 2 },
   hubArea: { fontSize: font.body, fontWeight: '600', color: colors.ink },
   hint: { fontSize: font.small, color: colors.inkSoft, lineHeight: 20 },
-});
+}));

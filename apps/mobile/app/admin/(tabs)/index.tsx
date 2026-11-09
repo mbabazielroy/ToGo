@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, Separator, SectionHeading, Loading, ErrorRow, StatTile, ListRow, EmptyState } from '@/components/ui';
@@ -8,7 +8,7 @@ import { AdminTripRow, crewGaps } from '@/admin/AdminTripRow';
 import { useAdapter, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { useNow } from '@/hooks/useNow';
-import { colors, space, font, SCREEN, radius } from '@/theme';
+import { space, font, SCREEN, radius, useColors, makeStyles } from '@/theme';
 import { kampalaToday, formatDate, timeAgo } from '@shared/lib/time';
 import { TransitMap } from '@/components/map/TransitMap';
 import { tripMapData } from '@/components/map/tripMap';
@@ -17,6 +17,8 @@ import { CORRIDOR_REGION } from '@shared/data/geo';
 
 /** Today across the network: load, punctuality, crew gaps and incidents. */
 export default function AdminOverview() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const router = useRouter();
@@ -156,11 +158,11 @@ export default function AdminOverview() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   date: { color: colors.onDarkSoft, fontSize: font.small, fontWeight: '600' },
   grid: { flexDirection: 'row', gap: space.sm },
-  cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.forest700, borderRadius: radius.xl, minHeight: 52 },
+  cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: radius.xl, minHeight: 52 },
   ctaText: { color: colors.white, fontSize: font.body, fontWeight: '700' },
   ok: { color: colors.muted, fontSize: font.small },
   feedRow: { flexDirection: 'row', gap: space.md, paddingHorizontal: SCREEN, paddingVertical: 10 },
@@ -168,4 +170,4 @@ const styles = StyleSheet.create({
   feedTitle: { fontSize: font.small, fontWeight: '700', color: colors.ink },
   feedBody: { fontSize: font.tiny, color: colors.muted, marginTop: 1, lineHeight: 17 },
   feedTime: { fontSize: 11, color: colors.muted },
-});
+}));

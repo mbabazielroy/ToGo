@@ -1,11 +1,11 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, Separator, SectionHeading, Loading, ErrorRow, PageHeader, LineBadge, Segmented } from '@/components/ui';
 import { useAdapter, useDataEpoch } from '@/data/AdapterProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { lineFor } from '@/lib/lines';
-import { colors, space, font, SCREEN } from '@/theme';
+import { space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { useState } from 'react';
 
 const FAC: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -14,6 +14,8 @@ const FAC: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 /** The network: pickup hubs by city, and operators with their fleets. */
 export default function AdminNetwork() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const insets = useSafeAreaInsets();
@@ -102,7 +104,7 @@ export default function AdminNetwork() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   hub: { paddingHorizontal: SCREEN, paddingVertical: space.md, gap: 2 },
   name: { fontSize: font.body, fontWeight: '700', color: colors.ink },
@@ -114,4 +116,4 @@ const styles = StyleSheet.create({
   opName: { flex: 1, fontSize: font.body, fontWeight: '800', color: colors.ink },
   veh: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: SCREEN, paddingVertical: space.md },
   seats: { fontSize: font.small, fontWeight: '700', color: colors.inkSoft },
-});
+}));

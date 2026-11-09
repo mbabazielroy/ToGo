@@ -1,5 +1,5 @@
-import { ScrollView, Pressable, Text, StyleSheet, View } from 'react-native';
-import { colors, font } from '@/theme';
+import { ScrollView, Pressable, Text, View } from 'react-native';
+import { font, makeStyles } from '@/theme';
 import { formatTime } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import type { TripView } from '@shared/data/adapter';
@@ -7,6 +7,7 @@ import { haptics } from '@/lib/feedback';
 
 /** Horizontal selector between a crew member's assigned departures (on the dark header). */
 export function TripPicker({ trips, activeId, onSelect }: { trips: TripView[]; activeId?: string; onSelect: (id: string) => void }) {
+  const styles = useStyles();
   if (trips.length < 2) return null;
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -28,11 +29,11 @@ export function TripPicker({ trips, activeId, onSelect }: { trips: TripView[]; a
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   chip: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.10)' },
   chipOn: { backgroundColor: colors.white },
   time: { color: colors.white, fontSize: font.body, fontWeight: '800', fontVariant: ['tabular-nums'] },
   timeOn: { color: colors.forest900 },
   dir: { color: colors.onDarkSoft, fontSize: 11, fontWeight: '700' },
   dirOn: { color: colors.forest700 },
-});
+}));

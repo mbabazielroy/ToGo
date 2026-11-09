@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
+import { View, Text, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { distanceKm, formatDistance, type LatLng } from '@shared/data/geo';
 import { haptics } from '@/lib/feedback';
-import { colors, font, radius, space } from '@/theme';
+import { font, radius, space, useColors, makeStyles } from '@/theme';
 import type { MyLocation } from './useMyLocation';
 
 /** Closer than this, "you're here" rather than a distance (GPS is ±20–50 m). */
@@ -13,6 +13,8 @@ const AT_HUB_KM = 0.06;
  * button to turn location on. Works without a connection: GPS needs no data.
  */
 export function DistanceToHub({ location, hub, hubName }: { location: MyLocation; hub: LatLng | null; hubName: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   if (!hub) return null;
   const { coord, status } = location;
 
@@ -58,7 +60,7 @@ export function DistanceToHub({ location, hub, hubName }: { location: MyLocation
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm, paddingHorizontal: space.md,
     borderRadius: radius.lg, backgroundColor: colors.surface, minHeight: 44 },
   icon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#1f5fd1', alignItems: 'center', justifyContent: 'center' },
@@ -66,4 +68,4 @@ const styles = StyleSheet.create({
   strong: { fontWeight: '700' },
   button: { borderWidth: 1, borderColor: colors.border },
   buttonText: { color: colors.forest700, fontWeight: '600' },
-});
+}));

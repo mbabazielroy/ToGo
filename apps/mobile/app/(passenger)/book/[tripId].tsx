@@ -15,7 +15,7 @@ import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { useNow } from '@/hooks/useNow';
-import { colors, space, font, SCREEN, control } from '@/theme';
+import { space, font, SCREEN, control, useColors, makeStyles } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import { tripJourney, dropoffStopFor } from '@shared/data/journey';
 import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
@@ -26,6 +26,8 @@ function makeIdemKey() {
 }
 
 export default function BookScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { tripId, hub, pax } = useLocalSearchParams<{ tripId: string; hub?: string; pax?: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
@@ -181,14 +183,14 @@ export default function BookScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
 
   summaryTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: space.md },
   summaryMeta: { flex: 1, color: colors.muted, fontSize: font.small },
   leg: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   legIcon: { width: 18, alignItems: 'center' },
-  dotPickup: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.forest700 },
+  dotPickup: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.primary },
   legLine: { width: StyleSheet.hairlineWidth * 2, height: 18, backgroundColor: colors.border, marginLeft: 8, marginVertical: 3 },
   legPlace: { fontSize: font.body, fontWeight: '600', color: colors.ink },
   legSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
@@ -213,4 +215,4 @@ const styles = StyleSheet.create({
   totalR: { fontWeight: '700', fontSize: font.h2, color: colors.ink, fontVariant: ['tabular-nums'] },
   leftNote: { color: colors.red700, fontSize: font.small, fontWeight: '600', textAlign: 'center' },
   demoNote: { textAlign: 'center', color: colors.muted, fontSize: font.tiny },
-});
+}));

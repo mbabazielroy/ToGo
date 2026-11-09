@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PrimaryButton } from './ui';
-import { colors, space, font, SCREEN } from '../theme';
+import { space, font, SCREEN, useColors, makeStyles } from '../theme';
 import { BrandMark } from './BrandMark';
 import { SavedPassCard } from './SavedPassCard';
 import { useSavedPasses } from '../lib/passStore';
@@ -19,6 +19,8 @@ export type ConnState = 'checking' | 'ready' | 'unconfigured' | 'unreachable';
 export function ConnectionScreen({
   state, detail, onRetry, retrying,
 }: { state: 'unconfigured' | 'unreachable'; detail?: string; onRetry: () => void; retrying?: boolean }) {
+  const colors = useColors();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const unconfigured = state === 'unconfigured';
   // Build-setup wording is for developers only. A release binary can't reach this
@@ -84,6 +86,8 @@ export function ConnectionScreen({
 
 /** Full-screen spinner while the connection is being checked. */
 export function ConnectionChecking() {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.checking}>
       <ActivityIndicator color={colors.forest700} />
@@ -92,7 +96,7 @@ export function ConnectionChecking() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: SCREEN, justifyContent: 'space-between' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md },
   icon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
@@ -106,4 +110,4 @@ const styles = StyleSheet.create({
   offlineBody: { fontSize: font.small, color: colors.inkSoft, marginTop: 2, lineHeight: 20 },
   checking: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, gap: space.md },
   checkingText: { color: colors.muted, fontSize: font.small },
-});
+}));

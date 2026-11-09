@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { Card, Muted, PrimaryButton, ErrorRow } from '@/components/ui';
 import { PasswordField } from '@/components/PasswordField';
 import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
-import { colors, radius, space, font } from '@/theme';
+import { radius, space, font, useColors, makeStyles } from '@/theme';
 import { APP_VARIANT, SUPPORT_EMAIL } from '@/env';
 import { BrandMark } from '@/components/BrandMark';
 import {
@@ -25,6 +25,8 @@ import {
 type Step = 'signin' | 'signup' | 'confirm' | 'forgot' | 'reset';
 
 export default function AuthScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const auth = useAuth();
   const { session, recoveryMode } = auth;
   const toast = useToast();
@@ -202,22 +204,22 @@ export default function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   back: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingVertical: 6 },
   backText: { color: colors.forest700, fontWeight: '600', fontSize: font.body },
-  tabs: { flexDirection: 'row', backgroundColor: colors.sand100, borderRadius: radius.md, padding: 4 },
+  tabs: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: 'center' },
-  tabActive: { backgroundColor: colors.white },
+  tabActive: { backgroundColor: colors.thumb },
   tabText: { color: colors.inkSoft, fontWeight: '600' },
-  tabTextActive: { color: colors.forest800 },
+  tabTextActive: { color: colors.ink },
   heading: { fontSize: font.h2, fontWeight: '700', color: colors.ink },
   lead: { fontSize: font.small, color: colors.inkSoft, lineHeight: 20 },
   label: { fontSize: font.tiny, fontWeight: '600', color: colors.muted, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.white },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: font.body, color: colors.ink, minHeight: 48, backgroundColor: colors.surface },
   code: { fontSize: 24, letterSpacing: 6, fontWeight: '700', textAlign: 'center' },
   agree: { textAlign: 'center', fontSize: font.tiny, color: colors.muted, lineHeight: 17 },
   small: { textAlign: 'center', fontSize: font.tiny, color: colors.muted, lineHeight: 17 },
   link: { color: colors.forest700, fontWeight: '600' },
   linkBtn: { textAlign: 'center', color: colors.forest700, fontWeight: '600', fontSize: font.small },
   foot: { textAlign: 'center', fontSize: font.tiny, color: colors.muted, marginTop: space.md },
-});
+}));

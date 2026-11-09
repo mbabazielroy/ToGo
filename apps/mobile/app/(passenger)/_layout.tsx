@@ -3,11 +3,12 @@ import { SpaceGate } from '@/session/SpaceGate';
 import { PickupReminders } from '@/notifications/PickupReminders';
 import { SavedPassesSync } from '@/components/SavedPassesSync';
 import { PushRegistration } from '@/notifications/PushRegistration';
-import { colors } from '@/theme';
+import { useColors } from '@/theme';
 
 /** Passenger space: tabs plus the booking, boarding-pass, hub and notification
  *  screens. Only the passenger identity can enter. */
 export default function PassengerLayout() {
+  const colors = useColors();
   return (
     <SpaceGate space="passenger">
       <PickupReminders />

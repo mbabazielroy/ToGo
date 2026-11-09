@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, FlatList, Pressable, useWindowDimensions } from 'react-native';
 import { useRouter, Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useAppMode } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useSession } from '@/session/SessionProvider';
-import { colors, space, font, radius, control } from '@/theme';
+import { space, font, radius, control, useColors, makeStyles } from '@/theme';
 import { APP_VARIANT } from '@/env';
 import { BrandMark } from '@/components/BrandMark';
 
@@ -27,6 +27,7 @@ const SLIDES: Slide[] = [
  *   - signed out: the last account signed out → sign in again, or browse.
  */
 export default function Welcome() {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const mode = useAppMode();
   const { session } = useAuth();
@@ -51,6 +52,8 @@ export default function Welcome() {
 
 /** First launch: swipeable intro; "Get started" is available on every slide. */
 function Intro() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const mode = useAppMode();
   const { width } = useWindowDimensions();
@@ -113,6 +116,7 @@ function Intro() {
 
 /** Returning phone or signed-out account: no sales pitch, just the way back in. */
 function Compact({ variant }: { variant: 'returning' | 'signedOut' }) {
+  const styles = useStyles();
   const router = useRouter();
   const { profile, startPassenger, startFresh } = useSession();
   const first = profile.name.trim().split(/\s+/)[0];
@@ -156,6 +160,8 @@ function Compact({ variant }: { variant: 'returning' | 'signedOut' }) {
 }
 
 function Primary({ title, onPress }: { title: string; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.primary, pressed && { opacity: 0.9 }]}>
       <Text style={styles.primaryText}>{title}</Text>
@@ -165,6 +171,7 @@ function Primary({ title, onPress }: { title: string; onPress: () => void }) {
 }
 
 function Secondary({ title, onPress }: { title: string; onPress: () => void }) {
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.secondary, pressed && { opacity: 0.8 }]}>
       <Text style={styles.secondaryText}>{title}</Text>
@@ -173,6 +180,8 @@ function Secondary({ title, onPress }: { title: string; onPress: () => void }) {
 }
 
 function StaffLine() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   if (APP_VARIANT === 'combined') {
     return (
@@ -186,7 +195,7 @@ function StaffLine() {
   return null;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.forest900 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, height: 52 },
   brand: { color: colors.white, fontWeight: '900', fontSize: 20, letterSpacing: -0.3 },
@@ -215,4 +224,4 @@ const styles = StyleSheet.create({
   secondaryText: { color: colors.white, fontSize: font.body, fontWeight: '600' },
   staffLink: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   staffText: { color: colors.onDarkSoft, fontSize: font.small, fontWeight: '500' },
-});
+}));

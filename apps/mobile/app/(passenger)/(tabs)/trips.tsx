@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { BookingStatusPill } from '@/components/StatusPill';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useAsync } from '@/hooks/useAsync';
-import { colors, radius, space, font } from '@/theme';
+import { radius, space, font, useColors, makeStyles } from '@/theme';
 import { formatDate, formatTime, formatUGX } from '@shared/lib/time';
 import type { BookingView } from '@shared/data/adapter';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
@@ -17,6 +17,8 @@ import { useSavedPasses } from '@/lib/passStore';
 import { listPasses } from '@/lib/savedPasses';
 
 export default function MyTrips() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const router = useRouter();
   const mode = useAppMode();
@@ -100,6 +102,8 @@ export default function MyTrips() {
 }
 
 function Group({ title, list, onOpen, muted, delays, dest }: { title: string; list: BookingView[]; onOpen: (id: string) => void; muted?: boolean; delays?: Map<string, number>; dest?: Map<string, string> }) {
+  const colors = useColors();
+  const styles = useStyles();
   if (list.length === 0) return null;
   return (
     <View>
@@ -145,7 +149,7 @@ function Group({ title, list, onOpen, muted, delays, dest }: { title: string; li
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   savedNote: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
   savedNoteText: { flex: 1, color: colors.inkSoft, fontSize: font.small },
   savedRetry: { color: colors.forest700, fontWeight: '700' },
@@ -158,4 +162,4 @@ const styles = StyleSheet.create({
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' },
   delayChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.amber100, borderRadius: radius.sm, paddingHorizontal: 7, paddingVertical: 2 },
   delayChipText: { color: colors.amber800, fontSize: font.tiny, fontWeight: '600' },
-});
+}));

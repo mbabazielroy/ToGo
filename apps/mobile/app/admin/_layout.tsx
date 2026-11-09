@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
 import { SpaceGate } from '@/session/SpaceGate';
-import { colors } from '@/theme';
+import { useColors } from '@/theme';
 
 /** Operations console — admin identities only. */
 export default function AdminLayout() {
+  const colors = useColors();
   return (
     <SpaceGate space="admin">
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>

@@ -36,6 +36,9 @@ interface AuthCtx {
   updatePassword: (newPassword: string) => Promise<void>;
   /** Signed in: change the password, which needs the current one. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Signed in: move the account to a new email. Needs the current password;
+   *  finishes when the links sent to both the old and new address are opened. */
+  changeEmail: (newEmail: string, currentPassword: string, redirectTo?: string) => Promise<void>;
   updateProfile: (patch: { full_name?: string; phone?: string | null }) => Promise<void>;
   /** Permanently delete the signed-in account on the server, then sign out. */
   deleteAccount: () => Promise<void>;
@@ -182,6 +185,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOutOthers();
   }, [session, signOutOthers]);
 
+  const changeEmail = useCallback(async (newEmail: string, currentPassword: string, redirectTo?: string) => {
+    if (!supabase || !session?.user?.email) throw new Error('Not signed in');
+    const { error: checkErr } = await supabase.auth.signInWithPassword({ email: session.user.email, password: currentPassword });
+    if (checkErr) {
+      throw Object.assign(new Error('Your current password isn’t right.'), { code: 'wrong_current_password' });
+    }
+    // With "secure email change" on, Supabase emails both addresses; the change
+    // happens only once both are confirmed, so a stolen session can't move the account.
+    const { data, error } = await supabase.auth.updateUser({ email: normaliseEmail(newEmail) }, { emailRedirectTo: redirectTo });
+    if (error) throw error;
+    // Keep the pending address (user.new_email) so the screen can show it.
+    if (data.user) setSession((s) => (s ? { ...s, user: data.user } : s));
+  }, [session]);
+
   const updateProfile = useCallback(async (patch: { full_name?: string; phone?: string | null }) => {
     if (!supabase || !session?.user) throw new Error('Not signed in');
     const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id);
@@ -204,9 +221,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthCtx>(() => ({
     loading, session, user: session?.user ?? null, profile, error, recoveryMode,
     clearRecoveryMode, setRecoveryMode, refresh, signUp, signIn, verifySignupCode, resendSignupCode, signOut,
-    resetPassword, resetWithCode, updatePassword, changePassword, updateProfile, deleteAccount,
+    resetPassword, resetWithCode, updatePassword, changePassword, changeEmail, updateProfile, deleteAccount,
   }), [loading, session, profile, error, recoveryMode, clearRecoveryMode, refresh, signUp, signIn, verifySignupCode,
-    resendSignupCode, signOut, resetPassword, resetWithCode, updatePassword, changePassword, updateProfile, deleteAccount]);
+    resendSignupCode, signOut, resetPassword, resetWithCode, updatePassword, changePassword, changeEmail, updateProfile, deleteAccount]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

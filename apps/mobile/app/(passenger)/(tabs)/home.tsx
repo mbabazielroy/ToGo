@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,7 @@ import { useNow, countdown, greeting, leadTime } from '@/hooks/useNow';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
 import { visibleAlerts } from '@/lib/alerts';
-import { colors, radius, space, font, SCREEN, control } from '@/theme';
+import { radius, space, font, SCREEN, control, useColors, makeStyles } from '@/theme';
 import { addDays, kampalaToday, formatDate, formatTime } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { tripJourney } from '@shared/data/journey';
@@ -25,6 +25,8 @@ import type { BookingView } from '@shared/data/adapter';
 const ACTIVE = ['reserved', 'checked_in', 'boarded'];
 
 export default function Home() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const router = useRouter();
   const epoch = useDataEpoch();
@@ -209,6 +211,8 @@ export default function Home() {
 function NextTripCard({ booking, tripStatus, delay, operatorId, operatorName, hubName, destination, now, onOpen }: {
   booking: BookingView; tripStatus?: string; delay: number; operatorId?: string; operatorName?: string; hubName?: string; destination?: string; now: Date; onOpen: () => void;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const cd = countdown(booking.pickupTimeSnapshot, now);
   const line = operatorId ? lineFor(operatorId, operatorName) : null;
   const headline = booking.status === 'boarded'
@@ -242,6 +246,8 @@ function NextTripCard({ booking, tripStatus, delay, operatorId, operatorName, hu
 }
 
 function CheckRow({ label, sub, selected, onPress }: { label: string; sub?: string; selected?: boolean; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected }} style={({ pressed }) => [styles.checkRow, pressed && { backgroundColor: colors.forest50 }]}>
       <View style={{ flex: 1 }}>
@@ -253,7 +259,7 @@ function CheckRow({ label, sub, selected, onPress }: { label: string; sub?: stri
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.md },
   hello: { fontSize: 26, fontWeight: '800', color: colors.ink, letterSpacing: -0.5 },
@@ -290,9 +296,9 @@ const styles = StyleSheet.create({
 
   chipsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dayChip: { borderRadius: 999, paddingHorizontal: 12, height: 34, justifyContent: 'center', backgroundColor: colors.surface },
-  dayChipOn: { backgroundColor: colors.ink },
+  dayChipOn: { backgroundColor: colors.inverse },
   dayChipText: { fontSize: font.tiny, fontWeight: '700', color: colors.inkSoft },
-  dayChipTextOn: { color: colors.white },
+  dayChipTextOn: { color: colors.onInverse },
   paxRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -4 },
   paxLabel: { fontSize: font.small, color: colors.inkSoft, fontWeight: '600', paddingHorizontal: space.xs },
   pax: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: colors.surface, borderRadius: 999, height: 34, paddingHorizontal: 2 },
@@ -311,4 +317,4 @@ const styles = StyleSheet.create({
   checkSub: { fontSize: font.small, color: colors.muted, marginTop: 1 },
   detailsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: space.md, marginTop: space.sm },
   detailsLinkText: { color: colors.forest700, fontWeight: '500', fontSize: font.body },
-});
+}));

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, PrimaryButton, Loading, ErrorRow, EmptyState, Separator, SectionHeading, KeyValue, Banner, LineBadge } from '@/components/ui';
 import { TripStatusPill } from '@/components/StatusPill';
@@ -10,7 +10,7 @@ import { useNow, leadTime } from '@/hooks/useNow';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
-import { colors, radius, space, font, SCREEN } from '@/theme';
+import { radius, space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { formatTime, timeAgo } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { manifestCounts } from '@/staff/counts';
@@ -23,6 +23,8 @@ import { tripMapData, pickupsByStop } from '@/components/map/tripMap';
 import { ask } from '@/lib/dialog';
 
 export function DriverToday({ staffId, tripParam }: { staffId: string; tripParam?: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const mode = useAppMode();
   const epoch = useDataEpoch();
@@ -250,6 +252,7 @@ function SharingBanner({ state }: { state: SharingState }) {
 }
 
 function PickupLine({ p, big }: { p?: { toPickUp: number; checkedIn: number }; big?: boolean }) {
+  const styles = useStyles();
   const n = p?.toPickUp ?? 0;
   if (n === 0) return <Text style={[styles.pickNone, big && { marginTop: 6 }]}>No one to pick up here</Text>;
   return (
@@ -261,6 +264,8 @@ function PickupLine({ p, big }: { p?: { toPickUp: number; checkedIn: number }; b
 }
 
 function ActionTile({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.7 }]}>
       <Ionicons name={icon} size={22} color={danger ? colors.red700 : colors.forest700} />
@@ -269,7 +274,7 @@ function ActionTile({ icon, label, onPress, danger }: { icon: keyof typeof Ionic
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   headerStats: { flexDirection: 'row', gap: space.md },
   nextCard: { backgroundColor: colors.surface, borderRadius: radius.xxl, padding: space.lg },
   nextTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: space.md },
@@ -296,12 +301,12 @@ const styles = StyleSheet.create({
   leftBehind: { fontSize: font.small, color: colors.amber800, fontWeight: '600', marginTop: 2 },
   ahead: { fontSize: font.small, color: colors.inkSoft, marginTop: 4 },
   pickNone: { fontSize: font.small, color: colors.muted, marginTop: 2 },
-  countPill: { minWidth: 34, height: 30, borderRadius: 15, paddingHorizontal: 8, backgroundColor: colors.forest700, alignItems: 'center', justifyContent: 'center' },
+  countPill: { minWidth: 34, height: 30, borderRadius: 15, paddingHorizontal: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   countPillZero: { backgroundColor: colors.surfaceAlt },
   countPillText: { color: colors.white, fontWeight: '900', fontSize: font.small, fontVariant: ['tabular-nums'] },
   skipHint: { fontSize: font.tiny, color: colors.muted, paddingHorizontal: space.xs, lineHeight: 17 },
   safety: { textAlign: 'center', color: colors.muted, fontSize: font.tiny },
-});
+}));
 
 /** Warn before starting a trip well ahead of its scheduled departure. */
 function earlyStartNote(departure: string): string {

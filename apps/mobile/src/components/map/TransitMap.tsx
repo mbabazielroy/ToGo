@@ -2,9 +2,23 @@ import { useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, font } from '../../theme';
+import { radius, font, useColors, useTheme, makeStyles } from '../../theme';
 import { regionFor } from '@shared/data/geo';
 import type { TransitMapProps } from './types';
+
+// Google Maps (Android) has no automatic dark mode; this is its standard night style.
+// Apple Maps (iOS) follows `userInterfaceStyle`.
+const DARK_GOOGLE_MAP = [
+  { elementType: 'geometry', stylers: [{ color: '#1d2c22' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#9fb5a6' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#14201a' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#33443a' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#b9c9be' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#4a5e51' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1a24' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2a3a30' }] },
+];
 
 /**
  * Transit-style map: coloured route lines, tappable stops (with optional counts) and
@@ -15,6 +29,9 @@ export function TransitMap({
   height, fill, routes = [], stops = [], buses = [], focus, caption, selectedId,
   onStopPress, onBusPress, onMapPress, onPress, follow, refitToken = 0, userLocation, bottomInset = 0, topInset = 0,
 }: TransitMapProps) {
+  const colors = useColors();
+  const styles = useStyles();
+  const { scheme } = useTheme();
   const ref = useRef<MapView>(null);
   const fit = useMemo(
     () => focus ?? [...routes.flatMap((r) => r.path), ...stops.map((s) => s.coord), ...buses.map((b) => b.coord)],
@@ -55,6 +72,8 @@ export function TransitMap({
         zoomEnabled={interactive}
         mapPadding={{ top: topInset, right: 0, bottom: bottomInset, left: 0 }}
         onPress={(e) => { if (e.nativeEvent.action !== 'marker-press') onMapPress?.(); }}
+        userInterfaceStyle={scheme}
+        customMapStyle={scheme === 'dark' ? DARK_GOOGLE_MAP : []}
         accessibilityLabel="Map"
       >
         {routes.map((r) => (
@@ -102,20 +121,20 @@ export function TransitMap({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   wrap: { borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.surfaceAlt },
   stopHit: { alignItems: 'center', padding: 6 },
   stop: { minWidth: 18, height: 18, borderRadius: 9, borderWidth: 3, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
   stopHi: { minWidth: 26, height: 26, borderRadius: 13, borderWidth: 4 },
-  badgeText: { fontSize: 10, fontWeight: '900', color: colors.ink },
-  tag: { marginTop: 4, backgroundColor: colors.ink, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, maxWidth: 180 },
-  tagText: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  badgeText: { fontSize: 10, fontWeight: '900', color: '#111114' }, // on the white stop dot in both modes
+  tag: { marginTop: 4, backgroundColor: colors.inverse, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, maxWidth: 180 },
+  tagText: { color: colors.onInverse, fontSize: 11, fontWeight: '700' },
   bus: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5, borderWidth: 2, borderColor: colors.white },
   busSel: { paddingHorizontal: 11, paddingVertical: 7, borderWidth: 3, transform: [{ scale: 1.1 }] },
   busText: { color: colors.white, fontSize: 11, fontWeight: '800' },
   meHalo: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(31,95,209,0.2)', alignItems: 'center', justifyContent: 'center' },
-  me: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#1f5fd1', borderWidth: 2.5, borderColor: colors.white },
-  caption: { position: 'absolute', left: 10, backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  me: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.blue600, borderWidth: 2.5, borderColor: colors.white },
+  caption: { position: 'absolute', left: 10, backgroundColor: colors.overlay, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   captionText: { fontSize: font.tiny, fontWeight: '700', color: colors.inkSoft },
-  expand: { position: 'absolute', right: 10, bottom: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.94)', alignItems: 'center', justifyContent: 'center' },
-});
+  expand: { position: 'absolute', right: 10, bottom: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' },
+}));

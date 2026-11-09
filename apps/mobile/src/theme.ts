@@ -1,54 +1,60 @@
-// ToGo mobile design tokens.
+// ToGo mobile design tokens, in a light and a dark palette.
 //
-// Transit-inspired: calm light-grey canvas, white cards, bold tabular times, and a
-// vivid green brand used for primary actions, "live" signals and selected states.
-// Each operator gets its own line colour (see src/lib/lines.ts) the way transit
-// apps colour routes. Values are logical RN units.
+// Transit-inspired: calm grouped background, cards a step lighter (light mode) or
+// raised grey (dark mode), bold tabular times, and a green brand for primary
+// actions, "live" signals and selected states. Each operator gets its own line
+// colour (src/lib/lines.ts) the way transit apps colour routes.
+//
+// Screens read colours through hooks so they follow the system appearance, or the
+// person's choice in Account → Appearance (src/appearance/AppearanceProvider.tsx):
+//
+//   const useStyles = makeStyles((colors) => ({ ... }));   // at module level
+//   const styles = useStyles();                            // in the component
+//   const colors = useColors();                            // for inline colours
+//
+// Text colours keep at least 4.5:1 contrast on their usual background in both
+// palettes (WCAG 2.2 AA; checked in src/palette.test.ts). Values are logical RN units.
 
-export const colors = {
-  // Grouped-list system backgrounds
-  bg: '#f2f2f7',        // grouped background (screens)
-  surface: '#ffffff',   // cells / cards
-  surfaceAlt: '#e7e7ec', // segmented tracks, subtle fills
-  white: '#ffffff',
+import { createContext, useContext } from 'react';
+import { StyleSheet } from 'react-native';
 
-  // Text ramp (near-black → readable greys; kept above ~4.5:1 on white)
-  ink: '#111114',       // primary label
-  inkSoft: '#3c3c43',   // secondary label
-  muted: '#6c6c72',     // tertiary label (still readable)
-  faint: '#b3b3ba',     // chevrons / decorative only
+import { palettes, type AppearancePreference, type Colors, type Scheme } from './palette';
 
-  // Structure
-  separator: '#c9c9ce',
-  border: '#c9c9ce',
+export { palettes };
+export type { Colors, Scheme, AppearancePreference } from './palette';
 
-  // Forest accent (primary actions, tint, selected)
-  forest900: '#0b2e1c', // hero surfaces (next-trip card, crew header)
-  forest800: '#0f3d25',
-  forest700: '#0c7a43', // primary / tint (AA with white text)
-  forest600: '#0f8f4f',
-  forest500: '#13a85c', // live / bright accent
-  forest200: '#b6e3c8',
-  forest100: '#e1f4e8', // subtle green tint (status only)
-  forest50: '#eeeef1',  // neutral pressed highlight
-  live: '#13a85c',
-  onDark: '#ffffff',
-  onDarkSoft: 'rgba(255,255,255,0.72)',
 
-  // Legacy lime tokens retained for back-compat but no longer used as fills
-  lime600: '#5f8f10', lime500: '#6f9f14', lime400: '#89b93a', lime300: '#a9cf6a',
-  lime200: '#cfe4a6', lime100: '#e6efd4', lime50: '#f2f6e8',
+export interface ThemeValue {
+  /** The palette in use right now. */
+  scheme: Scheme;
+  /** What the person chose; "system" follows the phone. */
+  preference: AppearancePreference;
+  setPreference: (p: AppearancePreference) => void;
+}
 
-  // Status (muted, iOS-like)
-  amber600: '#a86a00', amber100: '#f6ecd6', amber800: '#7a4d05',
-  red600: '#c0392b', red100: '#f7e0dd', red700: '#b3261e',
-  blue100: '#e0e9f6', blue800: '#20487e',
+export const ThemeContext = createContext<ThemeValue>({ scheme: 'light', preference: 'system', setPreference: () => {} });
 
-  // Unused map tokens (kept for back-compat)
-  mapBase: '#eceeea', mapLine: '#cdd6cf',
-  // Warm-name aliases → neutral values (back-compat)
-  sand50: '#fbfbfc', sand100: '#f2f2f7', sand200: '#e7e7ec',
-};
+export function useTheme(): ThemeValue {
+  return useContext(ThemeContext);
+}
+
+export function useColors(): Colors {
+  return palettes[useContext(ThemeContext).scheme];
+}
+
+type StyleInput = Parameters<typeof StyleSheet.create>[0];
+
+/**
+ * Module-level stylesheet that follows the theme: built once per palette and
+ * cached, so switching is cheap and re-renders reuse the same objects.
+ */
+export function makeStyles<S extends StyleInput>(build: (colors: Colors) => S & StyleInput): () => Readonly<S> {
+  const cache: Partial<Record<Scheme, Readonly<S>>> = {};
+  return function useStyles(): Readonly<S> {
+    const { scheme } = useContext(ThemeContext);
+    return (cache[scheme] ??= StyleSheet.create(build(palettes[scheme])));
+  };
+}
 
 // Spacing scale: 4, 8, 12, 16, 24, 32. Screen gutter is 16 (iOS margin).
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };

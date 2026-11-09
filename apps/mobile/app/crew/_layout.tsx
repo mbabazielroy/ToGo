@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SpaceGate } from '@/session/SpaceGate';
 import { useSession } from '@/session/SessionProvider';
-import { colors } from '@/theme';
+import { useColors } from '@/theme';
 
 type Icon = keyof typeof Ionicons.glyphMap;
 const icon = (on: Icon, off: Icon) => ({ color, focused, size }: { color: unknown; focused: boolean; size: number }) =>
@@ -18,6 +18,7 @@ export default function CrewLayout() {
 }
 
 function CrewTabs() {
+  const colors = useColors();
   const { identity } = useSession();
   const role = identity?.role;
   const todayTitle = role === 'conductor' ? 'Boarding' : role === 'attendant' ? 'Hub' : 'Drive';

@@ -11,13 +11,15 @@ import { useSearch } from '@/state/search';
 import { Splash } from '@/session/SpaceGate';
 import { haptics } from '@/lib/feedback';
 import { phoneLooksValid, PHONE_HINT } from '@/lib/validate';
-import { colors, space, font, SCREEN, control } from '@/theme';
+import { space, font, SCREEN, control, useColors, makeStyles } from '@/theme';
 
 /** Passenger setup: where you usually travel from, which alerts you want and,
  *  optionally, your name. Nothing personal is required to browse (App Store 5.1.1):
  *  the lead passenger's name is asked for when you reserve. Signed-in accounts that
  *  already have a name skip this screen. Everything can be changed later in Account. */
 export default function Onboarding() {
+  const colors = useColors();
+  const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mode = useAppMode();
@@ -128,6 +130,8 @@ export default function Onboarding() {
 }
 
 function ToggleRow({ label, hint, value, onChange }: { label: string; hint: string; value: boolean; onChange: (v: boolean) => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.toggle}>
       <View style={{ flex: 1 }}>
@@ -139,7 +143,7 @@ function ToggleRow({ label, hint, value, onChange }: { label: string; hint: stri
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   title: { fontSize: 30, fontWeight: '800', color: colors.ink, letterSpacing: -0.6 },
   lead: { fontSize: font.body, color: colors.inkSoft, marginTop: space.sm, lineHeight: 24 },
@@ -154,4 +158,4 @@ const styles = StyleSheet.create({
   agree: { fontSize: font.tiny, color: colors.muted, lineHeight: 17, marginTop: space.lg, textAlign: 'center' },
   link: { color: colors.forest700, fontWeight: '600' },
   footer: { paddingHorizontal: SCREEN, paddingTop: space.md, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
-});
+}));

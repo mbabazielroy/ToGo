@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
@@ -7,13 +7,15 @@ import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { useAuth } from '@/auth/AuthProvider';
 import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
-import { colors, radius, space, font } from '@/theme';
+import { radius, space, font, useColors, makeStyles } from '@/theme';
 import { timeAgo } from '@shared/lib/time';
 import type { NotificationView } from '@shared/data/adapter';
 import { useSession } from '@/session/SessionProvider';
 import { visibleAlerts } from '@/lib/alerts';
 
 export default function Notifications() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const router = useRouter();
   const toast = useToast();
@@ -84,7 +86,7 @@ export default function Notifications() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   back: { flexDirection: 'row', alignItems: 'center' },
   backText: { color: colors.forest600, fontWeight: '700', fontSize: font.small },
   title: { fontSize: font.h1, fontWeight: '700', color: colors.ink },
@@ -95,4 +97,4 @@ const styles = StyleSheet.create({
   itemTitle: { fontWeight: '600', color: colors.ink, fontSize: font.body },
   itemBody: { color: colors.inkSoft, fontSize: font.small, marginTop: 1 },
   itemTime: { color: colors.muted, fontSize: font.tiny, marginTop: 2 },
-});
+}));

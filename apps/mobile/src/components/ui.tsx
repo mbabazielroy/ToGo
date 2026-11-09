@@ -3,36 +3,43 @@ import {
   View, Text, Pressable, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, space, font, control } from '../theme';
+import { radius, space, font, control, useColors, makeStyles } from '../theme';
 
 /** A white grouped container (iOS "inset grouped" cell block). Flat on the grey bg. */
 export function Group({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  const styles = useStyles();
   return <View style={[styles.group, style]}>{children}</View>;
 }
 
 /** Alias kept for existing call sites — a padded white surface. */
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  const styles = useStyles();
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
 export function H1({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   return <Text style={styles.h1}>{children}</Text>;
 }
 export function H2({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   return <Text style={styles.h2}>{children}</Text>;
 }
 export function Muted({ children, style }: { children: ReactNode; style?: TextStyle }) {
+  const styles = useStyles();
   return <Text style={[styles.muted, style]}>{children}</Text>;
 }
 export function Label({ children }: { children: ReactNode }) {
+  const styles = useStyles();
   return <Text style={styles.label}>{children}</Text>;
 }
 
 /** Section header above a Group — small grey caps, iOS grouped style. */
 export function SectionHeading({ title, right }: { title: string; right?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionText}>{title}</Text>
+      <Text style={styles.sectionText} accessibilityRole="header">{title}</Text>
       {right}
     </View>
   );
@@ -40,6 +47,8 @@ export function SectionHeading({ title, right }: { title: string; right?: ReactN
 
 /** Standard navigation header: leading back chevron, centred title, optional right. */
 export function NavBar({ title, onBack, right }: { title: string; onBack?: () => void; right?: ReactNode }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.nav}>
       <View style={styles.navSide}>
@@ -61,6 +70,8 @@ export function PrimaryButton({
   title: string; onPress: () => void; disabled?: boolean; loading?: boolean; accent?: boolean;
   icon?: keyof typeof Ionicons.glyphMap; danger?: boolean;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   // `accent` renders a secondary (grey) emphasis; `danger` a red fill; default is the filled primary.
   const fg = accent ? colors.forest700 : colors.white;
   return (
@@ -84,6 +95,8 @@ export function PrimaryButton({
 }
 
 export function GhostButton({ title, onPress, danger, style }: { title: string; onPress: () => void; danger?: boolean; style?: ViewStyle }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} accessibilityRole="button"
       style={({ pressed }) => [styles.ghost, pressed && { opacity: 0.6 }, style]}>
@@ -93,10 +106,12 @@ export function GhostButton({ title, onPress, danger, style }: { title: string; 
 }
 
 export function Loading() {
+  const colors = useColors();
   return <View style={{ paddingVertical: space.xl, alignItems: 'center' }}><ActivityIndicator color={colors.forest700} /></View>;
 }
 
 export function ErrorRow({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const styles = useStyles();
   return (
     <View style={styles.errorRow}>
       <Text style={styles.errorText}>{message}</Text>
@@ -106,6 +121,7 @@ export function ErrorRow({ message, onRetry }: { message: string; onRetry?: () =
 }
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>{title}</Text>
@@ -116,6 +132,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 
 /** Subtle hairline separator, inset from the left to align with row content. */
 export function Separator({ inset = 0 }: { inset?: number }) {
+  const colors = useColors();
   return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: inset }} />;
 }
 
@@ -123,6 +140,8 @@ export function Separator({ inset = 0 }: { inset?: number }) {
 export function Chip({
   label, selected, onPress, accessibilityLabel,
 }: { label: string; selected?: boolean; onPress?: () => void; accessibilityLabel?: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -146,6 +165,7 @@ export interface Seg<T extends string> { value: T; label: string }
 export function Segmented<T extends string>({
   segments, value, onChange, accessibilityLabel,
 }: { segments: Seg<T>[]; value: T; onChange: (v: T) => void; accessibilityLabel?: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.segTrack} accessibilityRole="tablist" accessibilityLabel={accessibilityLabel}>
       {segments.map((s) => {
@@ -170,6 +190,8 @@ export function IconButton({
   tone?: 'plain' | 'brand';
   size?: number;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const fg = tone === 'brand' ? colors.forest700 : colors.ink;
   return (
     <Pressable
@@ -187,6 +209,7 @@ export function IconButton({
 
 /** Large screen title for tab roots, with an optional trailing action. */
 export function PageHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.pageHeader}>
       <View style={{ flex: 1 }}>
@@ -205,6 +228,8 @@ export function ListRow({
   icon?: keyof typeof Ionicons.glyphMap; iconColor?: string; title: string; subtitle?: string; value?: string;
   onPress?: () => void; danger?: boolean; chevron?: boolean; right?: ReactNode;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const body = (
     <>
       {icon && (
@@ -232,6 +257,7 @@ export function ListRow({
 
 /** Label/value pair inside a Group. */
 export function KeyValue({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.kv}>
       <Text style={styles.kvLabel}>{label}</Text>
@@ -244,6 +270,8 @@ export function KeyValue({ label, value, tone }: { label: string; value: string;
 export function Banner({ tone = 'info', icon, title, children }: {
   tone?: 'info' | 'warn' | 'error' | 'ok'; icon?: keyof typeof Ionicons.glyphMap; title?: string; children?: ReactNode;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const map = {
     info: { bg: colors.blue100, fg: colors.blue800, icon: 'information-circle' as const },
     warn: { bg: colors.amber100, fg: colors.amber800, icon: 'warning' as const },
@@ -263,6 +291,7 @@ export function Banner({ tone = 'info', icon, title, children }: {
 
 /** Compact metric tile for dashboards. */
 export function StatTile({ label, value, hint, tone }: { label: string; value: string | number; hint?: string; tone?: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.stat} accessible accessibilityLabel={`${label}: ${value}${hint ? `, ${hint}` : ''}`}>
       <Text style={[styles.statValue, tone ? { color: tone } : null]} numberOfLines={1}>{value}</Text>
@@ -273,7 +302,8 @@ export function StatTile({ label, value, hint, tone }: { label: string; value: s
 }
 
 /** Operator line badge (coloured code), like a route bullet in a transit app. */
-export function LineBadge({ code, color, text = colors.white, size = 'md' }: { code: string; color: string; text?: string; size?: 'sm' | 'md' | 'lg' }) {
+export function LineBadge({ code, color, text = '#ffffff', size = 'md' }: { code: string; color: string; text?: string; size?: 'sm' | 'md' | 'lg' }) {
+  const styles = useStyles();
   const dims = size === 'lg' ? { minWidth: 52, height: 30, fontSize: 15 } : size === 'sm' ? { minWidth: 36, height: 20, fontSize: 11 } : { minWidth: 44, height: 24, fontSize: 13 };
   return (
     <View style={[styles.line, { backgroundColor: color, minWidth: dims.minWidth, height: dims.height }]}>
@@ -283,7 +313,9 @@ export function LineBadge({ code, color, text = colors.white, size = 'md' }: { c
 }
 
 /** Initials avatar. */
-export function Avatar({ name, color = colors.forest700, size = 40 }: { name: string; color?: string; size?: number }) {
+export function Avatar({ name, color, size = 40 }: { name: string; color?: string; size?: number }) {
+  const colors = useColors();
+  color ??= colors.primary;
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
@@ -292,7 +324,7 @@ export function Avatar({ name, color = colors.forest700, size = 40 }: { name: st
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   group: { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden' },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.lg },
   h1: { fontSize: font.h1, fontWeight: '700', color: colors.ink, letterSpacing: 0.2 },
@@ -309,7 +341,7 @@ const styles = StyleSheet.create({
   navTitle: { flex: 1, textAlign: 'center', fontSize: font.title, fontWeight: '600', color: colors.ink },
 
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.lg, paddingHorizontal: 20, minHeight: control.height },
-  btnPrimary: { backgroundColor: colors.forest700 },
+  btnPrimary: { backgroundColor: colors.primary },
   btnSecondary: { backgroundColor: colors.surfaceAlt },
   btnDanger: { backgroundColor: colors.red600 },
   btnDisabled: { opacity: 0.4 },
@@ -326,12 +358,12 @@ const styles = StyleSheet.create({
 
   chip: { borderRadius: radius.pill, paddingHorizontal: 14, minHeight: control.small, alignItems: 'center', justifyContent: 'center' },
   chipIdle: { backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  chipSelected: { backgroundColor: colors.forest700 },
+  chipSelected: { backgroundColor: colors.primary },
   chipText: { fontWeight: '600', fontSize: font.small },
 
   segTrack: { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: 2 },
   seg: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: radius.md - 2, minHeight: 36 },
-  segOn: { backgroundColor: colors.surface, ...{ shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 } },
+  segOn: { backgroundColor: colors.thumb, ...{ shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 } },
   segText: { fontSize: font.small, fontWeight: '500', color: colors.inkSoft },
   segTextOn: { color: colors.ink, fontWeight: '600' },
 
@@ -362,4 +394,4 @@ const styles = StyleSheet.create({
 
   line: { borderRadius: 6, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
   lineText: { fontWeight: '900', letterSpacing: 0.5 },
-});
+}));

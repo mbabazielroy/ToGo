@@ -14,7 +14,7 @@ import { hubPoint, distanceKm } from '@shared/data/geo';
 import { useMyLocation } from '@/location/useMyLocation';
 import { DistanceToHub } from '@/location/DistanceToHub';
 import { haptics } from '@/lib/feedback';
-import { colors, radius, space, font, SCREEN } from '@/theme';
+import { radius, space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { kampalaToday } from '@shared/lib/time';
 import { tripJourney } from '@shared/data/journey';
 import type { DirectionCode } from '@shared/data/adapter';
@@ -29,6 +29,8 @@ const FACILITIES: Record<string, { label: string; icon: keyof typeof Ionicons.gl
 };
 
 export default function HubDetail() {
+  const colors = useColors();
+  const styles = useStyles();
   const { hubId } = useLocalSearchParams<{ hubId: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
@@ -159,8 +161,8 @@ export default function HubDetail() {
   );
 }
 
-const styles = StyleSheet.create({
-  directions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.forest700, borderRadius: radius.lg, minHeight: 46 },
+const useStyles = makeStyles((colors) => ({
+  directions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: radius.lg, minHeight: 46 },
   directionsText: { color: colors.white, fontWeight: '700', fontSize: font.body },
   root: { flex: 1, backgroundColor: colors.bg },
   hero: { paddingHorizontal: space.xs, paddingTop: space.sm },
@@ -175,4 +177,4 @@ const styles = StyleSheet.create({
   fac: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: 12, height: 40 },
   facText: { color: colors.inkSoft, fontSize: font.small },
   footer: { backgroundColor: colors.surface, paddingHorizontal: SCREEN, paddingTop: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
-});
+}));

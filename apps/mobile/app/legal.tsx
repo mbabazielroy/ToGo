@@ -1,13 +1,14 @@
-import { View, Text, ScrollView, StyleSheet, Linking } from 'react-native';
+import { View, Text, ScrollView, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavBar, Group, ListRow } from '@/components/ui';
 import { PRIVACY, TERMS } from '@/legal/content';
 import { PRIVACY_URL, TERMS_URL, SUPPORT_EMAIL } from '@/env';
-import { colors, space, font, SCREEN } from '@/theme';
+import { space, font, SCREEN, makeStyles } from '@/theme';
 
 /** Privacy policy and terms of use, readable before and after signing in. */
 export default function Legal() {
+  const styles = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { doc } = useLocalSearchParams<{ doc?: string }>();
@@ -39,10 +40,10 @@ export default function Legal() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   updated: { fontSize: font.tiny, color: colors.muted, fontWeight: '600' },
   intro: { fontSize: font.body, color: colors.inkSoft, lineHeight: 24, marginTop: space.xs },
   heading: { fontSize: font.title, fontWeight: '700', color: colors.ink },
   p: { fontSize: font.small, color: colors.inkSoft, lineHeight: 21 },
-});
+}));

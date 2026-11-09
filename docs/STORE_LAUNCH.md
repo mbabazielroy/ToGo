@@ -147,7 +147,9 @@ listing with a reviewer account. On Google Play, use a closed testing track or
 - [ ] Fresh install → welcome → onboarding → privacy link opens → Start travelling
 - [ ] Create account and confirm with the 8-digit code; sign in
 - [ ] Forgotten password: reset with the code read on another device, then with the link on the same phone; the other phone is signed out and a "password changed" email arrives
-- [ ] Account → Security: change password (wrong current password refused); Sign out on all devices
+- [ ] Account → Sign-in and security: change password (wrong current password refused); change email (links arrive at both addresses; the change happens after both are opened); Sign out on all devices
+- [ ] Switch the phone between light and dark (Control Centre): both apps follow without restarting; Account → Appearance → Light/Dark overrides it and survives a relaunch; alerts, keyboard and the map match
+- [ ] Account → Notifications: turning an alert on asks for permission once; with notifications off in Settings, the page says so and opens Settings
 - [ ] iOS offers to save the password and fills the emailed code from Mail
 - [ ] Reserve, view boarding pass; check-in shows "opens at …" until 2 h before pickup
 - [ ] Allow notifications: "Check-in is open" and "Time to head to …" reminders arrive and open the pass; cancelling removes them

@@ -1,9 +1,9 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineBadge } from '@/components/ui';
 import { TripStatusPill } from '@/components/StatusPill';
 import { lineFor } from '@/lib/lines';
-import { colors, space, font, SCREEN } from '@/theme';
+import { space, font, SCREEN, useColors, makeStyles } from '@/theme';
 import { formatTime } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import type { TripView } from '@shared/data/adapter';
@@ -19,6 +19,8 @@ export function crewGaps(t: TripView): string[] {
 
 /** Operations row: time, line, route, load bar, crew, status. */
 export function AdminTripRow({ trip, onPress }: { trip: TripView; onPress: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   const line = lineFor(trip.operatorId, trip.operatorName);
   const cities = DIRECTION_CITIES[trip.direction];
   const load = trip.capacity > 0 ? trip.seatsReserved / trip.capacity : 0;
@@ -49,7 +51,7 @@ export function AdminTripRow({ trip, onPress }: { trip: TripView; onPress: () =>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: SCREEN, paddingVertical: space.md },
   time: { fontSize: font.title, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'], marginBottom: 4 },
   struck: { textDecorationLine: 'line-through', color: colors.muted },
@@ -61,4 +63,4 @@ const styles = StyleSheet.create({
   tags: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center' },
   gap: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.red100, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   gapText: { fontSize: font.tiny, color: colors.red700, fontWeight: '700' },
-});
+}));

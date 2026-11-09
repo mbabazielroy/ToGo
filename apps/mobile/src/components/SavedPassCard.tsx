@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import { QRCode } from './QRCode';
 import { Group, Separator } from './ui';
-import { colors, space, font } from '../theme';
+import { space, font, makeStyles } from '../theme';
 import { formatDate, formatTime, formatUGX, timeAgo } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import type { SavedPass } from '../lib/savedPasses';
@@ -11,6 +11,7 @@ import type { SavedPass } from '../lib/savedPasses';
  * can't reach the server at all (opened at a hub with no signal).
  */
 export function SavedPassCard({ pass }: { pass: SavedPass }) {
+  const styles = useStyles();
   const { booking: b, trip: t } = pass;
   const destination = t ? DIRECTION_CITIES[t.direction]?.destination : undefined;
   const hubName = t?.stops.find((s) => s.hubId === b.pickupHubId)?.hubName;
@@ -39,7 +40,7 @@ export function SavedPassCard({ pass }: { pass: SavedPass }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   op: { color: colors.muted, fontSize: font.tiny, fontWeight: '600', marginBottom: 6 },
   kicker: { color: colors.muted, fontSize: font.tiny, textTransform: 'uppercase', letterSpacing: 0.4 },
   dest: { color: colors.ink, fontWeight: '700', fontSize: font.h1 },
@@ -51,4 +52,4 @@ const styles = StyleSheet.create({
   pin: { fontWeight: '800', color: colors.ink, letterSpacing: 2, fontVariant: ['tabular-nums'] },
   foot: { textAlign: 'center', color: colors.inkSoft, fontSize: font.small, paddingTop: space.md },
   saved: { textAlign: 'center', color: colors.muted, fontSize: font.tiny, marginTop: 4 },
-});
+}));

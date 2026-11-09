@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "togo",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "primaryColor": "#0c7a43",
     "backgroundColor": "#f2f2f7",
     "ios": {

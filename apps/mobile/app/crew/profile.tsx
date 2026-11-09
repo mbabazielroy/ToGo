@@ -1,13 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Group, Separator, SectionHeading, ListRow, KeyValue, Banner } from '@/components/ui';
 import { CrewHeader } from '@/crew/CrewHeader';
 import { useAppMode } from '@/data/AdapterProvider';
 import { useSession, ROLE_LABEL, homeFor, type Identity } from '@/session/SessionProvider';
-import { colors, space, font, SCREEN, control, radius } from '@/theme';
+import { space, font, SCREEN, control, radius, makeStyles } from '@/theme';
 import { ask } from '@/lib/dialog';
 import { useAuth } from '@/auth/AuthProvider';
 import { AccountSecurity } from '@/auth/AccountSecurity';
+import { AppearanceSetting } from '@/appearance/AppearanceSetting';
 
 const ROLE_GUIDE: Record<string, string[]> = {
   driver: [
@@ -28,6 +29,7 @@ const ROLE_GUIDE: Record<string, string[]> = {
 };
 
 export default function CrewProfile() {
+  const styles = useStyles();
   const router = useRouter();
   const mode = useAppMode();
   const { identity, available, signInAs, signOut } = useSession();
@@ -89,6 +91,8 @@ export default function CrewProfile() {
           <Banner tone="info" title="Preview workspace">Actions here change the simulated trips on this device. Passengers in the preview see them straight away.</Banner>
         )}
 
+        <AppearanceSetting />
+
         {mode === 'connected' && session && <AccountSecurity name={identity.name} />}
 
         <View>
@@ -108,10 +112,10 @@ export default function CrewProfile() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   num: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.forest100, color: colors.forest700, textAlign: 'center', lineHeight: 22, fontWeight: '800', fontSize: 12, overflow: 'hidden' },
   guide: { flex: 1, fontSize: font.small, color: colors.inkSoft, lineHeight: 20 },
   signOut: { backgroundColor: colors.surface, borderRadius: radius.lg, minHeight: control.height, alignItems: 'center', justifyContent: 'center' },
   signOutText: { color: colors.red700, fontWeight: '600', fontSize: font.body },
-});
+}));

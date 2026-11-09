@@ -9,7 +9,7 @@ import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
-import { colors, space, font, SCREEN, radius, control } from '@/theme';
+import { space, font, SCREEN, radius, control, useColors, makeStyles } from '@/theme';
 import { addDays, kampalaToday, formatDate, formatUGX } from '@shared/lib/time';
 import type { DirectionCode } from '@shared/data/adapter';
 
@@ -18,6 +18,8 @@ const TIMES = ['06:00', '07:00', '08:30', '10:30', '12:00', '14:00', '15:30', '1
 /** Schedule a departure: route, day and time, operator and vehicle, fare, and
  *  (optionally) crew. Validation mirrors the backend so errors show before submit. */
 export default function NewDeparture() {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const router = useRouter();
@@ -180,6 +182,7 @@ export default function NewDeparture() {
 }
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+  const styles = useStyles();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: on }} style={[styles.chip, on && styles.chipOn]}>
       <Text style={[styles.chipText, on && styles.chipTextOn]}>{label}</Text>
@@ -188,6 +191,7 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
 }
 
 function CrewChoice({ label, people, value, onChange }: { label: string; people: { id: string; name: string }[]; value: string | null; onChange: (v: string | null) => void }) {
+  const styles = useStyles();
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -201,12 +205,12 @@ function CrewChoice({ label, people, value, onChange }: { label: string; people:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   chip: { borderRadius: 999, paddingHorizontal: 12, height: 34, justifyContent: 'center', backgroundColor: colors.surface },
-  chipOn: { backgroundColor: colors.ink },
+  chipOn: { backgroundColor: colors.inverse },
   chipText: { fontSize: font.tiny, fontWeight: '700', color: colors.inkSoft },
-  chipTextOn: { color: colors.white },
+  chipTextOn: { color: colors.onInverse },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   timeInput: { width: 92, height: 44, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, textAlign: 'center', fontSize: font.title, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
   err: { color: colors.red700, fontSize: font.tiny, marginTop: 4, paddingHorizontal: space.xs },
@@ -218,4 +222,4 @@ const styles = StyleSheet.create({
   input: { fontSize: font.body, color: colors.ink, paddingVertical: 8, minHeight: control.small, fontWeight: '600' },
   footer: { paddingHorizontal: SCREEN, paddingTop: space.md, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator, gap: 6 },
   summary: { fontSize: font.tiny, color: colors.muted, textAlign: 'center' },
-});
+}));

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, space, font, SCREEN } from '../theme';
+import { radius, space, font, SCREEN, useColors, makeStyles } from '../theme';
 
 /**
  * A focused bottom selection sheet built on RN `Modal` — used to move direction,
@@ -12,6 +12,8 @@ import { colors, radius, space, font, SCREEN } from '../theme';
 export function SelectSheet({
   visible, title, onClose, children,
 }: { visible: boolean; title: string; onClose: () => void; children: ReactNode }) {
+  const colors = useColors();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -33,12 +35,12 @@ export function SelectSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,20,15,0.35)' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.scrim },
   panel: { backgroundColor: colors.bg, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, maxHeight: '86%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SCREEN, paddingTop: space.lg, paddingBottom: space.sm },
   title: { fontSize: font.h2, fontWeight: '800', color: colors.ink },
   close: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: SCREEN, paddingBottom: space.sm, gap: space.sm },
-});
+}));

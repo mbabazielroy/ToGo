@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card, PrimaryButton, ErrorRow } from '@/components/ui';
@@ -7,7 +7,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 import { PasswordField } from '@/components/PasswordField';
 import { authErrorMessage, newPasswordProblem } from '@shared/lib/authRules';
-import { colors, radius, space, font } from '@/theme';
+import { radius, space, font, makeStyles } from '@/theme';
 
 // Reached after a password-reset link opened on this phone sets recoveryMode (see
 // useAuthDeepLinks), or when a reset code worked but the new password was refused.
@@ -15,6 +15,7 @@ import { colors, radius, space, font } from '@/theme';
 // Setting the password signs every other device out. The link path is unverified
 // without a development build and the redirect URLs set up (docs/MOBILE.md).
 export default function ResetScreen() {
+  const styles = useStyles();
   const { session, user, updatePassword, clearRecoveryMode } = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -46,9 +47,9 @@ export default function ResetScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   title: { fontSize: font.h1, fontWeight: '700', color: colors.ink },
   warn: { backgroundColor: colors.amber100, borderRadius: radius.md, padding: space.md },
   warnText: { color: colors.amber800, fontSize: font.small },
   back: { textAlign: 'center', color: colors.forest500, fontWeight: '600', fontSize: font.small },
-});
+}));

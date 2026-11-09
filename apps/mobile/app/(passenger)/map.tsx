@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Linking, type LayoutChangeEvent } from 'react-native';
+import { View, Text, Pressable, ScrollView, Linking, type LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ import { useNow, countdown, leadTime } from '@/hooks/useNow';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
 import { lineFor } from '@/lib/lines';
-import { colors, space, font, radius, SCREEN } from '@/theme';
+import { space, font, radius, SCREEN, useColors, makeStyles } from '@/theme';
 import { kampalaToday, formatTime, formatUGX } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import { tripJourney } from '@shared/data/journey';
@@ -29,6 +29,8 @@ type Selection = { kind: 'stop'; id: string } | { kind: 'bus'; id: string } | nu
  * a bus shows where it's heading and when it reaches each hub, and you can follow it.
  */
 export default function LiveMap() {
+  const colors = useColors();
+  const styles = useStyles();
   const params = useLocalSearchParams<{ trip?: string; hub?: string; follow?: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
@@ -248,6 +250,8 @@ export default function LiveMap() {
 }
 
 function PanelHead({ line, title, sub, onClose }: { line?: { code: string; color: string }; title: string; sub?: string; onClose?: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   return (
     <View style={styles.panelHead}>
       {line && <LineBadge code={line.code} color={line.color} size="lg" />}
@@ -265,6 +269,8 @@ function PanelHead({ line, title, sub, onClose }: { line?: { code: string; color
 }
 
 function BigCountdown({ iso, now, live }: { iso: string; now: Date; live?: boolean }) {
+  const colors = useColors();
+  const styles = useStyles();
   const cd = countdown(iso, now);
   return (
     <View style={{ alignItems: 'flex-end', minWidth: 56 }}>
@@ -278,6 +284,7 @@ function OverviewPanel({ running, upcoming, now, expanded, myTripIds, cities, on
   running: TripView[]; upcoming: TripView[]; now: Date; expanded: boolean; myTripIds: Set<string>;
   cities: { origin: string; destination: string }; onBus: (id: string) => void; onBook: (t: TripView) => void; loading: boolean;
 }) {
+  const styles = useStyles();
   return (
     <View>
       <PanelHead title={running.length ? 'On the road now' : `Next from ${cities.origin}`} sub={running.length ? 'Tap a bus to see where it is and follow it' : 'Tap a hub on the map to see its departures'} />
@@ -323,6 +330,8 @@ function StopPanel({ hubId, name, area, lat, lng, trips, now, expanded, myTripId
   hubId: string; name: string; area: string; lat?: number | null; lng?: number | null; trips: TripView[]; now: Date; expanded: boolean; myTripIds: Set<string>;
   onBus: (id: string) => void; onBook: (t: TripView) => void; onHub: () => void; onClose: () => void;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const departures = trips
     .map((t) => ({ t, stop: t.stops.find((s) => s.hubId === hubId) }))
     .filter((x): x is { t: TripView; stop: NonNullable<typeof x.stop> } => !!x.stop && !x.stop.reached && x.t.status !== 'completed')
@@ -371,6 +380,8 @@ function BusPanel({ t, now, expanded, mine, myHubId, following, onFollow, onStop
   t: TripView; now: Date; expanded: boolean; mine: boolean; myHubId?: string; following: boolean;
   onFollow: () => void; onStop: (id: string) => void; onBook: (hubId?: string) => void; onClose: () => void;
 }) {
+  const colors = useColors();
+  const styles = useStyles();
   const line = lineFor(t.operatorId, t.operatorName);
   const cities = DIRECTION_CITIES[t.direction];
   const stops = [...t.stops].sort((a, b) => a.stopOrder - b.stopOrder);
@@ -422,11 +433,11 @@ function BusPanel({ t, now, expanded, mine, myHubId, following, onFollow, onStop
 
 const shadow = { shadowColor: '#000', shadowOpacity: 0.14, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 6 };
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surfaceAlt },
   top: { position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: SCREEN },
   roundBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadow },
-  roundBtnOn: { backgroundColor: colors.forest700 },
+  roundBtnOn: { backgroundColor: colors.primary },
   dirPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, height: 44, borderRadius: 22, backgroundColor: colors.surface, paddingHorizontal: 16, ...shadow },
   dirText: { flex: 1, fontSize: font.body, fontWeight: '800', color: colors.ink },
   controls: { position: 'absolute', right: SCREEN, gap: 10, alignItems: 'flex-end' },
@@ -450,7 +461,7 @@ const styles = StyleSheet.create({
   liveText: { fontSize: 11, fontWeight: '800', color: colors.forest700, textTransform: 'uppercase' },
   actions: { flexDirection: 'row', gap: space.sm, marginBottom: 4 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingHorizontal: 14, height: 38, backgroundColor: colors.forest100 },
-  actionPrimary: { backgroundColor: colors.forest700 },
+  actionPrimary: { backgroundColor: colors.primary },
   actionText: { fontSize: font.small, fontWeight: '700', color: colors.forest700 },
   yours: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.forest100, borderRadius: radius.md, padding: space.md, marginBottom: space.sm },
   yoursText: { flex: 1, fontSize: font.small, color: colors.forest800 },
@@ -459,4 +470,4 @@ const styles = StyleSheet.create({
   stopName: { flex: 1, fontSize: font.body, color: colors.ink, fontWeight: '500' },
   stopTime: { fontSize: font.small, color: colors.inkSoft, fontWeight: '700', fontVariant: ['tabular-nums'] },
   empty: { fontSize: font.small, color: colors.muted, paddingVertical: space.md, textAlign: 'center' },
-});
+}));

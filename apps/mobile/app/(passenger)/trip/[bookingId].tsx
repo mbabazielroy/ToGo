@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { useAsync, humanError } from '@/hooks/useAsync';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
-import { colors, radius, space, font, SCREEN, control } from '@/theme';
+import { radius, space, font, SCREEN, control, useColors, makeStyles } from '@/theme';
 import type { BookingStatusCode, TripStatusCode } from '@shared/data/adapter';
 import { formatTime, formatUGX, timeAgo } from '@shared/lib/time';
 import { tripJourney } from '@shared/data/journey';
@@ -43,6 +43,8 @@ function stageProgress(status: BookingStatusCode, tripStatus?: TripStatusCode): 
 }
 
 export default function TripScreen() {
+  const colors = useColors();
+  const styles = useStyles();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const adapter = useAdapter();
   const mode = useAppMode();
@@ -317,6 +319,8 @@ export default function TripScreen() {
 
 /** Shown when the pass on screen is the phone's saved copy, not a fresh one. */
 function SavedBanner({ updating, savedAt, onRetry }: { updating: boolean; savedAt?: string; onRetry: () => void }) {
+  const colors = useColors();
+  const styles = useStyles();
   // On a normal connection the fresh pass replaces the saved one almost at once:
   // only mention it if loading is slow.
   const [slow, setSlow] = useState(false);
@@ -347,6 +351,7 @@ function SavedBanner({ updating, savedAt, onRetry }: { updating: boolean; savedA
 }
 
 function Banner({ tone, text }: { tone: 'red' | 'amber' | 'grey'; text: string }) {
+  const colors = useColors();
   const map = {
     red: { bg: colors.red100, fg: colors.red700 },
     amber: { bg: colors.amber100, fg: colors.amber800 },
@@ -359,7 +364,7 @@ function Banner({ tone, text }: { tone: 'red' | 'amber' | 'grey'; text: string }
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   savedBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md },
   savedTitle: { color: colors.ink, fontSize: font.small, fontWeight: '700' },
   savedText: { color: colors.inkSoft, fontSize: font.small, marginTop: 2 },
@@ -395,10 +400,10 @@ const styles = StyleSheet.create({
   stageRow: { flexDirection: 'row', gap: space.md },
   rail: { alignItems: 'center', width: 22 },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  dotDone: { backgroundColor: colors.forest700, borderColor: colors.forest700 },
+  dotDone: { backgroundColor: colors.primary, borderColor: colors.forest700 },
   dotCurrent: { borderColor: colors.forest700, backgroundColor: colors.surface },
   line: { flex: 1, width: 2, backgroundColor: colors.separator, marginTop: 2 },
-  lineDone: { backgroundColor: colors.forest700 },
+  lineDone: { backgroundColor: colors.primary },
   stageLabel: { fontWeight: '500', fontSize: font.body },
   stageHint: { color: colors.muted, fontSize: font.small, marginTop: 2 },
   estimate: { color: colors.muted, fontSize: font.small, marginTop: space.sm },
@@ -407,4 +412,4 @@ const styles = StyleSheet.create({
   infoText: { color: colors.inkSoft, fontSize: font.small, marginTop: 4 },
 
   previewHint: { color: colors.muted, fontSize: font.tiny, lineHeight: 17, textAlign: 'center', paddingHorizontal: space.md },
-});
+}));

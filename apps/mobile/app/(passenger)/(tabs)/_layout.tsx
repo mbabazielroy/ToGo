@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/theme';
+import { useColors } from '@/theme';
 
 type Icon = keyof typeof Ionicons.glyphMap;
 const icon = (on: Icon, off: Icon) => ({ color, focused, size }: { color: unknown; focused: boolean; size: number }) =>
   <Ionicons name={focused ? on : off} size={size} color={color as string} />;
 
 export default function PassengerTabs() {
+  const colors = useColors();
   return (
     <Tabs
       screenOptions={{

@@ -2,8 +2,9 @@
 // anything else loads, so a crash during start-up is reported too.
 import { reportError } from '@/lib/crashReporting';
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from 'expo-router';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, DefaultTheme, type ErrorBoundaryProps } from 'expo-router';
+import { AppearanceProvider } from '@/appearance/AppearanceProvider';
+import { View, Text, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AdapterProvider } from '@/data/AdapterProvider';
@@ -13,7 +14,7 @@ import { SearchProvider } from '@/state/search';
 import { ToastProvider } from '@/components/ToastProvider';
 import { useAuthDeepLinks } from '@/auth/useAuthDeepLinks';
 import { APP_MODE } from '@/env';
-import { colors } from '@/theme';
+import { useColors, useTheme, makeStyles } from '@/theme';
 
 // Connected-mode auth routing. Public browsing is allowed (hubs/departures are
 // public); authentication is required only for protected actions (reserving, My
@@ -46,6 +47,7 @@ function AuthGate() {
  * development builds.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const eb = useEb();
   useEffect(() => { reportError(error, 'screen'); }, [error]);
   return (
     <View style={eb.root} accessibilityRole="alert">
@@ -59,19 +61,28 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   );
 }
 
-const eb = StyleSheet.create({
+const useEb = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   title: { fontSize: 22, fontWeight: '800', color: colors.ink, textAlign: 'center' },
   body: { fontSize: 16, color: colors.inkSoft, textAlign: 'center', lineHeight: 23 },
   detail: { fontSize: 12, color: colors.muted, textAlign: 'center' },
-  button: { marginTop: 8, backgroundColor: colors.forest700, borderRadius: 14, paddingHorizontal: 28, minHeight: 50, justifyContent: 'center' },
+  button: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 28, minHeight: 50, justifyContent: 'center' },
   buttonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-});
+}));
 
-export default function RootLayout() {
+/** Navigation, status bar and screen backgrounds in the current palette. */
+function ThemedApp() {
+  const colors = useColors();
+  const { scheme } = useTheme();
+  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...base,
+    dark: scheme === 'dark',
+    colors: { ...base.colors, primary: colors.forest700, background: colors.bg, card: colors.surface, text: colors.ink, border: colors.separator, notification: colors.red600 },
+  };
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
+    <ThemeProvider value={navTheme}>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <AdapterProvider>
         <AuthProvider>
           <SessionProvider>
@@ -95,6 +106,16 @@ export default function RootLayout() {
           </SessionProvider>
         </AuthProvider>
       </AdapterProvider>
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <AppearanceProvider>
+        <ThemedApp />
+      </AppearanceProvider>
     </SafeAreaProvider>
   );
 }

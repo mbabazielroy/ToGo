@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, PrimaryButton, GhostButton, Loading, ErrorRow, EmptyState, Separator, Banner } from '@/components/ui';
@@ -10,7 +10,7 @@ import { useAsync, humanError } from '@/hooks/useAsync';
 import { useLiveRefresh } from '@/hooks/useLiveRefresh';
 import { useToast } from '@/components/ToastProvider';
 import { haptics } from '@/lib/feedback';
-import { colors, radius, space, font, SCREEN, control } from '@/theme';
+import { radius, space, font, SCREEN, control, useColors, makeStyles } from '@/theme';
 import { formatTime } from '@shared/lib/time';
 import { DIRECTION_CITIES } from '@shared/lib/lookup';
 import type { ManifestRow, BookingView } from '@shared/data/adapter';
@@ -23,6 +23,8 @@ import { ask } from '@/lib/dialog';
 type Filter = 'all' | 'waiting' | 'boarded';
 
 export function ConductorToday({ staffId, tripParam }: { staffId: string; tripParam?: string }) {
+  const colors = useColors();
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const insets = useSafeAreaInsets();
@@ -243,7 +245,7 @@ export function ConductorToday({ staffId, tripParam }: { staffId: string; tripPa
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   headerRoute: { color: colors.onDarkSoft, fontSize: font.small, fontWeight: '600' },
   headerStats: { flexDirection: 'row', gap: space.md },
   scanBtn: { flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.live, borderRadius: radius.xl, minHeight: control.height + 6 },
@@ -255,9 +257,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: font.body, color: colors.ink, paddingVertical: 10 },
   filters: { flexDirection: 'row', gap: 6 },
   filter: { borderRadius: 999, paddingHorizontal: 12, height: 32, justifyContent: 'center', backgroundColor: colors.surface },
-  filterOn: { backgroundColor: colors.ink },
+  filterOn: { backgroundColor: colors.inverse },
   filterText: { fontSize: font.tiny, fontWeight: '700', color: colors.inkSoft },
-  filterTextOn: { color: colors.white },
+  filterTextOn: { color: colors.onInverse },
   none: { textAlign: 'center', color: colors.muted, fontSize: font.small, paddingVertical: space.lg },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: space.xs, paddingHorizontal: space.xs },
   groupName: { fontSize: font.small, fontWeight: '800', color: colors.ink, flexShrink: 1 },
@@ -275,4 +277,4 @@ const styles = StyleSheet.create({
   confirmName: { color: colors.ink, fontSize: 24, fontWeight: '800', marginTop: 6 },
   confirmMeta: { color: colors.muted, fontSize: font.small, marginTop: 2 },
   confirmPay: { color: colors.inkSoft, fontSize: font.small, fontWeight: '600', marginTop: space.sm },
-});
+}));

@@ -1,12 +1,13 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Group, Separator, SectionHeading, Loading, ErrorRow, PageHeader, Avatar, Banner, ListRow } from '@/components/ui';
 import { useAdapter, useAppMode, useDataEpoch } from '@/data/AdapterProvider';
 import { homeFor, useSession } from '@/session/SessionProvider';
 import { useAsync } from '@/hooks/useAsync';
-import { colors, space, font, SCREEN, radius, control } from '@/theme';
+import { space, font, SCREEN, radius, control, makeStyles } from '@/theme';
 import { ask } from '@/lib/dialog';
+import { AppearanceSetting } from '@/appearance/AppearanceSetting';
 
 const GROUPS = [
   { role: 'driver', title: 'Drivers', color: '#1f5fd1' },
@@ -16,6 +17,7 @@ const GROUPS = [
 
 /** Crew directory with today's load, plus the admin's own account controls. */
 export default function AdminTeam() {
+  const styles = useStyles();
   const adapter = useAdapter();
   const epoch = useDataEpoch();
   const mode = useAppMode();
@@ -76,6 +78,8 @@ export default function AdminTeam() {
           </>
         )}
 
+        <AppearanceSetting />
+
         <Pressable onPress={confirmSignOut} accessibilityRole="button" style={({ pressed }) => [styles.signOut, pressed && { opacity: 0.7 }]}>
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
@@ -84,7 +88,7 @@ export default function AdminTeam() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: SCREEN, paddingVertical: space.md },
   name: { fontSize: font.body, fontWeight: '700', color: colors.ink },
@@ -92,4 +96,4 @@ const styles = StyleSheet.create({
   phone: { fontSize: font.tiny, color: colors.inkSoft, fontVariant: ['tabular-nums'], marginTop: 1 },
   signOut: { backgroundColor: colors.surface, borderRadius: radius.lg, minHeight: control.height, alignItems: 'center', justifyContent: 'center', marginTop: space.xl },
   signOutText: { color: colors.red700, fontWeight: '600', fontSize: font.body },
-});
+}));

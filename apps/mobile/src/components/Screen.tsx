@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { View, Text, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, space, font, SCREEN } from '../theme';
+import { space, font, SCREEN, makeStyles } from '../theme';
 import { useAppMode } from '../data/AdapterProvider';
 import { ask } from '../lib/dialog';
 import { BrandMark } from './BrandMark';
@@ -11,6 +11,7 @@ export const DEMO_EXPLANATION =
 
 /** Compact, tappable mode indicator (Preview / Connected). Tapping Preview explains it. */
 export function ModeTag() {
+  const styles = useStyles();
   const mode = useAppMode();
   const demo = mode === 'demo';
   // The live app needs no badge; only the on-device preview is labelled.
@@ -31,6 +32,7 @@ export function ModeTag() {
 }
 
 function BrandHeader({ subtitle }: { subtitle?: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.header}>
       <View style={styles.brandRow}>
@@ -48,6 +50,7 @@ function BrandHeader({ subtitle }: { subtitle?: string }) {
 export function Screen({
   children, scroll = true, subtitle, showHeader = true,
 }: { children: ReactNode; scroll?: boolean; subtitle?: string; showHeader?: boolean }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const Body = scroll ? ScrollView : View;
   return (
@@ -66,7 +69,7 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: SCREEN, paddingTop: space.sm, paddingBottom: space.sm },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -78,4 +81,4 @@ const styles = StyleSheet.create({
   modeTagText: { fontSize: font.tiny, fontWeight: '800' },
   modeTagTextDemo: { color: colors.inkSoft },
   modeTagTextLive: { color: colors.forest700 },
-});
+}));
