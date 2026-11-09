@@ -15,3 +15,9 @@ export async function morning(page: Page) {
 export function shown(locator: Locator): Locator {
   return locator.filter({ visible: true }).first();
 }
+
+/** Press a button in the app's confirmation dialog (on web, `ask()` shows an
+ *  in-page dialog instead of the browser's confirm). */
+export async function answerDialog(page: Page, button = 'Confirm') {
+  await page.getByRole('alertdialog').getByRole('button', { name: button, exact: true }).click();
+}

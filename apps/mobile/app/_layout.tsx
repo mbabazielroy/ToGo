@@ -4,6 +4,7 @@ import { reportError } from '@/lib/crashReporting';
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments, ThemeProvider, DarkTheme, DefaultTheme, type ErrorBoundaryProps } from 'expo-router';
 import { AppearanceProvider } from '@/appearance/AppearanceProvider';
+import { DialogHost } from '@/components/DialogHost';
 import { View, Text, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -101,6 +102,7 @@ function ThemedApp() {
                   <Stack.Screen name="reset" />
                   <Stack.Screen name="legal" />
                 </Stack>
+                <DialogHost />
               </ToastProvider>
             </SearchProvider>
           </SessionProvider>

@@ -7,7 +7,6 @@ import { morning, shown } from './helpers';
 
 test('passenger reserves and checks in; conductor boards them by code', async ({ page }) => {
   await morning(page);
-  page.on('dialog', (d) => d.accept());
   await page.goto('/');
 
   await page.getByRole('button', { name: /Get started/ }).first().click();

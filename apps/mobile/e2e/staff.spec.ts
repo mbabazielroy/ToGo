@@ -1,12 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { morning, shown } from './helpers';
+import { answerDialog, morning, shown } from './helpers';
 
 // ToGo Staff, preview mode: each crew workspace opens from sign-in and its main
 // actions work. (Preview personas stand in for real staff accounts.)
 
 test.beforeEach(async ({ page }) => {
   await morning(page);
-  page.on('dialog', (d) => d.accept()); // "Start trip?" and similar confirmations
   await page.goto('/');
   await expect(shown(page.getByText('Sign in to your shift'))).toBeVisible();
 });
@@ -16,9 +15,12 @@ test('a driver starts the trip and marks hubs reached', async ({ page }) => {
   await expect(shown(page.getByText('First pickup', { exact: false }))).toBeVisible();
   // Button names start with an icon glyph, so match the words only.
   await page.getByRole('button', { name: /Start trip/ }).click();
+  await expect(page.getByRole('alertdialog', { name: 'Start trip?' })).toBeVisible();
+  await answerDialog(page);
   await expect(shown(page.getByText('Trip started.'))).toBeVisible();
   // The trip starts at the first hub; the next button is the second hub.
   await page.getByRole('button', { name: /Arrived at Ndeeba Roadside Point/ }).click();
+  if (await page.getByRole('alertdialog').isVisible().catch(() => false)) await answerDialog(page);
   await expect(shown(page.getByText('Arrived at Ndeeba Roadside Point.'))).toBeVisible();
   await expect(page.getByRole('button', { name: /Arrived at Natete Junction Stop/ })).toBeVisible();
 });

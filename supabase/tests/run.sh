@@ -30,5 +30,6 @@ cat "$ROOT/supabase/tests/rls_test.sql" \
     "$ROOT/supabase/tests/rls_cases4.sql" \
     "$ROOT/supabase/tests/rls_cases5.sql" \
     "$ROOT/supabase/tests/rls_cases6.sql" \
+    "$ROOT/supabase/tests/rls_cases7.sql" \
     "$ROOT/supabase/tests/rls_report.sql" \
   | $PSQL -q -v ON_ERROR_STOP=1 -d "$DB" -f -

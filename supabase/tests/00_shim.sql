@@ -31,3 +31,11 @@ do $$ begin create role service_role nologin noinherit bypassrls; exception when
 
 grant usage on schema auth to anon, authenticated, service_role;
 grant select on auth.users to authenticated, service_role;
+
+-- Supabase's own defaults: everything new in `public` is granted to the API roles,
+-- and row-level security plus explicit revokes are what actually protect data.
+-- Mirroring them here means the tests see what a hosted project exposes.
+grant usage on schema public to anon, authenticated, service_role;
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;

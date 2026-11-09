@@ -1,8 +1,22 @@
 # ToGo audit
 
-_Second pass, 6 November 2026 · ToGo 1.0.0, ToGo Staff 1.0.0 and the website · branch `claude/togo-bus-terminal-0o4g26`_
+_Third pass, 9 November 2026 · ToGo 1.0.0, ToGo Staff 1.0.0 and the website · branch `claude/togo-bus-terminal-0o4g26`_
 
 ## Summary
+
+**Third pass (9 November 2026): full audit.** Every automated check passes, and
+the database ran on a real PostgreSQL 17 server here for the first time. That
+found one critical and two high problems in what a hosted Supabase project
+exposes, all fixed in migration `0023_lock_down_api.sql`:
+- anyone could edit pickup hubs;
+- anyone could send any user a notification;
+- anyone could write booking history.
+
+It also found that the website's security headers were never actually sent, and
+three app issues. The whole pass is described under "Third pass: full audit" below.
+**Apply migration 0023 to the production project before launch.**
+
+**Earlier passes:**
 
 Every code item from the first audit is done except H4, testing on real phones,
 which needs you. Both projects now report no known vulnerabilities. End-to-end tests
@@ -20,12 +34,12 @@ What's left is mostly outside the code:
 | Area | Rating | Notes |
 |---|---|---|
 | App Store / Play policy | Good | Privacy policy and store answers now cover push alerts and crash reports |
-| Security | Good | Accounts reviewed against NIST SP 800-63B and OWASP ASVS (see below); PKCE sign-in links; push tokens locked to their owner and tested; push function checks a shared secret; website security headers. Two-factor sign-in for staff is still to do (N5) |
+| Security | Good after 0023 | API surface locked down and tested against Supabase's real default grants (0023); website headers now sent with a CSP. Accounts reviewed against NIST SP 800-63B and OWASP ASVS (see below); PKCE sign-in links; push tokens locked to their owner and tested; push function checks a shared secret; website security headers. Two-factor sign-in for staff is still to do (N5) |
 | Privacy | Good | Crash reports stripped of personal data; push tokens removed on sign-out and account deletion; no tracking or ads |
 | Reliability | Good | Offline boarding pass, crash reporting, failures that matter are now reported |
 | Accessibility | Good, needs a device check | Screen-reader roles in place; large text and VoiceOver/TalkBack still to try on a phone |
 | Performance | Good | Each app is 170–260 KB smaller without the other app's screens; the info page loads about 18 KB of its own code |
-| Code health | Good | ESLint 10, Vite 8, Vitest 5; 86 + 23 unit tests, 12 end-to-end tests and the database suites in CI |
+| Code health | Good | ESLint 10, Vite 8, Vitest 5; 86 + 63 unit tests, 13 end-to-end tests and 118 database checks plus the concurrency race in CI |
 | Dependencies | Good | `npm audit` finds 0 vulnerabilities in both the website and the phone app |
 
 ## First audit: status
@@ -66,7 +80,45 @@ What's left is mostly outside the code:
 | The pass and the Live map disagreed on when a bus fix was too old (2 vs 5 minutes) | One rule, 3 minutes, for both |
 | Passengers weren't told when their bus set off | "Your bus is on its way" (pickup hub and expected time) when a trip first starts, however it's started; pushed to the phone, once per booking (`0022_trip_started.sql`). The pass then offers "Track the bus live" |
 
-## Added after this pass: accounts and sign-in
+## Third pass: full audit
+
+**What ran:**
+- **Automated checks:** every one, plus `npm audit` and Expo Doctor.
+- **Database:** all 23 migrations, then the full access-rule suite and the
+  two-people-one-seat race on a real PostgreSQL 17 server. The test setup now
+  mirrors the grants a hosted Supabase project gives by default.
+- **By hand, in a browser:**
+  - the passenger app: hubs, booking for two, the pass and notifications;
+  - the staff app: driver, conductor and operations;
+  - the website, legal pages and console.
+
+| # | Severity | Finding | Fix |
+|---|---|---|---|
+| A1 | Critical | Hosted Supabase grants every new object in `public` to signed-out visitors. The passenger views run with their owner's rights and `hubs_public` is a simple view, so anyone could rename an approved hub, change its directions or move it on the map, which would send passengers to the wrong place. The tests never saw this, because their setup didn't copy Supabase's default grants | `0023`: the three passenger views are read-only for everyone. The test setup now applies Supabase's default grants, and `rls_cases7.sql` tries the attack and checks every view |
+| A2 | High | The internal helper `_notify` could be called by anyone, so anyone could send any user an in-app alert, and with push set up a phone notification (for example a fake "send money to…" message) | `0023`: internal helpers and trigger functions can't be called through the API |
+| A3 | High | `_log_event` could be called by any signed-in user to write booking history | Same as A2 |
+| A4 | Medium | 25 functions added after migration 0010 (management, staff workspace, push, account deletion) could be called by signed-out visitors. Each checks the caller itself, so nothing leaked, but they shouldn't be reachable | `0023`: signed-out visitors can call only `is_operator_member`, which the public operators rule needs. Every RPC needs a signed-in user, and new functions no longer get that grant by default |
+| A5 | Medium | `TRUNCATE` (which skips row-level security) was granted on every table. The API doesn't expose it, but nothing should hold it | Revoked from the API roles |
+| A6 | Medium | The website's security headers were never sent: nginx drops server-level `add_header` lines in any `location` that sets its own, and every location did | The headers live in `deploy/security-headers.conf`, which every location includes. Added a Content Security Policy (scripts only from the site; data only from the site and `*.supabase.co`), Permissions-Policy and HSTS |
+| A7 | Medium | On web, choice dialogs (driver "Report delay", conductor "Leave hub", operations "Add delay") used the browser's `prompt()` with "Type a number". Some browsers block `prompt()`, and there the screen crashed | `ask()` now shows an in-app dialog on web with real buttons, Escape to cancel and the right roles for screen readers. Phones still use the system alert. The end-to-end tests press its buttons |
+| A8 | Low | New departure: when a vehicle was already busy, the error appeared at the bottom of the long form, off screen, so "Schedule departure" seemed to do nothing. The error also stayed after the choice was changed | The error shows in the footer next to the button and clears when any choice changes |
+| A9 | Low | In local development `/console` showed the home page and console links like `/console/auth/reset` didn't open the console (production nginx was fine) | The dev and preview servers route `/console` the way nginx does |
+| A10 | Low | CI tested the database on PostgreSQL 16; new Supabase projects run 17 | CI uses 17 |
+
+**Checked and sound:**
+- **Database protection:** every table has row-level security, and every
+  definer function has a fixed `search_path`.
+- **Overbooking:** two people racing for the last seat gets exactly one booking;
+  the other gets `SOLD_OUT`.
+- **Push function:** checks its secret in constant time and logs nothing personal.
+- **Privacy policy:** covers push addresses, the bus's live location and the
+  passenger's own location.
+- **Dependencies:** no known vulnerabilities.
+- **Validation:** times in the past and vehicles that are already busy are refused.
+- **Bookings:** the fare total is right for several seats.
+- **Boarding pass:** QR codes stay black on white in dark mode.
+
+## Added after the second pass: accounts and sign-in
 
 Reviewed sign-up, sign-in, password recovery and sessions in both apps and the
 console against NIST SP 800-63B (passwords) and OWASP ASVS (authentication and
@@ -137,6 +189,25 @@ Already sound and kept:
 
 ## Verified in this pass
 
+**Third pass (9 November 2026):**
+- **Website:** typecheck, lint, 86 unit tests and the production build.
+- **Phone apps:**
+  - typecheck and lint;
+  - 63 unit tests, including colour contrast for both palettes;
+  - 13 end-to-end tests, including the in-app dialog and dark mode;
+  - Expo Doctor 20/20.
+- **Database:** all 23 migrations apply on PostgreSQL 17.11. All 118 database
+  checks pass, with Supabase's default grants mirrored. Without 0023, the 9 new
+  checks fail, which proves they catch the problems. The concurrency race passes.
+- **By hand, in a browser:**
+  - passenger: hub details, booking two seats, the pass and notifications;
+  - driver: delay, start trip;
+  - operations: new departure, including both clash messages;
+  - the website, legal pages and console routes.
+- **Dependencies:** `npm audit` finds 0 vulnerabilities in both projects.
+
+**Second pass:**
+
 - Website: typecheck, ESLint 10, 70 unit tests (shared rules, adapters, push
   messages), production build of the information page, console and legal pages.
   The page was checked in a browser at desktop and phone width with no sideways
@@ -159,10 +230,15 @@ Already sound and kept:
 
 ## Not verified
 
-- **The database suite on a full PostgreSQL server.** All migrations and every
-  database check (107, including the push-token and "on its way" cases) pass in
-  PGlite, an in-process build of PostgreSQL. The GitHub `database` job runs them on
-  a real server; the concurrency script (`concurrency.sh`) wasn't run.
+- **Migration 0023 on the hosted project.** It was tested on PostgreSQL 17, with
+  Supabase's default grants copied into the test setup. Apply it with
+  `supabase db push`. Afterwards, the Database Advisors page in the dashboard
+  should show no "security definer view" or exposed-function warnings for these
+  objects.
+- **The new web headers in a real nginx.** The config wasn't run, since there's no
+  Docker here. After deploying, check them with
+  `curl -I https://YOUR-SITE/console/`. If the Supabase project uses a custom
+  domain, add it to `connect-src` in `deploy/security-headers.conf`.
 - **Anything against a real Supabase project**: sign-up and reset codes, the
   "password changed" email, other devices being signed out, the console's data
   screens, push delivery. No local Supabase stack was run either (no Docker here).

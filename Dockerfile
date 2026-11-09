@@ -39,6 +39,7 @@ RUN npm run build
 # --- serve stage ---
 FROM nginx:1.27-alpine AS serve
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/security-headers.conf /etc/nginx/togo-security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
 # nginx's default CMD serves the site.

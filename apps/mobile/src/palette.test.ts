@@ -17,7 +17,7 @@ const PAIRS: [keyof Colors, keyof Colors][] = [
   ['ink', 'bg'], ['ink', 'surface'], ['inkSoft', 'surface'], ['muted', 'surface'], ['muted', 'bg'],
   ['forest700', 'surface'], ['forest700', 'bg'], ['white', 'primary'],
   ['forest800', 'forest100'], ['amber800', 'amber100'], ['red700', 'red100'], ['red700', 'surface'],
-  ['blue800', 'blue100'], ['inkSoft', 'surfaceAlt'], ['ink', 'thumb'], ['white', 'forest900'], ['onInverse', 'inverse'],
+  ['blue800', 'blue100'], ['inkSoft', 'surfaceAlt'], ['ink', 'thumb'], ['white', 'forest900'], ['onInverse', 'inverse'], ['forest700', 'forest100'], ['red700', 'red100'],
 ];
 
 describe.each([['light', light], ['dark', dark]] as const)('%s palette', (_name, c) => {

@@ -211,6 +211,24 @@ Highlights:
 - `booking_events` is an append-only audit log — clients have no update/delete
   grant; only definer functions write it.
 
+**What the API can reach (migration 0023).** Hosted Supabase grants everything
+created in `public` to `anon` and `authenticated` by default, so grants are set
+explicitly:
+- **Signed-out visitors** can read the three passenger views and execute only
+  `is_operator_member`, which the public operators rule needs.
+- **Every RPC** needs a signed-in user.
+- **Internal helpers** (`_notify`, `_log_event`, `_gen_reference`, …) and trigger
+  functions can't be called through the API at all.
+- **The passenger views are read-only.** They run with their owner's rights to
+  show safe columns of approved rows, so a write through them would skip
+  row-level security.
+- **No API role holds `TRUNCATE`.**
+
+When you add a function, grant it to `authenticated` in its migration. Name
+internal helpers with a leading `_`, and `rls_cases7.sql` will fail if they're
+reachable. A new passenger-facing view also needs
+`revoke all … from anon, authenticated; grant select …`.
+
 ---
 
 ## 8. Realtime
@@ -233,7 +251,9 @@ npm run db:concurrency  # two overlapping reservations race for the last seat
 ```
 
 `supabase/tests/00_shim.sql` emulates the Supabase `auth` schema/roles so the same
-migrations can be exercised on a plain Postgres. Against a real Supabase project,
+migrations can be exercised on a plain Postgres. It also applies Supabase's default
+grants to `anon` and `authenticated`, so the tests see what a hosted project
+exposes; `rls_cases7.sql` checks that surface. Against a real Supabase project,
 use pgTAP or the SQL editor with `set role authenticated` + a JWT claims GUC.
 
 These prove the **database** policies/transactions. They do **not** cover the live

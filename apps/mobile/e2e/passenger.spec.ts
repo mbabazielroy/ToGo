@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { morning, shown } from './helpers';
+import { answerDialog, morning, shown } from './helpers';
 
 /** Onboard and reserve one seat on the 07:00 bus from Nakawa Green Hub. */
 async function reserveNakawaSeat(page: Page) {
@@ -62,11 +62,9 @@ test('a passenger can cancel a reservation', async ({ page }) => {
   await page.getByRole('button', { name: 'Confirm reservation' }).click();
   await expect(shown(page.getByText('Boarding pass'))).toBeVisible();
 
-  page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'Cancel reservation' }).click();
-  // The app's confirm dialog (web: an in-page sheet or the browser's confirm).
-  const confirm = page.getByRole('button', { name: 'Cancel reservation' }).last();
-  if (await confirm.isVisible().catch(() => false)) await confirm.click();
+  await expect(page.getByRole('alertdialog', { name: 'Cancel reservation' })).toBeVisible();
+  await answerDialog(page, 'Cancel reservation');
   await expect(shown(page.getByText('This reservation was cancelled and the seats released.'))).toBeVisible();
 });
 

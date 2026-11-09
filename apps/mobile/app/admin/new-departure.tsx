@@ -55,6 +55,9 @@ export default function NewDeparture() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operatorId, fleet.length]);
 
+  // An old error no longer applies once any choice changes.
+  useEffect(() => { setError(null); }, [direction, date, time, operatorId, vehicleId, duration, fare, driverId, conductorId]);
+
   const crew = (role: 'driver' | 'conductor') => (staff.data ?? []).filter((s) => s.role === role && s.operatorId === operatorId);
   const timeOk = /^([01]?\d|2[0-3]):[0-5]\d$/.test(time.trim());
   const past = date === today && timeOk && (() => {
@@ -166,12 +169,13 @@ export default function NewDeparture() {
                 <CrewChoice label="Conductor" people={crew('conductor')} value={conductorId} onChange={setConductorId} />
               </Group>
 
-              {error && <View style={{ marginTop: space.lg }}><Banner tone="error">{error}</Banner></View>}
             </>
           )}
         </ScrollView>
         <View style={[styles.footer, { paddingBottom: insets.bottom + space.md }]}>
-          {vehicle && fareNum > 0 && (
+          {/* Shown next to the button, so it's seen whatever part of the form is on screen. */}
+          {error && <Banner tone="error">{error}</Banner>}
+          {!error && vehicle && fareNum > 0 && (
             <Text style={styles.summary}>{vehicle.seats} seats · up to {formatUGX(vehicle.seats * fareNum)} if full</Text>
           )}
           <PrimaryButton title="Schedule departure" icon="checkmark" onPress={submit} loading={busy} disabled={loading} />

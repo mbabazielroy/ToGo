@@ -114,6 +114,8 @@ works in Expo Go without it. Full detail: [MOBILE.md](MOBILE.md).
 ## Pre-launch checklist
 
 - [ ] Supabase project created; `supabase db push` applied all migrations.
+- [ ] Migration `0023_lock_down_api.sql` is applied (`supabase migration list` shows it remote). Dashboard → Advisors → Security shows no exposed definer views or functions for ToGo's objects.
+- [ ] Website security headers are sent: `curl -I https://YOUR-SITE/console/` shows `Content-Security-Policy`, `X-Frame-Options: DENY` and `Strict-Transport-Security`. If Supabase uses a custom domain, add it to `connect-src` in `deploy/security-headers.conf`.
 - [ ] Website variables set on the host; `/console` shows the sign-in page (not "Setup needed").
 - [ ] Auth redirect URLs include `togo://**`, `togostaff://**` and `/console/auth/reset`.
 - [ ] Account security settings match [BACKEND.md](BACKEND.md#account-security-settings): confirm email on, minimum 8, leaked-password protection on, 8-digit codes for 30 minutes, ToGo email templates and security notifications, own SMTP sender.
